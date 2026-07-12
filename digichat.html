@@ -1967,13 +1967,20 @@
     const state = presenceChannel.presenceState();
     const raw = [];
     Object.values(state).forEach(arr => arr.forEach(p => raw.push(p)));
-    // Dedupe by nickname (case-insensitive): la lista visible nunca debe mostrar
-    // el mismo nombre dos veces. Object.values(state) respeta el orden de inserción
-    // de las claves, así que la sesión trackeada más recientemente para un nick
-    // queda última y gana por defecto ("last wins"); la excepción es que mi propia
+    // 1) Colapsa por clientId: al re-trackear (p.ej. al cambiar de nick, color o
+    // avatar) Supabase puede dejar momentáneamente dos metas bajo la misma sesión
+    // (la vieja "saliendo" y la nueva "entrando"). Nos quedamos solo con la última
+    // meta de cada clientId, así nunca aparecemos duplicados como si fuéramos dos
+    // personas ni se queda pegado el nombre/color anterior.
+    const byClient = new Map();
+    raw.forEach(p => byClient.set(p.clientId, p));
+    // 2) Dedupe by nickname (case-insensitive): la lista visible nunca debe mostrar
+    // el mismo nombre dos veces entre personas distintas. Object.values(state)
+    // respeta el orden de inserción, así que la sesión trackeada más recientemente
+    // para un nick gana por defecto ("last wins"); la excepción es que mi propia
     // entrada nunca debe ser reemplazada por un fantasma ajeno.
     const byNick = new Map();
-    raw.forEach(p => {
+    [...byClient.values()].forEach(p => {
       const key = p.nick.toLowerCase();
       const existing = byNick.get(key);
       if (existing && existing.clientId === CLIENT_ID && p.clientId !== CLIENT_ID) return;
