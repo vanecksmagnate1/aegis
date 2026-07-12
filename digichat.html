@@ -6,6 +6,33 @@
 <title>DigiChat</title>
 <style>
   html, body { margin: 0; padding: 0; background: #FFFFFF; }
+
+  /* overlay de broadcast: vive fuera de #dc-root, cubre toda la pagina */
+  .dc-globalbroadcast {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+    display: flex; align-items: center; justify-content: center; z-index: 99999;
+    font-family: Tahoma, "MS Sans Serif", Geneva, sans-serif;
+  }
+  .dc-globalbroadcast-box {
+    background: #D4D0C8; width: min(90vw, 380px); padding: 3px;
+    box-shadow: inset -1px -1px 0 #404040, inset 1px 1px 0 #FFF,
+                inset -2px -2px 0 #808080, inset 2px 2px 0 #DFDFDF,
+                3px 3px 14px rgba(0,0,0,0.6);
+  }
+  .dc-globalbroadcast-title {
+    background: linear-gradient(90deg, #0A246A 0%, #2A5AD1 55%, #A6CAF0 100%);
+    color: #fff; font-weight: bold; font-size: 12px; padding: 5px 7px;
+  }
+  .dc-globalbroadcast-body {
+    padding: 16px 14px; font-size: 12px; color: #000; background: #fff; margin: 5px;
+    box-shadow: inset 1px 1px 0 #808080, inset -1px -1px 0 #fff;
+    white-space: pre-wrap; word-wrap: break-word; min-height: 40px;
+  }
+  .dc-globalbroadcast-box > button {
+    display: block; margin: 4px auto 7px; font-family: inherit; font-size: 11px;
+    background: #D4D0C8; border: 1px solid #000; color: #000; padding: 4px 16px; cursor: pointer;
+    box-shadow: inset -1px -1px 0 #404040, inset 1px 1px 0 #FFF, inset -2px -2px 0 #808080, inset 2px 2px 0 #DFDFDF;
+  }
 </style>
 </head>
 <body>
@@ -44,11 +71,22 @@
     display: inline-block; width: 15px; height: 15px; flex-shrink: 0;
     background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Ccircle cx='8' cy='5' r='3.1' fill='%236A8FD0' stroke='%23223C74'/%3E%3Cpath d='M2.5 14.8c0-3 2.5-4.9 5.5-4.9s5.5 1.9 5.5 4.9v.7h-11z' fill='%236A8FD0' stroke='%23223C74'/%3E%3C/svg%3E") no-repeat center / contain;
   }
+  .dc-icon-emoji { display: inline-flex; width: 15px; flex-shrink: 0; justify-content: center; align-items: center; font-size: 12px; line-height: 1; }
   .dc-doorico {
     display: inline-block; width: 10px; height: 12px; flex-shrink: 0;
     background: #F0D060; border: 1px solid #806000;
     box-shadow: inset -2px 0 0 #C8A830;
   }
+
+  /* texto multicolor / arcoiris (solo admin) */
+  .dc-rainbow-text {
+    background: linear-gradient(90deg,#e6194b,#f58231,#ffe119,#3cb44b,#42d4f4,#4363d8,#911eb4,#e6194b);
+    background-size: 250% auto;
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    animation: dc-rainbow-shift 3.5s linear infinite;
+    font-weight: bold;
+  }
+  @keyframes dc-rainbow-shift { to { background-position: 250% center; } }
 
   /* ===== ventana Windows clasica ===== */
   .dc-window {
@@ -134,6 +172,8 @@
   }
   .dc-btn:disabled { color: #808080; text-shadow: 1px 1px 0 #fff; cursor: default; }
   .dc-default { border: 1px solid #000; }
+  .dc-smallbtn { padding: 2px 7px; font-size: 10px; }
+  .dc-danger { color: #7a0000; }
 
   /* campos hundidos */
   .dc-sunken {
@@ -148,19 +188,21 @@
   .dc-login p.sub { margin: 0 0 12px; color: #DDE5F5; font-size: 10px; }
   .dc-field { margin-bottom: 10px; }
   .dc-field label { display: block; font-weight: bold; margin-bottom: 3px; font-size: 11px; color: #fff; }
-  .dc-field input[type=text] { width: 100%; padding: 3px 5px; }
+  .dc-field input[type=text], .dc-field input[type=password] { width: 100%; padding: 3px 5px; }
   .dc-rooms { display: flex; flex-direction: column; gap: 3px; }
   .dc-rooms label { font-weight: normal; display: flex; gap: 5px; align-items: center; cursor: pointer; font-size: 11px; color: #fff; }
   .dc-error { color: #FFD2D2; font-size: 10px; margin-top: 4px; min-height: 12px; }
-  .dc-login .dc-btnrow { margin-top: 12px; display: flex; justify-content: space-between; align-items: center; }
-  .dc-admincheck { font-size: 10px; display: flex; align-items: center; gap: 4px; color: #fff; }
+  .dc-login .dc-btnrow { margin-top: 12px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+
+  /* dentro de dialogos, el error va oscuro (fondo claro) */
+  .dc-dialog-body .dc-error { color: #b00000; }
 
   /* ===== pantalla de chat ===== */
   .dc-chatscreen { display: none; }
   .dc-chatscreen.active { display: block; }
   .dc-cols { display: flex; gap: 6px; height: 292px; }
-  .dc-colleft { flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-  .dc-colright { width: 138px; display: flex; flex-direction: column; }
+  .dc-colleft { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .dc-colright { width: 148px; display: flex; flex-direction: column; }
 
   .dc-log {
     flex: 1; overflow-y: auto; padding: 4px 6px; line-height: 1.45; min-width: 0;
@@ -170,8 +212,21 @@
   .dc-log .nick { font-weight: bold; color: #000; cursor: default; }
   .dc-log .sys { color: #000; }
 
+  .dc-composerow { display: flex; justify-content: flex-end; position: relative; }
+  .dc-emopop {
+    display: none; position: absolute; bottom: 22px; right: 0; z-index: 5;
+    background: #D4D0C8; padding: 5px; width: 140px; flex-wrap: wrap; gap: 3px;
+    box-shadow: inset -1px -1px 0 #404040, inset 1px 1px 0 #FFF, inset -2px -2px 0 #808080, inset 2px 2px 0 #DFDFDF, 2px 2px 6px rgba(0,0,0,0.4);
+  }
+  .dc-emopop.active { display: flex; }
+  .dc-emopop span {
+    width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;
+    font-size: 13px; cursor: pointer; background: #fff;
+  }
+  .dc-emopop span:hover { background: #cfe0f7; }
+
   .dc-input {
-    height: 58px; width: 100%; resize: none; padding: 3px 5px; line-height: 1.4;
+    height: 54px; width: 100%; resize: none; padding: 3px 5px; line-height: 1.4;
   }
 
   /* pestañas Users / Rooms */
@@ -185,14 +240,15 @@
   }
   .dc-tab.active { height: 22px; font-weight: bold; }
 
-  .dc-icontoolbar { display: flex; gap: 3px; padding: 4px 1px 3px; }
+  .dc-icontoolbar { display: flex; gap: 3px; padding: 4px 1px 3px; flex-wrap: wrap; }
   .dc-icontoolbar .ico {
     width: 22px; height: 20px; background: #D4D0C8; cursor: pointer;
     display: flex; align-items: center; justify-content: center; position: relative;
     box-shadow: inset -1px -1px 0 #404040, inset 1px 1px 0 #FFF, inset -2px -2px 0 #808080, inset 2px 2px 0 #DFDFDF;
   }
   .dc-icontoolbar .ico:active { box-shadow: inset 1px 1px 0 #404040, inset -1px -1px 0 #FFF, inset 2px 2px 0 #808080; }
-  .dc-icontoolbar .ico.disabled { pointer-events: none; }
+  .dc-icontoolbar .ico.disabled, .dc-icontoolbar .ico.hidden { pointer-events: none; }
+  .dc-icontoolbar .ico.hidden { display: none; }
   .dc-icontoolbar .ico.disabled .dc-pico { opacity: 0.4; }
   .dc-icontoolbar .ico.disabled b { color: #808080; }
   .dc-icontoolbar .ico b {
@@ -210,7 +266,8 @@
   .dc-userlist { flex: 1; overflow-y: auto; padding: 2px 2px; }
   .dc-user { display: flex; align-items: center; gap: 5px; padding: 1px 3px; font-size: 11px; cursor: default; color: #000; }
   .dc-user.selected { background: #0A246A; }
-  .dc-user.selected, .dc-user.selected * { color: #fff !important; }
+  .dc-user.selected, .dc-user.selected * { color: #fff !important; -webkit-text-fill-color: #fff !important; }
+  .dc-user .dc-usertag { margin-left: auto; font-size: 9px; color: #333; }
 
   .dc-btncol { margin-top: 6px; display: flex; flex-direction: column; gap: 5px; }
   .dc-btncol .dc-row2 { display: flex; gap: 5px; }
@@ -236,7 +293,7 @@
     display: inline-flex; align-items: center; justify-content: center;
   }
 
-  /* ===== dialogos (settings / admin) ===== */
+  /* ===== dialogos (settings / admin / pm / login) ===== */
   .dc-overlay {
     display: none; position: absolute; inset: 0; background: rgba(0,0,0,0.3);
     align-items: center; justify-content: center; z-index: 10; padding: 8px;
@@ -264,8 +321,9 @@
     box-shadow: inset -1px -1px 0 #404040, inset 1px 1px 0 #FFF;
   }
   .dc-dialog-body h4 { margin: 0 0 8px; color: #000; font-size: 11px; }
+  .dc-dialog-body p { margin: 0 0 8px; }
   .dc-dialog-body .dc-field label { color: #000; font-weight: normal; }
-  .dc-dialog-body .dc-field input, .dc-dialog-body .dc-field select {
+  .dc-dialog-body .dc-field input, .dc-dialog-body .dc-field select, .dc-dialog-body .dc-field textarea {
     width: 100%; padding: 2px 4px;
     background: #fff; border: none; font-family: inherit; font-size: 11px;
     box-shadow: inset 1px 1px 0 #808080, inset -1px -1px 0 #FFF, inset 2px 2px 0 #404040, inset -2px -2px 0 #D4D0C8;
@@ -288,12 +346,31 @@
   .dc-closex { cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
     width: 16px; height: 14px; background: #D4D0C8; color: #000; font-size: 8px; font-weight: bold;
     box-shadow: inset -1px -1px 0 #404040, inset 1px 1px 0 #FFF, inset -2px -2px 0 #808080, inset 2px 2px 0 #DFDFDF; }
+
+  /* tarjetas de usuario en panel admin */
+  .dc-admincard { background: #fff; padding: 6px 7px; margin-bottom: 6px; box-shadow: inset 1px 1px 0 #808080, inset -1px -1px 0 #fff; }
+  .dc-admincard-head { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin-bottom: 5px; }
+  .dc-admincard-head strong { font-size: 11px; }
+  .dc-admincard-tag { font-size: 9px; background: #EEE; padding: 1px 5px; color: #333; }
+  .dc-admincard-actions { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+  .dc-admincard-actions select { font-family: inherit; font-size: 10px; padding: 2px; }
+
+  /* ventana de mensaje privado */
+  #dc-pm-log { min-height: 130px; max-height: 180px; }
 </style>
 
 <script>
 (function(){
-  const COLORS = ["#000000","#c0392b","#1958D6","#1a7a24","#8e44ad","#d35400","#008b8b","#c2185b"];
-  let ROOMS = ["DigiChat Foyer","Amor y Amistad","Solo Adolescentes","Santiago Centro"];
+  const GENERAL_COLOR = "#000000";
+  const MOD_COLOR = "#1958D6";
+  const ADMIN_COLORS = ["#000000","#c0392b","#1958D6","#1a7a24","#8e44ad","#d35400","#008b8b","#c2185b","#e67e22","#16a085","#2c3e50","#c71585","#ff8c00","#228b22"];
+  const RAINBOW = "rainbow";
+  const EMOTICONS = ["🙂","😂","😍","😢","😡","😉","👍","❤️","🎉","😎","😱","🤔","🙌","😴","🥳","😭",":)",":(","xD","<3"];
+
+  const DEFAULT_ROOMS = ["Sala General","Sala Alternativa","Sala Retro","Sala VIP"];
+  let ROOMS = [...DEFAULT_ROOMS];
+  const LOCKED_ROOM = "Sala General";
+
   const BOT_NAMES = ["Pekeña_Lokura","DarkAngel_29","MoRe_ChiLe","xX_Seba_Xx","Lunatik","Valee.:","PunkRockero","AnaMaria87","el_Colo","Nashe__"];
   const BOT_LINES = [
     "holaaaa como estan todos? :)","alguien de santiago por aqui?? xD","jajajaja q buena esa",
@@ -303,15 +380,25 @@
     "quien es de la V region?","esta sala esta buena para variar jeje","xD xD xD no lo puedo creer",
     "hola hola, alguien despierto?","ya me tengo que ir, se cuidan!","jajaj este chat es como en el 2005"
   ];
+  const PM_REPLIES = [
+    "ola! como estas? :)","jaja q cuentas","no te escucho bien la sala esta llena xD",
+    "hablamos aca mejor jeje","jajaja bueno eso", "cuentame mas", "yo bien y tu?",
+    "sisi de acuerdo","no c yo creo q si", ":) ok"
+  ];
 
-  let me = { nick: "", color: "#000000", room: ROOMS[0], isAdmin: false };
-  let users = [];
-  let botTimer = null;
+  let me = { nick: "", color: GENERAL_COLOR, avatar: "default", room: DEFAULT_ROOMS[0], role: "general" };
+  let moderatorNicks = new Set();
   let bannedNicks = new Set();
+  let mutedNicks = new Set();
+  let roomUsers = {};
+  let roomLogs = {};
+  let pmThreads = {};
+  let pmTarget = null;
   let selectedNick = null;
   let settingsTab = "profile";
   let adminTab = "rooms";
   let filterQ = "";
+  let botTimer = null;
 
   const app = document.getElementById('dc-app');
   const PICO = '<span class="dc-pico"></span>';
@@ -348,7 +435,7 @@
 
             <div class="dc-error" id="dc-error"></div>
             <div class="dc-btnrow">
-              <label class="dc-admincheck"><input type="checkbox" id="dc-adminmode"> Entrar como administrador (demo)</label>
+              <button class="dc-btn" id="dc-loginbtn" type="button">Login</button>
               <button class="dc-btn dc-default" id="dc-enter">Entrar</button>
             </div>
           </div>
@@ -357,6 +444,10 @@
             <div class="dc-cols">
               <div class="dc-colleft">
                 <div class="dc-log dc-sunken" id="dc-log"></div>
+                <div class="dc-composerow">
+                  <div class="dc-emopop" id="dc-emopop"></div>
+                  <button class="dc-btn dc-smallbtn" id="dc-emobtn" type="button" title="Emoticones">🙂 Emoticones</button>
+                </div>
                 <textarea class="dc-input dc-sunken" id="dc-msg" maxlength="200"></textarea>
               </div>
               <div class="dc-colright">
@@ -368,9 +459,8 @@
                   <div class="dc-icontoolbar">
                     <div class="ico" id="dc-ico-info" title="Ver perfil">${PICO}<b>i</b></div>
                     <div class="ico" id="dc-ico-search" title="Buscar usuario">${PICO}<b>?</b></div>
-                    <div class="ico" id="dc-ico-promote" title="Ascender a moderador (admin)">${PICO}<b>&#9733;</b></div>
-                    <div class="ico" id="dc-ico-kick" title="Expulsar de la sala (admin)">${PICO}<b>&#215;</b></div>
-                    <div class="ico" id="dc-ico-ban" title="Banear (admin)">${PICO}<b>&#216;</b></div>
+                    <div class="ico" id="dc-ico-pm" title="Enviar privado">${PICO}<b>@</b></div>
+                    <div class="ico" id="dc-ico-kick" title="Expulsar de la sala">${PICO}<b>&#215;</b></div>
                   </div>
                   <div class="dc-checkrow"><input type="checkbox" id="dc-showall"><label for="dc-showall">Show users in all rooms</label></div>
                   <div class="dc-listhead"><span>Nickname</span><span style="font-size:8px;">&#9660;</span></div>
@@ -399,6 +489,25 @@
           <button class="dc-helpbtn" id="dc-help"><b>HELP!</b><span class="dc-helparrow">&#8594;</span></button>
         </div>
 
+        <!-- LOGIN AUTH OVERLAY -->
+        <div class="dc-overlay" id="dc-loginauth-overlay">
+          <div class="dc-dialog">
+            <div class="dc-titlebar">
+              <div class="dc-logo"><span class="dc-tbicon"></span><span>DigiChat Login</span></div>
+              <span class="dc-closex" data-close="loginauth">&#10005;</span>
+            </div>
+            <div class="dc-dialog-body">
+              <div class="dc-field"><label>Nombre</label><input type="text" id="dc-auth-nombre"></div>
+              <div class="dc-field"><label>Clave</label><input type="password" id="dc-auth-clave"></div>
+              <div class="dc-error" id="dc-auth-error"></div>
+            </div>
+            <div class="dc-dialog-footer">
+              <button class="dc-btn" data-close="loginauth">Cancelar</button>
+              <button class="dc-btn dc-default" id="dc-auth-submit">Ingresar</button>
+            </div>
+          </div>
+        </div>
+
         <!-- SETTINGS OVERLAY -->
         <div class="dc-overlay" id="dc-settings-overlay">
           <div class="dc-dialog">
@@ -415,6 +524,23 @@
           </div>
         </div>
 
+        <!-- PM OVERLAY -->
+        <div class="dc-overlay" id="dc-pm-overlay">
+          <div class="dc-dialog">
+            <div class="dc-titlebar">
+              <div class="dc-logo"><span class="dc-tbicon"></span><span id="dc-pm-title">Privado</span></div>
+              <span class="dc-closex" data-close="pm">&#10005;</span>
+            </div>
+            <div class="dc-dialog-body">
+              <div class="dc-sunken" id="dc-pm-log" style="overflow-y:auto; padding:6px; margin-bottom:6px;"></div>
+              <div style="display:flex; gap:5px;">
+                <input type="text" id="dc-pm-input" class="dc-sunken" style="flex:1; padding:4px 5px;" maxlength="200">
+                <button class="dc-btn dc-default" id="dc-pm-send">Enviar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- ADMIN OVERLAY -->
         <div class="dc-overlay" id="dc-admin-overlay">
           <div class="dc-dialog">
@@ -425,8 +551,7 @@
             <div class="dc-dialog-tabs" id="dc-admin-tabs"></div>
             <div class="dc-dialog-body" id="dc-admin-body"></div>
             <div class="dc-dialog-footer">
-              <button class="dc-btn" data-close="admin">Cancel</button>
-              <button class="dc-btn dc-default" data-close="admin">OK</button>
+              <button class="dc-btn dc-default" data-close="admin">Cerrar</button>
             </div>
           </div>
         </div>
@@ -444,6 +569,54 @@
     });
   }
 
+  function escapeHtml(s){
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  /* ---------- helpers de estado ---------- */
+  function ensureRoomSeeded(room){
+    if (roomUsers[room]) return;
+    roomUsers[room] = [];
+    roomLogs[room] = [{ sys:true, text: `Bienvenido a ${room}.` }];
+    const pool = BOT_NAMES.filter(n => !bannedNicks.has(n.toLowerCase()));
+    const shuffled = [...pool].sort(() => Math.random() - 0.5).slice(0, 3 + Math.floor(Math.random()*3));
+    shuffled.forEach(n => {
+      const isMod = moderatorNicks.has(n.toLowerCase());
+      roomUsers[room].push({ nick:n, color: isMod ? MOD_COLOR : GENERAL_COLOR, role: isMod ? 'moderator':'general', avatar:'default' });
+    });
+  }
+
+  function addLogEntry(room, entry){
+    if (!roomLogs[room]) roomLogs[room] = [];
+    roomLogs[room].push(entry);
+    if (roomLogs[room].length > 300) roomLogs[room].shift();
+  }
+
+  function findUserObject(nick){
+    if (nick === me.nick) return { ...me, isMe:true, room: me.room };
+    for (const r of Object.keys(roomUsers)){
+      const u = roomUsers[r].find(x => x.nick === nick);
+      if (u) return { ...u, room:r };
+    }
+    return null;
+  }
+
+  function userIconHtml(u){
+    if (!u || !u.avatar || u.avatar === 'default') return PICO;
+    return `<span class="dc-icon-emoji">${u.avatar}</span>`;
+  }
+
+  function colorNickHtml(nick, color){
+    if (color === RAINBOW) return `<span class="nick dc-rainbow-text">${escapeHtml(nick)}</span>`;
+    return `<span class="nick" style="color:${color}">${escapeHtml(nick)}</span>`;
+  }
+
+  function updateTitle(){
+    document.getElementById('dc-titletext').textContent = me.nick ? `DigiChat: ${me.room}: ${me.nick}` : 'DigiChat';
+  }
+
   /* ---------- LOGIN ---------- */
   function wireLogin(){
     renderRoomChoices();
@@ -453,45 +626,92 @@
       const err = document.getElementById('dc-error');
       if (!nick) { err.textContent = "Debes escribir un apodo para entrar."; return; }
       if (nick.length < 2) { err.textContent = "El apodo es muy corto."; return; }
-      if (bannedNicks.has(nick.toLowerCase())) { err.textContent = "Este apodo está baneado de la sala."; return; }
+      if (nick.toLowerCase() === 'admin') { err.textContent = "Ese nombre está reservado. Usa el botón Login."; return; }
+      if (bannedNicks.has(nick.toLowerCase())) { err.textContent = "Este apodo está baneado."; return; }
       me.nick = nick;
-      me.isAdmin = document.getElementById('dc-adminmode').checked;
+      me.role = moderatorNicks.has(nick.toLowerCase()) ? 'moderator' : 'general';
+      me.color = me.role === 'moderator' ? MOD_COLOR : GENERAL_COLOR;
+      me.avatar = 'default';
       err.textContent = "";
       enterRoom();
     };
     document.getElementById('dc-nick').addEventListener('keydown', (e)=>{
       if (e.key === 'Enter') document.getElementById('dc-enter').click();
     });
+
+    document.getElementById('dc-loginbtn').onclick = () => {
+      document.getElementById('dc-auth-nombre').value = '';
+      document.getElementById('dc-auth-clave').value = '';
+      document.getElementById('dc-auth-error').textContent = '';
+      document.getElementById('dc-loginauth-overlay').classList.add('active');
+    };
+    document.getElementById('dc-auth-submit').onclick = submitAdminLogin;
+    document.getElementById('dc-auth-clave').addEventListener('keydown', (e)=>{
+      if (e.key === 'Enter') submitAdminLogin();
+    });
+  }
+
+  async function submitAdminLogin(){
+    const nombre = document.getElementById('dc-auth-nombre').value.trim();
+    const clave = document.getElementById('dc-auth-clave').value;
+    const err = document.getElementById('dc-auth-error');
+    const btn = document.getElementById('dc-auth-submit');
+    btn.disabled = true;
+    err.textContent = "Verificando...";
+    let ok = false;
+    try {
+      const res = await fetch('/api/admin-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre, clave })
+      });
+      const data = await res.json();
+      ok = !!data.ok;
+    } catch (e) {
+      err.textContent = "No se pudo verificar. Intenta de nuevo.";
+      btn.disabled = false;
+      return;
+    }
+    if (!ok) {
+      err.textContent = "Nombre o clave incorrectos.";
+      btn.disabled = false;
+      return;
+    }
+    if (bannedNicks.has('admin')) { err.textContent = "Esta cuenta está baneada."; btn.disabled = false; return; }
+    me.nick = "Admin";
+    me.role = "admin";
+    me.color = ADMIN_COLORS[1];
+    me.avatar = 'default';
+    if (!ROOMS.includes(me.room)) me.room = ROOMS[0];
+    document.getElementById('dc-loginauth-overlay').classList.remove('active');
+    btn.disabled = false;
+    enterRoom();
   }
 
   function renderRoomChoices(){
     const roomsEl = document.getElementById('dc-rooms');
+    if (!ROOMS.includes(me.room)) me.room = LOCKED_ROOM;
     roomsEl.innerHTML = "";
-    ROOMS.forEach((r,i) => {
+    ROOMS.forEach((r) => {
       const lbl = document.createElement('label');
-      lbl.innerHTML = `<input type="radio" name="dc-room" value="${escapeHtml(r)}" ${r===me.room?'checked':(i===0 && !ROOMS.includes(me.room)?'checked':'')}> ${escapeHtml(r)}`;
+      lbl.innerHTML = `<input type="radio" name="dc-room" value="${escapeHtml(r)}" ${r===me.room?'checked':''}> ${escapeHtml(r)}`;
       roomsEl.appendChild(lbl);
     });
     roomsEl.addEventListener('change', (e)=>{ if(e.target.name==='dc-room') me.room = e.target.value; });
-    if (!ROOMS.includes(me.room)) me.room = ROOMS[0];
   }
 
   /* ---------- ENTRAR A LA SALA ---------- */
   function enterRoom(){
     document.getElementById('dc-login').classList.remove('active');
     document.getElementById('dc-chatscreen').classList.add('active');
-    document.getElementById('dc-titletext').textContent = `DigiChat: ${me.room}: ${me.nick}`;
-    if (me.isAdmin) document.getElementById('dc-adminrow').style.display = 'flex';
+    document.getElementById('dc-adminrow').style.display = me.role === 'admin' ? 'flex' : 'none';
 
-    users = [];
-    const shuffled = [...BOT_NAMES].sort(()=>Math.random()-0.5).slice(0, 4 + Math.floor(Math.random()*3));
-    shuffled.forEach(n => users.push({ nick:n, color:"#000000", isAdmin:false }));
-    users.push({nick: me.nick, color: me.color, isMe:true, isAdmin: me.isAdmin});
-
+    ensureRoomSeeded(me.room);
+    addLogEntry(me.room, { sys:true, nick: me.nick, avatar: me.avatar, text: `This user has entered ${me.room}.` });
+    updateTitle();
+    renderLog();
     renderUsers();
     renderRoomsPanel();
-    addSystem(`This user has entered ${me.room}.`, me.nick);
-    users.filter(u=>!u.isMe).forEach(u => addSystem(`This user has entered ${me.room}.`, u.nick));
 
     wireChat();
     wireSettingsDialog();
@@ -499,19 +719,61 @@
     scheduleBotActivity();
   }
 
+  function switchRoom(target){
+    if (target === me.room || !ROOMS.includes(target)) return;
+    ensureRoomSeeded(target);
+    addLogEntry(me.room, { sys:true, nick: me.nick, avatar: me.avatar, text: `This user has left ${me.room}.` });
+    me.room = target;
+    addLogEntry(me.room, { sys:true, nick: me.nick, avatar: me.avatar, text: `This user has entered ${me.room}.` });
+    clearTimeout(botTimer);
+    updateTitle();
+    renderLog();
+    renderUsers();
+    renderRoomsPanel();
+    scheduleBotActivity();
+  }
+
+  /* ---------- RENDER LOG / USERS / ROOMS ---------- */
+  function renderLog(){
+    const log = document.getElementById('dc-log');
+    const entries = roomLogs[me.room] || [];
+    log.innerHTML = entries.map(e => {
+      if (e.sys) {
+        if (e.nick) return `<div class="msg sys">${userIconHtml(e)}<span class="msgtext"><span class="nick">${escapeHtml(e.nick)}</span><br>(${escapeHtml(e.text)})</span></div>`;
+        return `<div class="msg sys"><span class="msgtext">(${escapeHtml(e.text)})</span></div>`;
+      }
+      return `<div class="msg">${userIconHtml(e)}<span class="msgtext">${colorNickHtml(e.nick, e.color)}<br>${escapeHtml(e.text)}</span></div>`;
+    }).join('');
+    log.scrollTop = log.scrollHeight;
+  }
+
   function renderUsers(){
     const q = filterQ.toLowerCase();
-    const list = document.getElementById('dc-userlist');
-    list.innerHTML = users.filter(u => u.nick.toLowerCase().includes(q)).map(u =>
-      `<div class="dc-user ${selectedNick===u.nick?'selected':''}" data-nick="${escapeHtml(u.nick)}">
-        ${PICO}
-        <span>${escapeHtml(u.nick)}</span>
-        ${u.isAdmin ? '<span title="Moderador" style="font-size:9px;">&#9733;</span>' : ''}
-      </div>`
-    ).join('');
-    list.querySelectorAll('.dc-user').forEach(el => {
-      el.onclick = () => { selectedNick = el.dataset.nick; renderUsers(); };
+    const showAll = document.getElementById('dc-showall')?.checked;
+    let list = [];
+    if (showAll) {
+      ROOMS.forEach(r => { ensureRoomSeeded(r); roomUsers[r].forEach(u => list.push({ ...u, room:r })); });
+      list.push({ ...me, room: me.room, isMe:true });
+    } else {
+      ensureRoomSeeded(me.room);
+      list = [...roomUsers[me.room].map(u => ({ ...u, room: me.room })), { ...me, room: me.room, isMe:true }];
+    }
+    list = list.filter(u => u.nick.toLowerCase().includes(q));
+    const el = document.getElementById('dc-userlist');
+    el.innerHTML = list.map(u => `
+      <div class="dc-user ${selectedNick===u.nick?'selected':''}" data-nick="${escapeHtml(u.nick)}">
+        ${userIconHtml(u)}
+        ${colorNickHtml(u.nick + (u.isMe?' (tú)':''), u.color)}
+        ${u.role==='moderator' ? '<span title="Moderador" style="font-size:9px;">&#9733;</span>' : ''}
+        ${u.role==='admin' ? '<span title="Admin" style="font-size:9px;">&#9819;</span>' : ''}
+        ${mutedNicks.has(u.nick.toLowerCase()) ? '<span title="Muteado" style="font-size:9px;">&#128263;</span>' : ''}
+        ${showAll ? `<span class="dc-usertag">${escapeHtml(u.room)}</span>` : ''}
+      </div>
+    `).join('');
+    el.querySelectorAll('.dc-user').forEach(row => {
+      row.onclick = () => { selectedNick = row.dataset.nick; renderUsers(); updateToolbarState(); };
     });
+    updateToolbarState();
   }
 
   function renderRoomsPanel(){
@@ -519,16 +781,24 @@
     if (!el) return;
     el.innerHTML = ROOMS.map(r => `<div class="dc-user" data-room="${escapeHtml(r)}" style="cursor:pointer;"><span class="dc-doorico"></span> ${escapeHtml(r)}${r===me.room?' *':''}</div>`).join('');
     el.querySelectorAll('[data-room]').forEach(row => {
-      row.onclick = () => {
-        const target = row.dataset.room;
-        if (target === me.room) return;
-        addSystem(`This user has left ${me.room}.`, me.nick);
-        me.room = target;
-        document.getElementById('dc-titletext').textContent = `DigiChat: ${me.room}: ${me.nick}`;
-        addSystem(`This user has entered ${me.room}.`, me.nick);
-        renderRoomsPanel();
-      };
+      row.onclick = () => switchRoom(row.dataset.room);
     });
+  }
+
+  function updateToolbarState(){
+    const hasTarget = !!selectedNick && selectedNick !== me.nick;
+    ['dc-ico-info','dc-ico-search'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.classList.remove('disabled');
+    });
+    const pm = document.getElementById('dc-ico-pm');
+    if (pm) pm.classList.toggle('disabled', !hasTarget);
+    const kick = document.getElementById('dc-ico-kick');
+    if (kick) {
+      const canKick = me.role === 'admin' || me.role === 'moderator';
+      kick.classList.toggle('hidden', !canKick);
+      kick.classList.toggle('disabled', !hasTarget);
+    }
   }
 
   /* ---------- CHAT ---------- */
@@ -545,26 +815,48 @@
       document.getElementById('dc-tabpanel-rooms').style.display = t.dataset.tab==='rooms' ? 'flex':'none';
     });
 
-    document.getElementById('dc-help').onclick = () => addSystem("Ayuda: escribe tu mensaje abajo y presiona Send o Enter. Los administradores pueden seleccionar un usuario de la lista y usar los iconos para moderar.");
-    document.getElementById('dc-settings').onclick = () => document.getElementById('dc-settings-overlay').classList.add('active');
-    document.getElementById('dc-adminpanel').onclick = () => document.getElementById('dc-admin-overlay').classList.add('active');
+    document.getElementById('dc-showall').onchange = renderUsers;
+
+    document.getElementById('dc-help').onclick = () => {
+      addLogEntry(me.room, { sys:true, text: "Ayuda: escribe tu mensaje abajo y presiona Send o Enter. Selecciona un usuario para ver su perfil, enviarle un privado, o (si eres admin/moderador) expulsarlo." });
+      renderLog();
+    };
+    document.getElementById('dc-settings').onclick = () => { settingsTab = "profile"; wireSettingsDialog(); document.getElementById('dc-settings-overlay').classList.add('active'); };
+    document.getElementById('dc-adminpanel').onclick = () => { renderAdminBody(); document.getElementById('dc-admin-overlay').classList.add('active'); };
+
     document.getElementById('dc-logout').onclick = () => {
       clearTimeout(botTimer);
+      addLogEntry(me.room, { sys:true, nick: me.nick, avatar: me.avatar, text: `This user has left ${me.room}.` });
       document.getElementById('dc-chatscreen').classList.remove('active');
       document.getElementById('dc-login').classList.add('active');
-      document.getElementById('dc-log').innerHTML = "";
       document.getElementById('dc-adminrow').style.display = 'none';
-      document.getElementById('dc-titletext').textContent = "DigiChat";
+      me = { nick: "", color: GENERAL_COLOR, avatar: 'default', room: LOCKED_ROOM, role: "general" };
       selectedNick = null;
       filterQ = "";
+      updateTitle();
       renderRoomChoices();
+      document.getElementById('dc-nick').value = '';
     };
 
-    // iconos de moderación
+    // emoticones
+    const pop = document.getElementById('dc-emopop');
+    pop.innerHTML = EMOTICONS.map(e => `<span data-emo="${escapeHtml(e)}">${e}</span>`).join('');
+    pop.querySelectorAll('span').forEach(s => s.onclick = () => {
+      const input = document.getElementById('dc-msg');
+      input.value += s.dataset.emo;
+      input.focus();
+      pop.classList.remove('active');
+    });
+    document.getElementById('dc-emobtn').onclick = (e) => { e.stopPropagation(); pop.classList.toggle('active'); };
+    document.addEventListener('click', (e) => {
+      if (!pop.contains(e.target) && e.target.id !== 'dc-emobtn') pop.classList.remove('active');
+    });
+
+    // iconos
     document.getElementById('dc-ico-info').onclick = () => {
-      if (!selectedNick) { addSystem("Selecciona un usuario de la lista para ver su perfil."); return; }
-      const u = users.find(x=>x.nick===selectedNick);
-      if (u) addSystem(`Perfil de ${u.nick} — ${u.isAdmin?'Moderador':'Usuario'}`);
+      if (!selectedNick) { localSystem("Selecciona un usuario de la lista para ver su perfil."); return; }
+      const u = findUserObject(selectedNick);
+      if (u) localSystem(`Perfil de ${u.nick} — ${u.role==='admin'?'Administrador':u.role==='moderator'?'Moderador':'Usuario'} · Sala: ${u.room}`);
     };
     document.getElementById('dc-ico-search').onclick = () => {
       const q = prompt("Buscar nickname:", filterQ);
@@ -572,103 +864,205 @@
       filterQ = q.trim();
       renderUsers();
     };
-
-    const adminOnlyIcons = ['dc-ico-promote','dc-ico-kick','dc-ico-ban'];
-    adminOnlyIcons.forEach(id => document.getElementById(id).classList.toggle('disabled', !me.isAdmin));
-
-    document.getElementById('dc-ico-promote').onclick = () => {
-      if (!me.isAdmin) return;
-      if (!selectedNick) { addSystem("Selecciona un usuario para ascenderlo a moderador."); return; }
-      const u = users.find(x=>x.nick===selectedNick);
-      if (u) { u.isAdmin = !u.isAdmin; renderUsers(); addSystem(`${u.nick} ${u.isAdmin?'fue ascendido a moderador':'ya no es moderador'} por ${me.nick}.`); }
+    document.getElementById('dc-ico-pm').onclick = () => {
+      if (!selectedNick || selectedNick === me.nick) { localSystem("Selecciona a otro usuario para enviarle un privado."); return; }
+      openPM(selectedNick);
     };
     document.getElementById('dc-ico-kick').onclick = () => {
-      if (!me.isAdmin) return;
-      if (!selectedNick || selectedNick===me.nick) { addSystem("Selecciona a otro usuario para expulsarlo."); return; }
-      users = users.filter(x=>x.nick!==selectedNick);
-      addSystem(`${selectedNick} fue expulsado de la sala por ${me.nick}.`);
-      selectedNick = null;
-      renderUsers();
+      if (me.role !== 'admin' && me.role !== 'moderator') return;
+      if (!selectedNick || selectedNick === me.nick) { localSystem("Selecciona a otro usuario para expulsarlo."); return; }
+      kickUser(selectedNick);
     };
-    document.getElementById('dc-ico-ban').onclick = () => {
-      if (!me.isAdmin) return;
-      if (!selectedNick || selectedNick===me.nick) { addSystem("Selecciona a otro usuario para banearlo."); return; }
-      bannedNicks.add(selectedNick.toLowerCase());
-      users = users.filter(x=>x.nick!==selectedNick);
-      addSystem(`${selectedNick} fue baneado por ${me.nick}.`);
-      selectedNick = null;
-      renderUsers();
-    };
+
+    updateToolbarState();
+  }
+
+  function localSystem(text){
+    addLogEntry(me.room, { sys:true, text });
+    renderLog();
   }
 
   function sendMyMessage(){
     const input = document.getElementById('dc-msg');
     const text = input.value.trim();
     if (!text) return;
-    addMessage(me.nick, me.color, text);
-    input.value = "";
-  }
-
-  function addMessage(nick, color, text){
-    const log = document.getElementById('dc-log');
-    const row = document.createElement('div');
-    row.className = 'msg';
-    row.innerHTML = `${PICO}<span class="msgtext"><span class="nick" style="color:${color}">${escapeHtml(nick)}</span><br>${escapeHtml(text)}</span>`;
-    log.appendChild(row);
-    log.scrollTop = log.scrollHeight;
-  }
-
-  function addSystem(text, nick){
-    const log = document.getElementById('dc-log');
-    const row = document.createElement('div');
-    row.className = 'msg sys';
-    if (nick) {
-      row.innerHTML = `${PICO}<span class="msgtext"><span class="nick">${escapeHtml(nick)}</span><br>(${escapeHtml(text)})</span>`;
-    } else {
-      row.innerHTML = `<span class="msgtext">(${escapeHtml(text)})</span>`;
+    if (mutedNicks.has(me.nick.toLowerCase())) {
+      localSystem("No puedes enviar mensajes: has sido muteado.");
+      input.value = "";
+      return;
     }
-    log.appendChild(row);
-    log.scrollTop = log.scrollHeight;
-  }
-
-  function escapeHtml(s){
-    const d = document.createElement('div');
-    d.textContent = s;
-    return d.innerHTML;
+    addLogEntry(me.room, { nick: me.nick, color: me.color, avatar: me.avatar, text });
+    renderLog();
+    input.value = "";
   }
 
   function scheduleBotActivity(){
     const tick = () => {
+      const room = me.room;
+      const botUsers = (roomUsers[room] || []).filter(u => !mutedNicks.has(u.nick.toLowerCase()));
       const action = Math.random();
-      const botUsers = users.filter(u=>!u.isMe);
-      if (botUsers.length && action < 0.75){
+      if (botUsers.length && action < 0.72){
         const u = botUsers[Math.floor(Math.random()*botUsers.length)];
         const line = BOT_LINES[Math.floor(Math.random()*BOT_LINES.length)];
-        addMessage(u.nick, u.color, line);
-      } else if (action < 0.87 && botUsers.length < 9){
-        const available = BOT_NAMES.filter(n => !users.find(u=>u.nick===n) && !bannedNicks.has(n.toLowerCase()));
+        addLogEntry(room, { nick:u.nick, color:u.color, avatar:u.avatar, text:line });
+        renderLog();
+      } else if (action < 0.85 && (roomUsers[room]||[]).length < 9){
+        const taken = new Set((roomUsers[room]||[]).map(u=>u.nick));
+        const available = BOT_NAMES.filter(n => !taken.has(n) && !bannedNicks.has(n.toLowerCase()));
         if (available.length){
           const n = available[Math.floor(Math.random()*available.length)];
-          users.push({nick:n, color:"#000000", isAdmin:false});
-          renderUsers();
-          addSystem(`This user has entered ${me.room}.`, n);
+          const isMod = moderatorNicks.has(n.toLowerCase());
+          roomUsers[room].push({ nick:n, color: isMod?MOD_COLOR:GENERAL_COLOR, role: isMod?'moderator':'general', avatar:'default' });
+          if (room === me.room) renderUsers();
+          addLogEntry(room, { sys:true, nick:n, avatar:'default', text:`This user has entered ${room}.` });
+          renderLog();
         }
       } else if (botUsers.length > 2){
         const u = botUsers[Math.floor(Math.random()*botUsers.length)];
-        users = users.filter(x => x.nick !== u.nick);
-        renderUsers();
-        addSystem(`This user has left ${me.room}.`, u.nick);
+        roomUsers[room] = roomUsers[room].filter(x => x.nick !== u.nick);
+        if (room === me.room) renderUsers();
+        addLogEntry(room, { sys:true, nick:u.nick, avatar:u.avatar, text:`This user has left ${room}.` });
+        renderLog();
       }
       botTimer = setTimeout(tick, 3500 + Math.random()*4500);
     };
     botTimer = setTimeout(tick, 2500);
   }
 
-  /* ---------- SETTINGS DIALOG ---------- */
+  /* ---------- PRIVADOS ---------- */
+  function openPM(nick){
+    pmTarget = nick;
+    pmThreads[nick] = pmThreads[nick] || [];
+    document.getElementById('dc-pm-title').textContent = `Privado con ${nick}`;
+    renderPM();
+    document.getElementById('dc-pm-overlay').classList.add('active');
+    const input = document.getElementById('dc-pm-input');
+    input.value = '';
+    document.getElementById('dc-pm-send').onclick = sendPM;
+    input.onkeydown = (e) => { if (e.key === 'Enter') sendPM(); };
+  }
+
+  function renderPM(){
+    const log = document.getElementById('dc-pm-log');
+    const entries = pmThreads[pmTarget] || [];
+    log.innerHTML = entries.length
+      ? entries.map(e => `<div class="msg"><span class="nick" style="color:${e.from==='me'?me.color:'#000'}">${escapeHtml(e.from==='me'?me.nick:pmTarget)}</span><br>${escapeHtml(e.text)}</div>`).join('')
+      : `<div class="msg sys"><span class="msgtext">(Sin mensajes aún, escribe algo)</span></div>`;
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function sendPM(){
+    const input = document.getElementById('dc-pm-input');
+    const text = input.value.trim();
+    if (!text || !pmTarget) return;
+    pmThreads[pmTarget].push({ from:'me', text });
+    input.value = '';
+    renderPM();
+    const target = pmTarget;
+    setTimeout(() => {
+      if (bannedNicks.has(target.toLowerCase())) return;
+      const reply = PM_REPLIES[Math.floor(Math.random()*PM_REPLIES.length)];
+      pmThreads[target].push({ from: target, text: reply });
+      if (pmTarget === target) renderPM();
+    }, 1000 + Math.random()*2000);
+  }
+
+  /* ---------- ACCIONES DE MODERACION ---------- */
+  function kickUser(nick){
+    const u = findUserObject(nick);
+    if (!u) return;
+    if (u.room && roomUsers[u.room]) roomUsers[u.room] = roomUsers[u.room].filter(x => x.nick !== nick);
+    if (selectedNick === nick) selectedNick = null;
+    renderUsers();
+    localSystem(`${nick} fue expulsado de la sala por ${me.nick}.`);
+  }
+
+  function banUser(nick){
+    const u = findUserObject(nick);
+    bannedNicks.add(nick.toLowerCase());
+    if (u && u.room && roomUsers[u.room]) roomUsers[u.room] = roomUsers[u.room].filter(x => x.nick !== nick);
+    if (selectedNick === nick) selectedNick = null;
+    renderUsers();
+    localSystem(`${nick} fue baneado por ${me.nick}.`);
+  }
+
+  function toggleMute(nick){
+    const key = nick.toLowerCase();
+    if (mutedNicks.has(key)) mutedNicks.delete(key); else mutedNicks.add(key);
+    renderUsers();
+  }
+
+  function toggleModerator(nick){
+    const key = nick.toLowerCase();
+    const willBeMod = !moderatorNicks.has(key);
+    if (willBeMod) moderatorNicks.add(key); else moderatorNicks.delete(key);
+    const u = findUserObject(nick);
+    if (u && u.role !== 'admin' && u.room && roomUsers[u.room]) {
+      const obj = roomUsers[u.room].find(x => x.nick === nick);
+      if (obj) { obj.role = willBeMod ? 'moderator' : 'general'; obj.color = willBeMod ? MOD_COLOR : GENERAL_COLOR; }
+    }
+    renderUsers();
+    localSystem(`${nick} ${willBeMod?'fue ascendido a moderador':'ya no es moderador'} por ${me.nick}.`);
+  }
+
+  function renameUser(nick){
+    const newNick = prompt(`Nuevo nombre para ${nick}:`, nick);
+    if (!newNick || !newNick.trim() || newNick.trim() === nick) return;
+    const u = findUserObject(nick);
+    if (!u || !u.room || !roomUsers[u.room]) return;
+    const obj = roomUsers[u.room].find(x => x.nick === nick);
+    if (obj) obj.nick = newNick.trim();
+    if (selectedNick === nick) selectedNick = newNick.trim();
+    renderUsers();
+    localSystem(`${nick} ahora se llama ${newNick.trim()} (cambiado por ${me.nick}).`);
+  }
+
+  function changeIcon(nick){
+    const u = findUserObject(nick);
+    if (!u || !u.room || !roomUsers[u.room]) return;
+    const val = prompt(`Nuevo ícono (emoji) para ${nick}. Deja vacío para el ícono clásico:`, u.avatar === 'default' ? '' : u.avatar);
+    if (val === null) return;
+    const obj = roomUsers[u.room].find(x => x.nick === nick);
+    if (obj) obj.avatar = val.trim() ? val.trim() : 'default';
+    renderUsers();
+  }
+
+  function moveUser(nick, targetRoom){
+    if (!targetRoom || !ROOMS.includes(targetRoom)) return;
+    if (nick === me.nick) { switchRoom(targetRoom); return; }
+    const u = findUserObject(nick);
+    if (!u || !u.room || u.room === targetRoom) return;
+    ensureRoomSeeded(targetRoom);
+    const obj = roomUsers[u.room].find(x => x.nick === nick);
+    if (!obj) return;
+    roomUsers[u.room] = roomUsers[u.room].filter(x => x.nick !== nick);
+    roomUsers[targetRoom].push(obj);
+    addLogEntry(u.room, { sys:true, nick, avatar: obj.avatar, text:`This user has left ${u.room}.` });
+    addLogEntry(targetRoom, { sys:true, nick, avatar: obj.avatar, text:`This user has entered ${targetRoom}.` });
+    if (me.room === u.room || me.room === targetRoom) renderLog();
+    renderUsers();
+    localSystem(`${nick} fue movido a ${targetRoom} por ${me.nick}.`);
+  }
+
+  /* ---------- BROADCAST (fuera del chat) ---------- */
+  function showBroadcast(text){
+    const overlay = document.createElement('div');
+    overlay.className = 'dc-globalbroadcast';
+    overlay.innerHTML = `
+      <div class="dc-globalbroadcast-box">
+        <div class="dc-globalbroadcast-title">DigiChat — Mensaje del administrador</div>
+        <div class="dc-globalbroadcast-body">${escapeHtml(text)}</div>
+        <button type="button">OK</button>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    overlay.querySelector('button').onclick = () => overlay.remove();
+  }
+
+  /* ---------- SETTINGS DIALOG (todos los roles: solo apodo) ---------- */
   const SETTINGS_TABS = [
     {id:"profile", label:"Profile"},
     {id:"options", label:"Options"},
-    {id:"fonts", label:"Fonts"},
     {id:"sounds", label:"Sounds"},
     {id:"info", label:"Info"},
     {id:"patch", label:"Patch"},
@@ -681,66 +1075,41 @@
     renderSettingsBody();
     document.getElementById('dc-settings-save').onclick = () => {
       const nickInput = document.getElementById('dc-set-nick');
-      if (nickInput && nickInput.value.trim()) {
-        const u = users.find(x=>x.isMe);
-        if (u) { u.nick = nickInput.value.trim(); me.nick = u.nick; document.getElementById('dc-titletext').textContent = `DigiChat: ${me.room}: ${me.nick}`; renderUsers(); }
+      if (nickInput && nickInput.value.trim() && nickInput.value.trim() !== me.nick) {
+        const newNick = nickInput.value.trim();
+        if (bannedNicks.has(newNick.toLowerCase())) { alert("Ese apodo está baneado."); return; }
+        me.nick = newNick;
+        updateTitle();
+        renderUsers();
       }
       document.getElementById('dc-settings-overlay').classList.remove('active');
-      addSystem("Perfil actualizado (demo).");
+      localSystem("Perfil actualizado.");
     };
   }
 
   function renderSettingsBody(){
     const body = document.getElementById('dc-settings-body');
-    const meUser = users.find(x=>x.isMe) || me;
     if (settingsTab === "profile"){
       body.innerHTML = `
         <h4>Profile</h4>
-        <div class="dc-field"><label>Nickname</label><input type="text" id="dc-set-nick" value="${escapeHtml(meUser.nick)}"></div>
-        <div class="dc-field"><label>Real Name</label><input type="text" placeholder="(opcional)"></div>
-        <div class="dc-field"><label>Age</label><input type="text" placeholder="(opcional)"></div>
-        <div class="dc-field"><label>Gender</label>
-          <select><option>—</option><option>Femenino</option><option>Masculino</option><option>Prefiero no decir</option></select>
-        </div>
-        <div class="dc-field"><label>E-mail Address</label><input type="text" placeholder="(opcional)"></div>
-        <div class="dc-field"><label>URL</label><input type="text" placeholder="(opcional)"></div>
-        <div class="dc-field"><label>URL Display Name</label><input type="text" placeholder="(opcional)"></div>
-        <div class="dc-field"><label>Exit Message</label><input type="text" placeholder="Ej: ¡Vuelvo pronto!"></div>
-        <div class="dc-field"><label>Comments</label><input type="text" placeholder="(opcional)"></div>
-        <label style="display:flex; gap:5px; align-items:center; margin-top:4px;"><input type="checkbox"> Block profile from other users</label>
+        <div class="dc-field"><label>Nickname</label><input type="text" id="dc-set-nick" value="${escapeHtml(me.nick)}"></div>
+        <p style="color:#333;">Tu color se asigna según tu rol: negro (usuario), azul (moderador) o el que elijas si eres administrador.</p>
       `;
     } else if (settingsTab === "options"){
       body.innerHTML = `
         <h4>Options</h4>
         <div class="dc-checklist">
           <label><input type="checkbox" checked> Reproducir sonido al recibir mensaje</label>
-          <label><input type="checkbox" checked> Mostrar hora en cada mensaje</label>
           <label><input type="checkbox" checked> Mostrar avisos de entrada/salida</label>
           <label><input type="checkbox" checked> Habilitar emoticones</label>
-          <label><input type="checkbox"> Auto-scroll desactivado</label>
         </div>
       `;
-    } else if (settingsTab === "fonts"){
-      body.innerHTML = `<h4>Fonts</h4><p>Color de tu texto en el chat:</p><div class="dc-colors" id="dc-set-colors"></div>`;
-      const grid = document.getElementById('dc-set-colors');
-      COLORS.forEach(c => {
-        const sw = document.createElement('div');
-        sw.className = 'dc-swatch' + (c===meUser.color?' selected':'');
-        sw.style.background = c;
-        sw.onclick = () => {
-          grid.querySelectorAll('.dc-swatch').forEach(x=>x.classList.remove('selected'));
-          sw.classList.add('selected');
-          meUser.color = c; me.color = c;
-        };
-        grid.appendChild(sw);
-      });
     } else if (settingsTab === "sounds"){
       body.innerHTML = `
         <h4>Sounds</h4>
         <div class="dc-checklist">
           <label><input type="checkbox" checked> Sonido de mensaje nuevo</label>
           <label><input type="checkbox" checked> Sonido al entrar un usuario</label>
-          <label><input type="checkbox"> Sonido al salir un usuario</label>
           <label><input type="checkbox"> Sonido al recibir mensaje privado</label>
         </div>
       `;
@@ -748,30 +1117,25 @@
       body.innerHTML = `
         <h4>Info</h4>
         <p>Este chat es una recreación con estilo retro inspirada en clientes de chat de applet de comienzos de los 2000.</p>
-        <p>Versión de demostración — Sala actual: ${escapeHtml(me.room)}</p>
+        <p>Rol actual: ${me.role==='admin'?'Administrador':me.role==='moderator'?'Moderador':'Usuario'} — Sala actual: ${escapeHtml(me.room)}</p>
       `;
     } else if (settingsTab === "patch"){
       body.innerHTML = `
         <h4>Patch</h4>
+        <p>v2.0 — Roles (usuario/moderador/admin), salas múltiples, privados, emoticones y panel de admin funcional.</p>
         <p>v1.4 — Estética clásica fiel al cliente original.</p>
-        <p>v1.3 — Se agregó panel de administración y moderación.</p>
-        <p>v1.2 — Se agregó selector de salas.</p>
-        <p>v1.1 — Ajustes visuales del tema retro.</p>
         <p>v1.0 — Versión inicial.</p>
       `;
     }
   }
 
-  /* ---------- ADMIN DIALOG ---------- */
+  /* ---------- ADMIN PANEL ---------- */
   const ADMIN_TABS = [
     {id:"rooms", label:"Rooms"},
+    {id:"usuarios", label:"Usuarios"},
     {id:"bans", label:"Bans"},
-    {id:"hosts", label:"Hosts"},
-    {id:"accounts", label:"Accounts"},
-    {id:"themes", label:"Themes"},
-    {id:"emoticons", label:"Emoticons"},
-    {id:"banners", label:"Banners"},
-    {id:"icons", label:"Icons"},
+    {id:"perfil", label:"Mi Perfil"},
+    {id:"broadcast", label:"Broadcast"},
   ];
 
   function wireAdminDialog(){
@@ -783,80 +1147,225 @@
 
   function renderAdminBody(){
     const body = document.getElementById('dc-admin-body');
-    if (adminTab === "rooms"){
-      body.innerHTML = `
-        <h4>Rooms</h4>
-        <table class="dc-table"><thead><tr><th>ID</th><th>Nombre</th><th></th></tr></thead>
-        <tbody id="dc-admin-roomrows"></tbody></table>
-        <div class="dc-inlineform"><input type="text" id="dc-newroom" placeholder="Nombre de la nueva sala"><button class="dc-btn" id="dc-addroom">Add</button></div>
-      `;
-      renderRoomRows();
-      document.getElementById('dc-addroom').onclick = () => {
-        const input = document.getElementById('dc-newroom');
-        const v = input.value.trim();
-        if (!v) return;
-        if (!ROOMS.includes(v)) ROOMS.push(v);
-        input.value = "";
-        renderRoomRows();
-      };
-    } else if (adminTab === "bans"){
-      body.innerHTML = `
-        <h4>Bans</h4>
-        <table class="dc-table"><thead><tr><th>Nickname baneado</th><th></th></tr></thead>
-        <tbody id="dc-admin-banrows"></tbody></table>
-        <div class="dc-inlineform"><input type="text" id="dc-newban" placeholder="Nickname a banear"><button class="dc-btn" id="dc-addban">Add</button></div>
-      `;
-      renderBanRows();
-      document.getElementById('dc-addban').onclick = () => {
-        const input = document.getElementById('dc-newban');
-        const v = input.value.trim();
-        if (!v) return;
-        bannedNicks.add(v.toLowerCase());
-        input.value = "";
-        renderBanRows();
-      };
-    } else if (adminTab === "hosts"){
-      body.innerHTML = adminStaticTable("Hosts", ["Nickname","Rol"], [["MoRe_ChiLe","Host"],[me.nick,"Host principal"]]);
-    } else if (adminTab === "accounts"){
-      body.innerHTML = adminStaticTable("Accounts", ["Usuario","Estado"], [[me.nick,"Activo"],["invitado_02","Activo"]]);
-    } else if (adminTab === "themes"){
-      body.innerHTML = adminStaticTable("Themes", ["Tema","Activo"], [["Clásico Azul","Sí"],["Clásico Gris","No"]]);
-    } else if (adminTab === "emoticons"){
-      body.innerHTML = adminStaticTable("Emoticons", ["Código","Descripción"], [[":)","Sonrisa"],[":(","Triste"],["xD","Risa"],["<3","Corazón"]]);
-    } else if (adminTab === "banners"){
-      body.innerHTML = `<h4>Banners</h4><p>Espacio para gestionar los banners publicitarios de la ventana principal (desactivados).</p>` + adminStaticTable(null, ["Posición","Estado"], [["Superior","Desactivado"]]);
-    } else if (adminTab === "icons"){
-      body.innerHTML = `<h4>Icons</h4><p>Icono de usuario estándar:</p><p><span class="dc-pico"></span></p>`;
-    }
+    if (adminTab === "rooms") return renderAdminRooms(body);
+    if (adminTab === "usuarios") return renderAdminUsers(body);
+    if (adminTab === "bans") return renderAdminBans(body);
+    if (adminTab === "perfil") return renderAdminProfile(body);
+    if (adminTab === "broadcast") return renderAdminBroadcast(body);
   }
 
-  function adminStaticTable(title, headers, rows){
-    return `${title?`<h4>${title}</h4>`:''}<table class="dc-table"><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
-      <tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${escapeHtml(String(c))}</td>`).join('')}<td><button class="dc-btn" disabled>Edit</button></td></tr>`).join('')}</tbody></table>
-      <p style="color:#555; margin-top:6px;">Sección de demostración estática.</p>`;
+  function renderAdminRooms(body){
+    body.innerHTML = `
+      <h4>Rooms</h4>
+      <table class="dc-table"><thead><tr><th>ID</th><th>Nombre</th><th colspan="2"></th></tr></thead>
+      <tbody id="dc-admin-roomrows"></tbody></table>
+      <div class="dc-inlineform"><input type="text" id="dc-newroom" placeholder="Nombre de la nueva sala"><button class="dc-btn" id="dc-addroom">Add</button></div>
+    `;
+    renderRoomRows();
+    document.getElementById('dc-addroom').onclick = () => {
+      const input = document.getElementById('dc-newroom');
+      const v = input.value.trim();
+      if (!v || ROOMS.includes(v)) return;
+      ROOMS.push(v);
+      input.value = "";
+      renderRoomRows();
+      renderRoomsPanel();
+    };
   }
 
   function renderRoomRows(){
     const el = document.getElementById('dc-admin-roomrows');
     if (!el) return;
-    el.innerHTML = ROOMS.map((r,i) => `<tr><td>${1000+i}</td><td>${escapeHtml(r)}</td><td><button class="dc-btn" data-remove-room="${escapeHtml(r)}" ${ROOMS.length<=1?'disabled':''}>Remove</button></td></tr>`).join('');
+    el.innerHTML = ROOMS.map((r,i) => {
+      const locked = r === LOCKED_ROOM;
+      return `<tr><td>${1000+i}</td><td>${escapeHtml(r)}${locked?' (fija)':''}</td>
+        <td><button class="dc-btn dc-smallbtn" data-rename-room="${escapeHtml(r)}" ${locked?'disabled':''}>Renombrar</button></td>
+        <td><button class="dc-btn dc-smallbtn dc-danger" data-remove-room="${escapeHtml(r)}" ${locked || ROOMS.length<=1?'disabled':''}>Borrar</button></td></tr>`;
+    }).join('');
     el.querySelectorAll('[data-remove-room]').forEach(btn => btn.onclick = () => {
-      ROOMS = ROOMS.filter(r => r !== btn.dataset.removeRoom);
+      deleteRoom(btn.dataset.removeRoom);
+      renderRoomRows();
+      renderRoomsPanel();
+      renderUsers();
+    });
+    el.querySelectorAll('[data-rename-room]').forEach(btn => btn.onclick = () => {
+      const oldName = btn.dataset.renameRoom;
+      const newName = prompt(`Nuevo nombre para "${oldName}":`, oldName);
+      if (newName === null) return;
+      renameRoom(oldName, newName.trim());
       renderRoomRows();
       renderRoomsPanel();
     });
+  }
+
+  function renameRoom(oldName, newName){
+    if (!newName || oldName === LOCKED_ROOM || ROOMS.includes(newName)) return false;
+    const idx = ROOMS.indexOf(oldName);
+    if (idx < 0) return false;
+    ROOMS[idx] = newName;
+    if (roomUsers[oldName]) { roomUsers[newName] = roomUsers[oldName]; delete roomUsers[oldName]; }
+    if (roomLogs[oldName]) { roomLogs[newName] = roomLogs[oldName]; delete roomLogs[oldName]; }
+    if (me.room === oldName) { me.room = newName; updateTitle(); renderLog(); }
+    return true;
+  }
+
+  function deleteRoom(name){
+    if (name === LOCKED_ROOM || ROOMS.length <= 1) return;
+    ensureRoomSeeded(LOCKED_ROOM);
+    if (roomUsers[name]) {
+      roomUsers[name].forEach(u => {
+        u.color = u.role === 'moderator' ? MOD_COLOR : (u.role === 'admin' ? u.color : GENERAL_COLOR);
+        roomUsers[LOCKED_ROOM].push(u);
+      });
+    }
+    delete roomUsers[name];
+    delete roomLogs[name];
+    ROOMS = ROOMS.filter(r => r !== name);
+    if (me.room === name) {
+      me.room = LOCKED_ROOM;
+      addLogEntry(me.room, { sys:true, nick: me.nick, avatar: me.avatar, text:`This user has entered ${me.room}.` });
+      updateTitle();
+      renderLog();
+    }
+  }
+
+  function renderAdminUsers(body){
+    ROOMS.forEach(r => ensureRoomSeeded(r));
+    const all = [];
+    ROOMS.forEach(r => roomUsers[r].forEach(u => all.push({ ...u, room:r })));
+    body.innerHTML = `<h4>Usuarios conectados</h4><div id="dc-admin-userlist"></div>`;
+    const list = document.getElementById('dc-admin-userlist');
+    if (!all.length) { list.innerHTML = '<p style="color:#555;">No hay usuarios conectados.</p>'; return; }
+    list.innerHTML = all.map(u => {
+      const muted = mutedNicks.has(u.nick.toLowerCase());
+      const otherRooms = ROOMS.filter(r => r !== u.room);
+      return `
+        <div class="dc-admincard">
+          <div class="dc-admincard-head">
+            ${userIconHtml(u)}
+            <strong style="${u.color==='rainbow'?'':`color:${u.color};`}" class="${u.color==='rainbow'?'dc-rainbow-text':''}">${escapeHtml(u.nick)}</strong>
+            <span class="dc-admincard-tag">${u.role==='moderator'?'Moderador':'Usuario'}</span>
+            <span class="dc-admincard-tag">${escapeHtml(u.room)}</span>
+            ${muted?'<span class="dc-admincard-tag" style="color:#b00000;">Muteado</span>':''}
+          </div>
+          <div class="dc-admincard-actions">
+            <select data-room-select="${escapeHtml(u.nick)}">${otherRooms.map(r=>`<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`).join('')}</select>
+            <button class="dc-btn dc-smallbtn" data-act="move" data-nick="${escapeHtml(u.nick)}">Mover</button>
+            <button class="dc-btn dc-smallbtn" data-act="mute" data-nick="${escapeHtml(u.nick)}">${muted?'Desmutear':'Mutear'}</button>
+            <button class="dc-btn dc-smallbtn" data-act="mod" data-nick="${escapeHtml(u.nick)}">${u.role==='moderator'?'Quitar mod':'Ascender'}</button>
+            <button class="dc-btn dc-smallbtn" data-act="rename" data-nick="${escapeHtml(u.nick)}">Renombrar</button>
+            <button class="dc-btn dc-smallbtn" data-act="icon" data-nick="${escapeHtml(u.nick)}">Ícono</button>
+            <button class="dc-btn dc-smallbtn" data-act="kick" data-nick="${escapeHtml(u.nick)}">Kick</button>
+            <button class="dc-btn dc-smallbtn dc-danger" data-act="ban" data-nick="${escapeHtml(u.nick)}">Ban</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+    list.querySelectorAll('[data-act]').forEach(btn => {
+      btn.onclick = () => {
+        const nick = btn.dataset.nick;
+        const act = btn.dataset.act;
+        if (act === 'move') {
+          const sel = list.querySelector(`[data-room-select="${CSS.escape(nick)}"]`);
+          if (sel && sel.value) moveUser(nick, sel.value);
+        } else if (act === 'mute') toggleMute(nick);
+        else if (act === 'mod') toggleModerator(nick);
+        else if (act === 'rename') renameUser(nick);
+        else if (act === 'icon') changeIcon(nick);
+        else if (act === 'kick') kickUser(nick);
+        else if (act === 'ban') banUser(nick);
+        renderAdminUsers(body);
+      };
+    });
+  }
+
+  function renderAdminBans(body){
+    body.innerHTML = `
+      <h4>Bans</h4>
+      <table class="dc-table"><thead><tr><th>Nickname baneado</th><th></th></tr></thead>
+      <tbody id="dc-admin-banrows"></tbody></table>
+      <div class="dc-inlineform"><input type="text" id="dc-newban" placeholder="Nickname a banear"><button class="dc-btn" id="dc-addban">Add</button></div>
+    `;
+    renderBanRows();
+    document.getElementById('dc-addban').onclick = () => {
+      const input = document.getElementById('dc-newban');
+      const v = input.value.trim();
+      if (!v) return;
+      banUser(v);
+      input.value = "";
+      renderBanRows();
+    };
   }
 
   function renderBanRows(){
     const el = document.getElementById('dc-admin-banrows');
     if (!el) return;
     const arr = [...bannedNicks];
-    el.innerHTML = arr.length ? arr.map(n => `<tr><td>${escapeHtml(n)}</td><td><button class="dc-btn" data-unban="${escapeHtml(n)}">Remove</button></td></tr>`).join('')
+    el.innerHTML = arr.length ? arr.map(n => `<tr><td>${escapeHtml(n)}</td><td><button class="dc-btn dc-smallbtn" data-unban="${escapeHtml(n)}">Remove</button></td></tr>`).join('')
       : `<tr><td colspan="2" style="color:#555;">No hay usuarios baneados.</td></tr>`;
     el.querySelectorAll('[data-unban]').forEach(btn => btn.onclick = () => {
       bannedNicks.delete(btn.dataset.unban);
       renderBanRows();
     });
+  }
+
+  function renderAdminProfile(body){
+    body.innerHTML = `
+      <h4>Mi Perfil (Admin)</h4>
+      <div class="dc-field"><label>Nick que se muestra en el chat</label><input type="text" id="dc-admin-nick" value="${escapeHtml(me.nick)}"></div>
+      <div class="dc-field"><label>Color de tu texto</label>
+        <div class="dc-colors" id="dc-admin-colors"></div>
+        <label style="display:flex; align-items:center; gap:5px; margin-top:6px; font-weight:normal;"><input type="checkbox" id="dc-admin-rainbow" ${me.color===RAINBOW?'checked':''}> Multicolor (arcoíris)</label>
+      </div>
+      <button class="dc-btn dc-default" id="dc-admin-profile-save">Guardar</button>
+    `;
+    const grid = document.getElementById('dc-admin-colors');
+    ADMIN_COLORS.forEach(c => {
+      const sw = document.createElement('div');
+      sw.className = 'dc-swatch' + (me.color===c?' selected':'');
+      sw.style.background = c;
+      sw.dataset.color = c;
+      sw.onclick = () => {
+        grid.querySelectorAll('.dc-swatch').forEach(x=>x.classList.remove('selected'));
+        sw.classList.add('selected');
+        document.getElementById('dc-admin-rainbow').checked = false;
+      };
+      grid.appendChild(sw);
+    });
+    document.getElementById('dc-admin-profile-save').onclick = () => {
+      const nickInput = document.getElementById('dc-admin-nick');
+      const newNick = nickInput.value.trim();
+      if (newNick && newNick !== me.nick) {
+        if (bannedNicks.has(newNick.toLowerCase())) { alert("Ese apodo está baneado."); return; }
+        me.nick = newNick;
+      }
+      const rainbow = document.getElementById('dc-admin-rainbow').checked;
+      if (rainbow) {
+        me.color = RAINBOW;
+      } else {
+        const sel = grid.querySelector('.dc-swatch.selected');
+        if (sel) me.color = sel.dataset.color;
+      }
+      updateTitle();
+      renderUsers();
+      localSystem("Perfil de administrador actualizado.");
+    };
+  }
+
+  function renderAdminBroadcast(body){
+    body.innerHTML = `
+      <h4>Broadcast</h4>
+      <p>Envía un mensaje emergente que se muestra por encima de toda la página y debe cerrarse con OK.</p>
+      <div class="dc-field"><textarea id="dc-broadcast-text" rows="4"></textarea></div>
+      <button class="dc-btn dc-default" id="dc-broadcast-send">Enviar Broadcast</button>
+    `;
+    document.getElementById('dc-broadcast-send').onclick = () => {
+      const ta = document.getElementById('dc-broadcast-text');
+      const text = ta.value.trim();
+      if (!text) return;
+      showBroadcast(text);
+      ta.value = '';
+    };
   }
 
   render();
