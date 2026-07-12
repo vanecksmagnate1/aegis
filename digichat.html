@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DigiChat</title>
+<style>
+  html, body { margin: 0; padding: 0; background: #ECE9D8; }
+</style>
+</head>
+<body>
+<div id="dc-root"></div>
+<style>
+  #dc-root, #dc-root * { box-sizing: border-box; }
+  #dc-root {
+    font-family: Tahoma, Geneva, "MS Sans Serif", sans-serif;
+    font-size: 11px;
+    color: #000;
+    width: 100%;
+    max-width: 520px;
+    margin: 0 auto;
+    background: #ECE9D8;
+    padding: 8px;
+    position: relative;
+  }
+
+  /* ===== ventana estilo Windows retro (azul), como DigiChat original ===== */
+  #dc-root ::-webkit-scrollbar { width: 16px; height: 16px; }
+  #dc-root ::-webkit-scrollbar-track { background: #ECE4D8; }
+  #dc-root ::-webkit-scrollbar-thumb {
+    background: #D4D0C8;
+    border: 1px solid #848480;
+    box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #808080;
+  }
+  #dc-root ::-webkit-scrollbar-button {
+    display: block; height: 16px; width: 16px; background: #D4D0C8;
+    border: 1px solid #848480; box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #808080;
+  }
+  #dc-root * { scrollbar-width: auto; scrollbar-color: #D4D0C8 #ECE4D8; }
+
+  .dc-window {
+    background: #ECE4D8;
+    border: 2px solid #0A246A;
+    border-radius: 0;
+    box-shadow: 2px 2px 6px rgba(0,0,0,0.4);
+    overflow: hidden;
+    position: relative;
+  }
+  .dc-titlebar {
+    background: linear-gradient(180deg, #2D5FCE 0%, #4D85E8 18%, #2A5AD1 45%, #163E9C 100%);
+    color: #fff; font-weight: bold; font-size: 12px;
+    padding: 3px 4px 3px 6px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-radius: 0;
+    border-bottom: 1px solid #0A246A;
+  }
+  .dc-titlebar .dc-logo { display: flex; align-items: center; gap: 5px; }
+  .dc-titlebar .dc-icon {
+    width: 14px; height: 14px; border-radius: 3px;
+    background: radial-gradient(circle at 30% 30%, #cfe6ff, #2c6fd6 60%, #0d2f6e);
+    flex-shrink: 0;
+  }
+  .dc-titlebar .dc-wbtns { display: flex; gap: 2px; }
+  .dc-titlebar .dc-wbtns span {
+    display: inline-flex; align-items:center; justify-content:center;
+    width: 16px; height: 14px; background: #ECE9D8;
+    border: none; border-radius: 0; font-size: 9px; color: #000; font-weight:bold;
+    box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #808080;
+  }
+  .dc-menubar {
+    background: linear-gradient(180deg, #F7F6F1 0%, #E7E3D6 100%);
+    border-bottom: 1px solid #b9b199;
+    font-size: 11px; padding: 2px 8px; color: #333; position: relative;
+  }
+  .dc-menubar .dc-menuitem { cursor: pointer; padding: 1px 4px; }
+  .dc-menubar .dc-menuitem:hover { background: #316AC5; color: #fff; border-radius: 2px; }
+
+  /* banner (placeholder generico, sin marcas reales) */
+  .dc-banner {
+    height: 46px;
+    background: repeating-linear-gradient(135deg,#dfe8f5,#dfe8f5 12px,#cddaf0 12px,#cddaf0 24px);
+    border-bottom: 2px solid #0A246A;
+    display: flex; align-items: center; justify-content: center;
+    color: #5670a0; font-size: 10px; letter-spacing: 0.5px;
+  }
+
+  /* ===== login ===== */
+  .dc-login { padding: 14px 16px; display: none; }
+  .dc-login.active { display: block; }
+  .dc-login h2 { font-size: 13px; margin: 0 0 2px; color: #0A246A; }
+  .dc-login p.sub { margin: 0 0 10px; color: #555; font-size: 10px; }
+  .dc-field { margin-bottom: 9px; }
+  .dc-field label { display: block; font-weight: bold; margin-bottom: 3px; font-size: 10px; }
+  .dc-field input[type=text] {
+    width: 100%; padding: 3px 4px; border: none; border-radius: 0;
+    box-shadow: inset 1px 1px 0 #6b7c93, inset -1px -1px 0 #fff, inset 2px 2px 0 #444;
+    font-family: inherit; font-size: 11px; background: #fff;
+  }
+  .dc-colors { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 4px; }
+  .dc-swatch { width: 18px; height: 18px; border: 2px solid #fff; cursor: pointer; box-shadow: 0 0 0 1px #666; border-radius: 2px; }
+  .dc-swatch.selected { box-shadow: 0 0 0 2px #000, 0 0 0 4px #ffe066; }
+  .dc-rooms { display: flex; flex-direction: column; gap: 3px; }
+  .dc-rooms label { font-weight: normal; display: flex; gap: 5px; align-items: center; cursor: pointer; font-size: 10.5px; }
+  .dc-error { color: #b00000; font-size: 10px; margin-top: 4px; min-height: 12px; }
+  .dc-login .dc-btnrow { text-align: right; margin-top: 10px; display:flex; justify-content:space-between; align-items:center; }
+  .dc-admincheck { font-size: 10px; display:flex; align-items:center; gap:4px; }
+
+  /* botones planos estilo Windows clásico, bisel 3D real */
+  .dc-xpbtn {
+    background: #B9CBEA;
+    border: none; border-radius: 0;
+    box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #4a5d80, inset 2px 2px 0 #dce6f5;
+    color: #0A246A; font-weight: bold; font-family: inherit; font-size: 10.5px;
+    padding: 4px 12px; cursor: pointer;
+  }
+  .dc-xpbtn:active {
+    box-shadow: inset -1px -1px 0 #fff, inset 1px 1px 0 #4a5d80;
+    padding: 5px 11px 3px 13px;
+  }
+  .dc-xpbtn:disabled { opacity: 0.5; cursor: default; }
+  .dc-redbtn {
+    background: #D4D0C8;
+    border: none; border-radius: 0;
+    box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #808080;
+    color: #c0392b; font-weight: bold; font-family: inherit;
+    font-size: 10.5px; padding: 4px 10px; cursor: pointer;
+  }
+  .dc-redbtn:active { box-shadow: inset -1px -1px 0 #fff, inset 1px 1px 0 #808080; }
+  .dc-smallbtn { padding: 2px 7px; font-size: 9.5px; }
+
+  /* ===== chat screen ===== */
+  .dc-chatscreen { display: none; }
+  .dc-chatscreen.active { display: block; }
+  .dc-body { display: flex; height: 260px; }
+  .dc-log {
+    flex: 1; background: #fff; overflow-y: auto; padding: 6px;
+    border-right: 1px solid #A9B9CE; line-height: 1.5; min-width: 0;
+  }
+  .dc-log .msg { margin-bottom: 3px; word-wrap: break-word; display: flex; gap: 4px; align-items: flex-start; }
+  .dc-log .msg.flagged { background: #fff6c9; border-left: 3px solid #e2b400; padding-left: 4px; }
+  .dc-log .msg .msgavatar { font-size: 13px; line-height: 1.4; flex-shrink: 0; }
+  .dc-log .msg .msgtext { min-width: 0; }
+  .dc-log .nick { font-weight: bold; cursor: default; }
+  .dc-log .badge { font-size: 9px; margin-left: 2px; }
+  .dc-log .sys { color: #888; font-style: italic; font-size: 10px; }
+
+  .dc-sidebar { width: 165px; background: #DCE6F5; display: flex; flex-direction: column; }
+  .dc-tabs { display: flex; }
+  .dc-tab {
+    flex: 1; text-align: center; padding: 4px 0; font-size: 10.5px; font-weight: bold;
+    background: #B9CBEA; color: #163E9C; cursor: pointer; border-bottom: 2px solid #7F9DB9;
+  }
+  .dc-tab.active { background: #fff; border-bottom: 2px solid #fff; }
+  .dc-icontoolbar { display: flex; gap: 4px; padding: 4px 6px; background: #DCE6F5; }
+  .dc-icontoolbar .ico {
+    width: 20px; height: 20px; border-radius: 50%; border: 1px solid #7F9DB9;
+    display: flex; align-items: center; justify-content: center; font-size: 10px;
+    background: radial-gradient(circle at 35% 30%, #fff, #cfe0f7 70%);
+    cursor: pointer;
+  }
+  .dc-icontoolbar .ico:active { transform: translateY(1px); }
+  .dc-icontoolbar .ico.disabled { opacity: 0.35; cursor: default; pointer-events: none; }
+  .dc-checkrow { padding: 2px 6px 4px; font-size: 9.5px; display: flex; align-items: center; gap: 4px; color: #333; }
+  .dc-searchrow { padding: 0 6px 4px; }
+  .dc-searchrow input {
+    width: 100%; font-size: 10px; padding: 2px 4px; border: none; border-radius: 0;
+    box-shadow: inset 1px 1px 0 #6b7c93, inset -1px -1px 0 #fff; background: #fff;
+  }
+  .dc-listhead {
+    background: linear-gradient(180deg,#EDF3FC,#CFDFF5); font-size: 9.5px; font-weight: bold;
+    color: #333; padding: 2px 6px; border-top: 1px solid #B9CBEA; border-bottom: 1px solid #B9CBEA;
+    display: flex; justify-content: space-between;
+  }
+  .dc-userlist { flex: 1; background: #fff; overflow-y: auto; padding: 2px 4px; }
+  .dc-user { display: flex; align-items: center; gap: 4px; padding: 2px 3px; font-size: 10.5px; cursor: pointer; border-radius: 2px; }
+  .dc-user:hover { background: #eef4ff; }
+  .dc-user.selected { background: #cfe0f7; }
+  .dc-user .avatar { font-size: 12px; }
+
+  .dc-footer { background: #ECE4D8; border-top: 1px solid #A9B9CE; padding: 6px; }
+  .dc-msgrow { display: flex; gap: 5px; align-items: center; }
+  .dc-msgrow input[type=text] {
+    flex: 1; padding: 4px 5px; border: none; border-radius: 0;
+    box-shadow: inset 1px 1px 0 #6b7c93, inset -1px -1px 0 #fff, inset 2px 2px 0 #444;
+    font-family: inherit; font-size: 11px; background: #fff;
+  }
+  .dc-iconbtn {
+    width: 22px; height: 22px; border: none; border-radius: 0; background: #ECE9D8;
+    box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #808080;
+    cursor: pointer; font-size: 11px; display:flex; align-items:center; justify-content:center;
+  }
+  .dc-iconbtn:active { box-shadow: inset -1px -1px 0 #fff, inset 1px 1px 0 #808080; }
+  .dc-footer-toprow { display: flex; justify-content: flex-end; gap: 6px; margin: 6px 0; }
+  .dc-sendrow { display: flex; justify-content: flex-end; }
+  .dc-sendrow .dc-xpbtn { width: 100%; padding: 6px; }
+  .dc-helpbar {
+    background: repeating-linear-gradient(45deg,#fff37a,#fff37a 8px,#ffe066 8px,#ffe066 16px);
+    padding: 4px 8px; border-top: 1px solid #b8a800;
+  }
+  .dc-statusbar { background: #ECE4D8; font-size: 9px; padding: 2px 6px; color: #555; border-top: 1px solid #ccc; }
+
+  /* ===== overlays (settings / admin) ===== */
+  .dc-overlay {
+    display: none; position: absolute; inset: 0; background: rgba(0,0,0,0.35);
+    align-items: center; justify-content: center; z-index: 10; padding: 6px;
+  }
+  .dc-overlay.active { display: flex; }
+  .dc-dialog {
+    background: #ECE4D8; border: 2px solid #0A246A; border-radius: 0; width: 100%;
+    max-height: 100%; overflow: hidden; box-shadow: 2px 2px 8px rgba(0,0,0,0.5);
+    display: flex; flex-direction: column;
+  }
+  .dc-dialog .dc-titlebar { border-radius: 0; }
+  .dc-dialog-tabs { display: flex; background: #DCE6F5; border-bottom: 1px solid #7F9DB9; overflow-x:auto; }
+  .dc-dialog-tab {
+    padding: 5px 8px; font-size: 10px; font-weight: bold; color: #163E9C; cursor: pointer;
+    border-right: 1px solid #B9CBEA; white-space: nowrap;
+  }
+  .dc-dialog-tab.active { background: #fff; }
+  .dc-dialog-body { padding: 10px; overflow-y: auto; flex: 1; min-height: 160px; font-size: 10.5px; }
+  .dc-dialog-body h4 { margin: 0 0 6px; color: #0A246A; font-size: 11px; }
+  .dc-dialog-body .dc-field input, .dc-dialog-body .dc-field select {
+    width: 100%; padding: 3px 5px; border: none; border-radius: 0;
+    box-shadow: inset 1px 1px 0 #6b7c93, inset -1px -1px 0 #fff; font-family: inherit; font-size: 10.5px; background:#fff;
+  }
+  .dc-avatargrid { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; max-height: 90px; overflow-y: auto; }
+  .dc-avatarpick {
+    width: 22px; height: 22px; display:flex; align-items:center; justify-content:center;
+    border: 1px solid transparent; border-radius: 0; cursor: pointer; font-size: 14px; background:#fff;
+  }
+  .dc-avatarpick.selected { border-color: #163E9C; background: #cfe0f7; }
+  .dc-checklist label { display:flex; align-items:center; gap:5px; margin-bottom: 5px; }
+  .dc-table { width: 100%; border-collapse: collapse; font-size: 10px; }
+  .dc-table th { background: linear-gradient(180deg,#EDF3FC,#CFDFF5); text-align:left; padding: 3px 5px; border-bottom: 1px solid #B9CBEA; }
+  .dc-table td { padding: 3px 5px; border-bottom: 1px solid #eee; }
+  .dc-table tr:hover td { background: #f3f7fd; }
+  .dc-adminrow { display: flex; gap: 6px; margin-top: 8px; }
+  .dc-inlineform { display:flex; gap:5px; margin-top:8px; }
+  .dc-inlineform input {
+    flex:1; padding: 3px 5px; border: none; border-radius:0;
+    box-shadow: inset 1px 1px 0 #6b7c93, inset -1px -1px 0 #fff; font-family:inherit; font-size:10.5px; background:#fff;
+  }
+  .dc-dialog-footer { display: flex; justify-content: flex-end; gap: 6px; padding: 8px; border-top: 1px solid #A9B9CE; }
+  .dc-closex { cursor: pointer; }
+</style>
+
+<div id="dc-app"></div>
+
+<script>
+(function(){
+  const COLORS = ["#000000","#c0392b","#1958D6","#1a7a24","#8e44ad","#d35400","#008b8b","#c2185b"];
+  const AVATARS = ["🐱","🐶","🦊","🐸","🐼","🦁","🐵","🐨","🦉","🐧","🐦","🐺","🐹","🐰","🦄","🐝","🦋","🐢","🐙","🦀","🐳","🦖","🐲","👾","🤖","👻","🎃","⭐","🌙","☀️"];
+  let ROOMS = ["DigiChat Foyer","Amor y Amistad","Solo Adolescentes","Santiago Centro"];
+  const BOT_NAMES = ["Pekeña_Lokura","DarkAngel_29","MoRe_ChiLe","xX_Seba_Xx","Lunatik","Valee.:","PunkRockero","AnaMaria87","el_Colo","Nashe__"];
+  const BOT_COLORS = ["#c0392b","#1958D6","#1a7a24","#8e44ad","#d35400","#008b8b","#c2185b","#7a5c00","#2c3e50","#16a085"];
+  const BOT_LINES = [
+    "holaaaa como estan todos? :)","alguien de santiago por aqui?? xD","jajajaja q buena esa",
+    "aaalguien kiere hablar? tengo msn jsjs","recien llego, saludos a toda la sala",":P jajaj no way",
+    "porfaaa alguien me tira la talla","no sean malos con los nuevos igual po",
+    "escuchando musica y aqui webeando nomas",":( me tuve q ir del pc de al lado",
+    "quien es de la V region?","esta sala esta buena para variar jeje","xD xD xD no lo puedo creer",
+    "hola hola, alguien despierto?","ya me tengo que ir, se cuidan!","jajaj este chat es como en el 2005"
+  ];
+
+  let me = { nick: "", color: COLORS[0], room: ROOMS[0], avatar: "🐱", isAdmin: false };
+  let users = [];
+  let botTimer = null;
+  let bannedNicks = new Set();
+  let selectedNick = null;
+  let settingsTab = "profile";
+  let adminTab = "rooms";
+
+  const app = document.getElementById('dc-app');
+
+  function render(){
+    app.innerHTML = `
+      <div class="dc-window">
+        <div class="dc-titlebar">
+          <div class="dc-logo"><span class="dc-icon"></span><span id="dc-titletext">DigiChat: Foyer help</span></div>
+          <div class="dc-wbtns"><span>_</span><span>&#9633;</span><span>x</span></div>
+        </div>
+        <div class="dc-menubar"><span class="dc-menuitem">DigiChat</span></div>
+        <div class="dc-banner">[ espacio de banner publicitario ]</div>
+
+        <div class="dc-login active" id="dc-login">
+          <h2>Bienvenido a DigiChat</h2>
+          <p class="sub">Elige tu apodo, color, avatar y sala para comenzar a chatear</p>
+
+          <div class="dc-field">
+            <label>Tu apodo:</label>
+            <input type="text" id="dc-nick" maxlength="18" placeholder="Ej: Chiquilla_Cool">
+          </div>
+
+          <div class="dc-field">
+            <label>Color de tu texto:</label>
+            <div class="dc-colors" id="dc-colors"></div>
+          </div>
+
+          <div class="dc-field">
+            <label>Avatar:</label>
+            <div class="dc-avatargrid" id="dc-loginavatars"></div>
+          </div>
+
+          <div class="dc-field">
+            <label>Sala:</label>
+            <div class="dc-rooms" id="dc-rooms"></div>
+          </div>
+
+          <div class="dc-error" id="dc-error"></div>
+          <div class="dc-btnrow">
+            <label class="dc-admincheck"><input type="checkbox" id="dc-adminmode"> Entrar como administrador (demo)</label>
+            <button class="dc-xpbtn" id="dc-enter">Entrar &raquo;</button>
+          </div>
+        </div>
+
+        <div class="dc-chatscreen" id="dc-chatscreen">
+          <div class="dc-body">
+            <div class="dc-log" id="dc-log"></div>
+            <div class="dc-sidebar">
+              <div class="dc-tabs">
+                <div class="dc-tab active" data-tab="users">Users</div>
+                <div class="dc-tab" data-tab="rooms">Rooms</div>
+              </div>
+              <div id="dc-tabpanel-users">
+                <div class="dc-icontoolbar">
+                  <div class="ico" id="dc-ico-info" title="Ver perfil">&#8505;&#65039;</div>
+                  <div class="ico" id="dc-ico-search" title="Buscar usuario">&#128269;</div>
+                  <div class="ico" id="dc-ico-promote" title="Ascender a moderador (admin)">&#11088;</div>
+                  <div class="ico" id="dc-ico-kick" title="Expulsar de la sala (admin)">&#128683;</div>
+                  <div class="ico" id="dc-ico-ban" title="Banear (admin)">&#9889;</div>
+                </div>
+                <div class="dc-checkrow"><input type="checkbox" id="dc-showall"><label for="dc-showall">Show users in all rooms</label></div>
+                <div class="dc-searchrow"><input type="text" id="dc-search" placeholder="Buscar nickname..."></div>
+                <div class="dc-listhead"><span>Nickname</span><span>&#9660;</span></div>
+                <div class="dc-userlist" id="dc-userlist"></div>
+              </div>
+              <div id="dc-tabpanel-rooms" style="display:none; padding:6px; overflow-y:auto;">
+                <div style="font-weight:bold; font-size:10px; margin-bottom:4px; color:#163E9C;">Salas disponibles</div>
+                <div id="dc-roomlist"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="dc-footer">
+            <div class="dc-msgrow">
+              <button class="dc-iconbtn" id="dc-boldbtn" title="Negrita">B</button>
+              <input type="text" id="dc-msg" maxlength="200" placeholder="Escribe tu mensaje...">
+              <button class="dc-iconbtn" id="dc-emobtn" title="Emoticones">&#128512;</button>
+            </div>
+            <div class="dc-footer-toprow">
+              <button class="dc-xpbtn dc-smallbtn" id="dc-settings">Settings</button>
+              <button class="dc-xpbtn dc-smallbtn" id="dc-adminpanel" style="display:none;">Admin Panel</button>
+              <button class="dc-xpbtn dc-smallbtn" id="dc-logout">Logout</button>
+            </div>
+            <div class="dc-sendrow">
+              <button class="dc-xpbtn" id="dc-send">Send Message</button>
+            </div>
+          </div>
+          <div class="dc-helpbar"><button class="dc-redbtn" id="dc-help">HELP!</button></div>
+          <div class="dc-statusbar">Warning: Applet Window</div>
+        </div>
+
+        <!-- SETTINGS OVERLAY -->
+        <div class="dc-overlay" id="dc-settings-overlay">
+          <div class="dc-dialog">
+            <div class="dc-titlebar">
+              <div class="dc-logo"><span class="dc-icon"></span><span>DigiChat Settings</span></div>
+              <span class="dc-closex" data-close="settings">&#10006;</span>
+            </div>
+            <div class="dc-dialog-tabs" id="dc-settings-tabs"></div>
+            <div class="dc-dialog-body" id="dc-settings-body"></div>
+            <div class="dc-dialog-footer">
+              <button class="dc-xpbtn dc-smallbtn" data-close="settings">Cancelar</button>
+              <button class="dc-xpbtn dc-smallbtn" id="dc-settings-save">Guardar</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ADMIN OVERLAY -->
+        <div class="dc-overlay" id="dc-admin-overlay">
+          <div class="dc-dialog">
+            <div class="dc-titlebar">
+              <div class="dc-logo"><span class="dc-icon"></span><span>DigiChat Site Options</span></div>
+              <span class="dc-closex" data-close="admin">&#10006;</span>
+            </div>
+            <div class="dc-dialog-tabs" id="dc-admin-tabs"></div>
+            <div class="dc-dialog-body" id="dc-admin-body"></div>
+            <div class="dc-helpbar"><button class="dc-redbtn" id="dc-admin-help">HELP!</button></div>
+            <div class="dc-dialog-footer">
+              <button class="dc-xpbtn dc-smallbtn" data-close="admin">Cancelar</button>
+              <button class="dc-xpbtn dc-smallbtn" data-close="admin">Guardar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    wireLogin();
+    wireOverlayClosers();
+  }
+
+  function wireOverlayClosers(){
+    document.querySelectorAll('[data-close]').forEach(el => {
+      el.onclick = () => {
+        document.getElementById('dc-' + el.dataset.close + '-overlay').classList.remove('active');
+      };
+    });
+  }
+
+  /* ---------- LOGIN ---------- */
+  function wireLogin(){
+    const colorsEl = document.getElementById('dc-colors');
+    COLORS.forEach((c,i) => {
+      const sw = document.createElement('div');
+      sw.className = 'dc-swatch' + (i===0?' selected':'');
+      sw.style.background = c;
+      sw.onclick = () => {
+        document.querySelectorAll('#dc-colors .dc-swatch').forEach(s=>s.classList.remove('selected'));
+        sw.classList.add('selected');
+        me.color = c;
+      };
+      colorsEl.appendChild(sw);
+    });
+
+    const avEl = document.getElementById('dc-loginavatars');
+    AVATARS.forEach((a,i) => {
+      const b = document.createElement('div');
+      b.className = 'dc-avatarpick' + (i===0?' selected':'');
+      b.textContent = a;
+      b.onclick = () => {
+        document.querySelectorAll('#dc-loginavatars .dc-avatarpick').forEach(x=>x.classList.remove('selected'));
+        b.classList.add('selected');
+        me.avatar = a;
+      };
+      avEl.appendChild(b);
+    });
+
+    renderRoomChoices();
+
+    document.getElementById('dc-enter').onclick = () => {
+      const nick = document.getElementById('dc-nick').value.trim();
+      const err = document.getElementById('dc-error');
+      if (!nick) { err.textContent = "Debes escribir un apodo para entrar."; return; }
+      if (nick.length < 2) { err.textContent = "El apodo es muy corto."; return; }
+      if (bannedNicks.has(nick.toLowerCase())) { err.textContent = "Este apodo está baneado de la sala."; return; }
+      me.nick = nick;
+      me.isAdmin = document.getElementById('dc-adminmode').checked;
+      err.textContent = "";
+      enterRoom();
+    };
+    document.getElementById('dc-nick').addEventListener('keydown', (e)=>{
+      if (e.key === 'Enter') document.getElementById('dc-enter').click();
+    });
+  }
+
+  function renderRoomChoices(){
+    const roomsEl = document.getElementById('dc-rooms');
+    roomsEl.innerHTML = "";
+    ROOMS.forEach((r,i) => {
+      const lbl = document.createElement('label');
+      lbl.innerHTML = `<input type="radio" name="dc-room" value="${escapeHtml(r)}" ${r===me.room?'checked':(i===0 && !ROOMS.includes(me.room)?'checked':'')}> ${escapeHtml(r)}`;
+      roomsEl.appendChild(lbl);
+    });
+    roomsEl.addEventListener('change', (e)=>{ if(e.target.name==='dc-room') me.room = e.target.value; });
+    if (!ROOMS.includes(me.room)) me.room = ROOMS[0];
+  }
+
+  /* ---------- ENTRAR A LA SALA ---------- */
+  function enterRoom(){
+    document.getElementById('dc-login').classList.remove('active');
+    document.getElementById('dc-chatscreen').classList.add('active');
+    document.getElementById('dc-titletext').textContent = `DigiChat: ${me.room}: ${me.nick}`;
+    if (me.isAdmin) document.getElementById('dc-adminpanel').style.display = 'inline-block';
+
+    users = [];
+    const shuffled = [...BOT_NAMES].sort(()=>Math.random()-0.5).slice(0, 4 + Math.floor(Math.random()*3));
+    shuffled.forEach(n => users.push({
+      nick:n, color: BOT_COLORS[BOT_NAMES.indexOf(n) % BOT_COLORS.length],
+      avatar: AVATARS[Math.floor(Math.random()*AVATARS.length)], isAdmin:false
+    }));
+    users.push({nick: me.nick, color: me.color, avatar: me.avatar, isMe:true, isAdmin: me.isAdmin});
+
+    renderUsers();
+    renderRoomsPanel();
+    addSystem(`This user has entered ${me.room}.`, me.nick);
+    users.filter(u=>!u.isMe).forEach(u => addSystem(`This user has entered ${me.room}.`, u.nick));
+
+    wireChat();
+    wireSettingsDialog();
+    wireAdminDialog();
+    scheduleBotActivity();
+  }
+
+  function renderUsers(){
+    const q = (document.getElementById('dc-search')?.value || "").toLowerCase();
+    const list = document.getElementById('dc-userlist');
+    list.innerHTML = users.filter(u => u.nick.toLowerCase().includes(q)).map(u =>
+      `<div class="dc-user ${selectedNick===u.nick?'selected':''}" data-nick="${escapeHtml(u.nick)}">
+        <span class="avatar">${u.avatar}</span>
+        <span style="color:${u.color}; font-weight:${u.isMe?'bold':'normal'}">${escapeHtml(u.nick)}${u.isMe?' (tú)':''}</span>
+        ${u.isAdmin ? '<span title="Moderador">&#11088;</span>' : ''}
+      </div>`
+    ).join('');
+    list.querySelectorAll('.dc-user').forEach(el => {
+      el.onclick = () => { selectedNick = el.dataset.nick; renderUsers(); };
+    });
+  }
+
+  function renderRoomsPanel(){
+    const el = document.getElementById('dc-roomlist');
+    if (!el) return;
+    el.innerHTML = ROOMS.map(r => `<div class="dc-user" data-room="${escapeHtml(r)}" style="cursor:pointer;">&#128274; ${escapeHtml(r)} ${r===me.room?' (actual)':''}</div>`).join('');
+    el.querySelectorAll('[data-room]').forEach(row => {
+      row.onclick = () => {
+        const target = row.dataset.room;
+        if (target === me.room) return;
+        addSystem(`This user has left ${me.room}.`, me.nick);
+        me.room = target;
+        document.getElementById('dc-titletext').textContent = `DigiChat: ${me.room}: ${me.nick}`;
+        addSystem(`This user has entered ${me.room}.`, me.nick);
+        renderRoomsPanel();
+      };
+    });
+  }
+
+  /* ---------- CHAT ---------- */
+  function wireChat(){
+    document.getElementById('dc-send').onclick = sendMyMessage;
+    document.getElementById('dc-msg').addEventListener('keydown', (e)=>{ if (e.key === 'Enter') sendMyMessage(); });
+    document.getElementById('dc-search').addEventListener('input', renderUsers);
+    document.getElementById('dc-boldbtn').onclick = () => {
+      const input = document.getElementById('dc-msg');
+      input.value = "*" + input.value + "*";
+      input.focus();
+    };
+    document.getElementById('dc-emobtn').onclick = () => {
+      const input = document.getElementById('dc-msg');
+      input.value += (input.value?" ":"") + ":)";
+      input.focus();
+    };
+
+    document.querySelectorAll('.dc-tab').forEach(t => t.onclick = () => {
+      document.querySelectorAll('.dc-tab').forEach(x=>x.classList.remove('active'));
+      t.classList.add('active');
+      document.getElementById('dc-tabpanel-users').style.display = t.dataset.tab==='users' ? 'block':'none';
+      document.getElementById('dc-tabpanel-rooms').style.display = t.dataset.tab==='rooms' ? 'block':'none';
+    });
+
+    document.getElementById('dc-help').onclick = () => addSystem("Ayuda: escribe tu mensaje abajo y presiona Send Message o Enter. Los administradores pueden seleccionar un usuario de la lista y usar los iconos para moderar.");
+    document.getElementById('dc-settings').onclick = () => document.getElementById('dc-settings-overlay').classList.add('active');
+    document.getElementById('dc-adminpanel').onclick = () => document.getElementById('dc-admin-overlay').classList.add('active');
+    document.getElementById('dc-logout').onclick = () => {
+      clearTimeout(botTimer);
+      document.getElementById('dc-chatscreen').classList.remove('active');
+      document.getElementById('dc-login').classList.add('active');
+      document.getElementById('dc-log').innerHTML = "";
+      document.getElementById('dc-adminpanel').style.display = 'none';
+      selectedNick = null;
+      renderRoomChoices();
+    };
+
+    // iconos de moderación
+    document.getElementById('dc-ico-info').onclick = () => {
+      if (!selectedNick) { addSystem("Selecciona un usuario de la lista para ver su perfil."); return; }
+      const u = users.find(x=>x.nick===selectedNick);
+      if (u) addSystem(`Perfil de ${u.nick} — Avatar: ${u.avatar} · ${u.isAdmin?'Moderador':'Usuario'}`);
+    };
+    document.getElementById('dc-ico-search').onclick = () => document.getElementById('dc-search').focus();
+
+    const adminOnlyIcons = ['dc-ico-promote','dc-ico-kick','dc-ico-ban'];
+    adminOnlyIcons.forEach(id => document.getElementById(id).classList.toggle('disabled', !me.isAdmin));
+
+    document.getElementById('dc-ico-promote').onclick = () => {
+      if (!me.isAdmin) return;
+      if (!selectedNick) { addSystem("Selecciona un usuario para ascenderlo a moderador."); return; }
+      const u = users.find(x=>x.nick===selectedNick);
+      if (u) { u.isAdmin = !u.isAdmin; renderUsers(); addSystem(`${u.nick} ${u.isAdmin?'fue ascendido a moderador':'ya no es moderador'} por ${me.nick}.`); }
+    };
+    document.getElementById('dc-ico-kick').onclick = () => {
+      if (!me.isAdmin) return;
+      if (!selectedNick || selectedNick===me.nick) { addSystem("Selecciona a otro usuario para expulsarlo."); return; }
+      users = users.filter(x=>x.nick!==selectedNick);
+      addSystem(`${selectedNick} fue expulsado de la sala por ${me.nick}.`);
+      selectedNick = null;
+      renderUsers();
+    };
+    document.getElementById('dc-ico-ban').onclick = () => {
+      if (!me.isAdmin) return;
+      if (!selectedNick || selectedNick===me.nick) { addSystem("Selecciona a otro usuario para banearlo."); return; }
+      bannedNicks.add(selectedNick.toLowerCase());
+      users = users.filter(x=>x.nick!==selectedNick);
+      addSystem(`${selectedNick} fue baneado por ${me.nick}.`);
+      selectedNick = null;
+      renderUsers();
+    };
+  }
+
+  function sendMyMessage(){
+    const input = document.getElementById('dc-msg');
+    const text = input.value.trim();
+    if (!text) return;
+    addMessage(me.nick, me.color, text);
+    input.value = "";
+  }
+
+  function addMessage(nick, color, text){
+    const log = document.getElementById('dc-log');
+    const u = users.find(x=>x.nick===nick);
+    const avatar = u ? u.avatar : "👤";
+    const row = document.createElement('div');
+    row.className = 'msg';
+    row.innerHTML = `<span class="msgavatar">${avatar}</span><span class="msgtext"><span class="nick" style="color:${color}">${escapeHtml(nick)}</span><br>${escapeHtml(text)}</span>`;
+    log.appendChild(row);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function addSystem(text, nick){
+    const log = document.getElementById('dc-log');
+    const row = document.createElement('div');
+    row.className = 'msg sys';
+    if (nick) {
+      const u = users.find(x=>x.nick===nick);
+      const avatar = u ? u.avatar : "👤";
+      row.innerHTML = `<span class="msgavatar">${avatar}</span><span class="msgtext"><span class="nick" style="color:#1958D6">${escapeHtml(nick)}</span><br>(${escapeHtml(text)})</span>`;
+    } else {
+      row.innerHTML = `<span class="msgtext">(${escapeHtml(text)})</span>`;
+    }
+    log.appendChild(row);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function escapeHtml(s){
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  function scheduleBotActivity(){
+    const tick = () => {
+      const action = Math.random();
+      const botUsers = users.filter(u=>!u.isMe);
+      if (botUsers.length && action < 0.75){
+        const u = botUsers[Math.floor(Math.random()*botUsers.length)];
+        const line = BOT_LINES[Math.floor(Math.random()*BOT_LINES.length)];
+        addMessage(u.nick, u.color, line);
+      } else if (action < 0.87 && botUsers.length < 9){
+        const available = BOT_NAMES.filter(n => !users.find(u=>u.nick===n) && !bannedNicks.has(n.toLowerCase()));
+        if (available.length){
+          const n = available[Math.floor(Math.random()*available.length)];
+          const c = BOT_COLORS[BOT_NAMES.indexOf(n) % BOT_COLORS.length];
+          users.push({nick:n, color:c, avatar: AVATARS[Math.floor(Math.random()*AVATARS.length)], isAdmin:false});
+          renderUsers();
+          addSystem(`This user has entered ${me.room}.`, n);
+        }
+      } else if (botUsers.length > 2){
+        const u = botUsers[Math.floor(Math.random()*botUsers.length)];
+        users = users.filter(x => x.nick !== u.nick);
+        renderUsers();
+        addSystem(`This user has left ${me.room}.`, u.nick);
+      }
+      botTimer = setTimeout(tick, 3500 + Math.random()*4500);
+    };
+    botTimer = setTimeout(tick, 2500);
+  }
+
+  /* ---------- SETTINGS DIALOG ---------- */
+  const SETTINGS_TABS = [
+    {id:"profile", label:"Profile"},
+    {id:"options", label:"Options"},
+    {id:"fonts", label:"Fonts"},
+    {id:"sounds", label:"Sounds"},
+    {id:"info", label:"Info"},
+    {id:"patch", label:"Patch"},
+  ];
+
+  function wireSettingsDialog(){
+    const tabsEl = document.getElementById('dc-settings-tabs');
+    tabsEl.innerHTML = SETTINGS_TABS.map(t => `<div class="dc-dialog-tab ${t.id===settingsTab?'active':''}" data-tab="${t.id}">${t.label}</div>`).join('');
+    tabsEl.querySelectorAll('.dc-dialog-tab').forEach(t => t.onclick = () => { settingsTab = t.dataset.tab; renderSettingsBody(); wireSettingsDialog(); });
+    renderSettingsBody();
+    document.getElementById('dc-settings-save').onclick = () => {
+      const nickInput = document.getElementById('dc-set-nick');
+      if (nickInput && nickInput.value.trim()) {
+        const u = users.find(x=>x.isMe);
+        if (u) { u.nick = nickInput.value.trim(); me.nick = u.nick; document.getElementById('dc-titletext').textContent = `DigiChat: ${me.room}: ${me.nick}`; renderUsers(); }
+      }
+      document.getElementById('dc-settings-overlay').classList.remove('active');
+      addSystem("Perfil actualizado (demo).");
+    };
+  }
+
+  function renderSettingsBody(){
+    const body = document.getElementById('dc-settings-body');
+    const meUser = users.find(x=>x.isMe) || me;
+    if (settingsTab === "profile"){
+      body.innerHTML = `
+        <h4>Profile</h4>
+        <div class="dc-field"><label>Nickname</label><input type="text" id="dc-set-nick" value="${escapeHtml(meUser.nick)}"></div>
+        <div class="dc-field"><label>Real Name</label><input type="text" placeholder="(opcional)"></div>
+        <div class="dc-field"><label>Age</label><input type="text" placeholder="(opcional)"></div>
+        <div class="dc-field"><label>Gender</label>
+          <select><option>—</option><option>Femenino</option><option>Masculino</option><option>Prefiero no decir</option></select>
+        </div>
+        <div class="dc-field"><label>E-mail Address</label><input type="text" placeholder="(opcional)"></div>
+        <div class="dc-field"><label>URL</label><input type="text" placeholder="(opcional)"></div>
+        <div class="dc-field"><label>URL Display Name</label><input type="text" placeholder="(opcional)"></div>
+        <div class="dc-field"><label>Exit Message</label><input type="text" placeholder="Ej: ¡Vuelvo pronto!"></div>
+        <div class="dc-field"><label>Comments</label><input type="text" placeholder="(opcional)"></div>
+        <label style="display:flex; gap:5px; align-items:center; margin-top:4px;"><input type="checkbox"> Block profile from other users</label>
+        <div class="dc-field" style="margin-top:8px;"><label>Avatar</label>
+          <div class="dc-avatargrid" id="dc-set-avatars"></div>
+        </div>
+      `;
+      const grid = document.getElementById('dc-set-avatars');
+      AVATARS.forEach(a => {
+        const b = document.createElement('div');
+        b.className = 'dc-avatarpick' + (a===meUser.avatar?' selected':'');
+        b.textContent = a;
+        b.onclick = () => {
+          grid.querySelectorAll('.dc-avatarpick').forEach(x=>x.classList.remove('selected'));
+          b.classList.add('selected');
+          meUser.avatar = a; me.avatar = a;
+          renderUsers();
+        };
+        grid.appendChild(b);
+      });
+    } else if (settingsTab === "options"){
+      body.innerHTML = `
+        <h4>Options</h4>
+        <div class="dc-checklist">
+          <label><input type="checkbox" checked> Reproducir sonido al recibir mensaje</label>
+          <label><input type="checkbox" checked> Mostrar hora en cada mensaje</label>
+          <label><input type="checkbox" checked> Mostrar avisos de entrada/salida</label>
+          <label><input type="checkbox" checked> Habilitar emoticones</label>
+          <label><input type="checkbox"> Auto-scroll desactivado</label>
+        </div>
+      `;
+    } else if (settingsTab === "fonts"){
+      body.innerHTML = `<h4>Fonts</h4><p>Color de tu texto en el chat:</p><div class="dc-colors" id="dc-set-colors"></div>`;
+      const grid = document.getElementById('dc-set-colors');
+      COLORS.forEach(c => {
+        const sw = document.createElement('div');
+        sw.className = 'dc-swatch' + (c===meUser.color?' selected':'');
+        sw.style.background = c;
+        sw.onclick = () => {
+          grid.querySelectorAll('.dc-swatch').forEach(x=>x.classList.remove('selected'));
+          sw.classList.add('selected');
+          meUser.color = c; me.color = c;
+          renderUsers();
+        };
+        grid.appendChild(sw);
+      });
+    } else if (settingsTab === "sounds"){
+      body.innerHTML = `
+        <h4>Sounds</h4>
+        <div class="dc-checklist">
+          <label><input type="checkbox" checked> Sonido de mensaje nuevo</label>
+          <label><input type="checkbox" checked> Sonido al entrar un usuario</label>
+          <label><input type="checkbox"> Sonido al salir un usuario</label>
+          <label><input type="checkbox"> Sonido al recibir mensaje privado</label>
+        </div>
+      `;
+    } else if (settingsTab === "info"){
+      body.innerHTML = `
+        <h4>Info</h4>
+        <p>Este chat es una recreación con estilo retro inspirada en clientes de chat de applet de comienzos de los 2000.</p>
+        <p>Versión de demostración — Sala actual: ${escapeHtml(me.room)}</p>
+      `;
+    } else if (settingsTab === "patch"){
+      body.innerHTML = `
+        <h4>Patch</h4>
+        <p>v1.3 — Se agregó panel de administración y moderación.</p>
+        <p>v1.2 — Se agregó selector de avatar y salas.</p>
+        <p>v1.1 — Ajustes visuales del tema retro.</p>
+        <p>v1.0 — Versión inicial.</p>
+      `;
+    }
+  }
+
+  /* ---------- ADMIN DIALOG ---------- */
+  const ADMIN_TABS = [
+    {id:"rooms", label:"Rooms"},
+    {id:"bans", label:"Bans"},
+    {id:"hosts", label:"Hosts"},
+    {id:"accounts", label:"Accounts"},
+    {id:"themes", label:"Themes"},
+    {id:"emoticons", label:"Emoticons"},
+    {id:"banners", label:"Banners"},
+    {id:"icons", label:"Icons"},
+  ];
+
+  function wireAdminDialog(){
+    const tabsEl = document.getElementById('dc-admin-tabs');
+    tabsEl.innerHTML = ADMIN_TABS.map(t => `<div class="dc-dialog-tab ${t.id===adminTab?'active':''}" data-tab="${t.id}">${t.label}</div>`).join('');
+    tabsEl.querySelectorAll('.dc-dialog-tab').forEach(t => t.onclick = () => { adminTab = t.dataset.tab; renderAdminBody(); wireAdminDialog(); });
+    renderAdminBody();
+    document.getElementById('dc-admin-help').onclick = () => alert("Panel de administración: gestiona salas, baneos y otras opciones del sitio (demostración).");
+  }
+
+  function renderAdminBody(){
+    const body = document.getElementById('dc-admin-body');
+    if (adminTab === "rooms"){
+      body.innerHTML = `
+        <h4>Rooms</h4>
+        <table class="dc-table"><thead><tr><th>ID</th><th>Nombre</th><th></th></tr></thead>
+        <tbody id="dc-admin-roomrows"></tbody></table>
+        <div class="dc-inlineform"><input type="text" id="dc-newroom" placeholder="Nombre de la nueva sala"><button class="dc-xpbtn dc-smallbtn" id="dc-addroom">Add</button></div>
+      `;
+      renderRoomRows();
+      document.getElementById('dc-addroom').onclick = () => {
+        const input = document.getElementById('dc-newroom');
+        const v = input.value.trim();
+        if (!v) return;
+        if (!ROOMS.includes(v)) ROOMS.push(v);
+        input.value = "";
+        renderRoomRows();
+      };
+    } else if (adminTab === "bans"){
+      body.innerHTML = `
+        <h4>Bans</h4>
+        <table class="dc-table"><thead><tr><th>Nickname baneado</th><th></th></tr></thead>
+        <tbody id="dc-admin-banrows"></tbody></table>
+        <div class="dc-inlineform"><input type="text" id="dc-newban" placeholder="Nickname a banear"><button class="dc-xpbtn dc-smallbtn" id="dc-addban">Add</button></div>
+      `;
+      renderBanRows();
+      document.getElementById('dc-addban').onclick = () => {
+        const input = document.getElementById('dc-newban');
+        const v = input.value.trim();
+        if (!v) return;
+        bannedNicks.add(v.toLowerCase());
+        input.value = "";
+        renderBanRows();
+      };
+    } else if (adminTab === "hosts"){
+      body.innerHTML = adminStaticTable("Hosts", ["Nickname","Rol"], [["MoRe_ChiLe","Host"],["${me.nick}","Host principal"]]);
+    } else if (adminTab === "accounts"){
+      body.innerHTML = adminStaticTable("Accounts", ["Usuario","Estado"], [[me.nick,"Activo"],["invitado_02","Activo"]]);
+    } else if (adminTab === "themes"){
+      body.innerHTML = adminStaticTable("Themes", ["Tema","Activo"], [["Retro Azul","Sí"],["Retro Gris","No"]]);
+    } else if (adminTab === "emoticons"){
+      body.innerHTML = adminStaticTable("Emoticons", ["Código","Símbolo"], [[":)","🙂"],[":(","🙁"],["xD","😆"],["<3","❤️"]]);
+    } else if (adminTab === "banners"){
+      body.innerHTML = `<h4>Banners</h4><p>Espacio para gestionar los banners publicitarios que se muestran en la parte superior de la ventana principal.</p>` + adminStaticTable(null, ["Posición","Estado"], [["Superior","Activo"]]);
+    } else if (adminTab === "icons"){
+      body.innerHTML = `<h4>Icons</h4><p>Set de avatares disponibles para los usuarios:</p><div class="dc-avatargrid">${AVATARS.map(a=>`<div class="dc-avatarpick">${a}</div>`).join('')}</div>`;
+    }
+  }
+
+  function adminStaticTable(title, headers, rows){
+    return `${title?`<h4>${title}</h4>`:''}<table class="dc-table"><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+      <tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${escapeHtml(String(c))}</td>`).join('')}<td><button class="dc-xpbtn dc-smallbtn" disabled>Edit</button></td></tr>`).join('')}</tbody></table>
+      <p style="color:#888; margin-top:6px;">Sección de demostración estática.</p>`;
+  }
+
+  function renderRoomRows(){
+    const el = document.getElementById('dc-admin-roomrows');
+    if (!el) return;
+    el.innerHTML = ROOMS.map((r,i) => `<tr><td>${1000+i}</td><td>${escapeHtml(r)}</td><td><button class="dc-xpbtn dc-smallbtn" data-remove-room="${escapeHtml(r)}" ${ROOMS.length<=1?'disabled':''}>Remove</button></td></tr>`).join('');
+    el.querySelectorAll('[data-remove-room]').forEach(btn => btn.onclick = () => {
+      ROOMS = ROOMS.filter(r => r !== btn.dataset.removeRoom);
+      renderRoomRows();
+      renderRoomsPanel();
+    });
+  }
+
+  function renderBanRows(){
+    const el = document.getElementById('dc-admin-banrows');
+    if (!el) return;
+    const arr = [...bannedNicks];
+    el.innerHTML = arr.length ? arr.map(n => `<tr><td>${escapeHtml(n)}</td><td><button class="dc-xpbtn dc-smallbtn" data-unban="${escapeHtml(n)}">Remove</button></td></tr>`).join('')
+      : `<tr><td colspan="2" style="color:#888;">No hay usuarios baneados.</td></tr>`;
+    el.querySelectorAll('[data-unban]').forEach(btn => btn.onclick = () => {
+      bannedNicks.delete(btn.dataset.unban);
+      renderBanRows();
+    });
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>
