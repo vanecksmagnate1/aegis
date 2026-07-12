@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DigiChat</title>
+<title>CHAT AEGIS</title>
 <style>
   html, body { margin: 0; padding: 0; background: transparent; }
 
@@ -84,7 +84,8 @@
   .dc-rainbow-text {
     background: linear-gradient(90deg,#e6194b,#f58231,#ffe119,#3cb44b,#42d4f4,#4363d8,#911eb4,#e6194b);
     background-size: 250% auto;
-    -webkit-background-clip: text; background-clip: text; color: transparent;
+    -webkit-background-clip: text; background-clip: text;
+    color: transparent !important; -webkit-text-fill-color: transparent !important;
     animation: dc-rainbow-shift 3.5s linear infinite;
     font-weight: bold;
   }
@@ -112,12 +113,13 @@
     border: 1px solid #2A0E40;
   }
   .dc-titlebar .dc-wbtns { display: flex; gap: 2px; }
-  .dc-titlebar .dc-wbtns span {
+  .dc-titlebar .dc-wbtns span, .dc-titlebar .dc-wbtns a {
     display: inline-flex; align-items: center; justify-content: center;
     width: 19px; height: 17px; border-radius: 3px;
     font-size: 10px; color: #fff; font-weight: bold; font-family: Tahoma, sans-serif;
     text-shadow: 0 -1px 0 rgba(0,0,0,0.3);
     border: 1px solid rgba(0,0,0,0.35);
+    text-decoration: none; cursor: pointer;
   }
   .dc-titlebar .dc-wbtn-min, .dc-titlebar .dc-wbtn-max {
     background: linear-gradient(180deg, #8FC1F7 0%, #4E8FE8 45%, #2563C9 100%);
@@ -304,6 +306,13 @@
     box-shadow: inset 1px 1px 0 #808080, inset -1px -1px 0 #fff;
   }
   .dc-avatarpick.selected { outline: 2px solid #0A246A; outline-offset: 1px; }
+  .dc-avatardrop {
+    display: none; position: absolute; z-index: 15; margin-top: 4px;
+    background: #D4D0C8; padding: 6px; width: 220px;
+    box-shadow: inset -1px -1px 0 #404040, inset 1px 1px 0 #FFF, inset -2px -2px 0 #808080, inset 2px 2px 0 #DFDFDF, 2px 2px 6px rgba(0,0,0,0.4);
+  }
+  .dc-avatardrop.active { display: block; }
+  .dc-avatardrop .dc-avatargrid { max-height: 160px; overflow-y: auto; margin-top: 0; }
   .dc-user .dc-usertag { margin-left: auto; font-size: 9px; color: #333; }
 
   .dc-btncol { margin-top: 6px; display: flex; flex-direction: column; gap: 5px; }
@@ -409,7 +418,15 @@
   ];
   const RAINBOW = "rainbow";
   const EMOTICONS = ["🙂","😂","😍","😢","😡","😉","👍","❤️","🎉","😎","😱","🤔","🙌","😴","🥳","😭",":)",":(","xD","<3"];
-  const USER_AVATARS = ["😀","😎","😺","🐶","🐱","🦊","🐸","🐼","👽","🤖","👾","🎃","⭐","🌙","❤️","⚡"];
+  const BASE_AVATARS = ["😀","😎","😺","🐶","🐱","🦊","🐸","🐼","👽","🤖","👾","🎃","⭐","🌙","❤️","⚡","😂","🥳","😴","🔥"];
+  const EXTENDED_AVATARS = [...BASE_AVATARS,
+    "🐵","🐨","🐧","🐦","🐺","🐹","🐰","🦄","🐝","🦋",
+    "🐢","🐙","🦀","🐳","🦖","🐲","👻","🌸","☀️","🌈",
+    "💀","🕹️","🎮","🎧","🎸","🍕","🍔","🍩","🎯","🚀"
+  ];
+  function avatarSetForRole(role){
+    return (role === 'admin' || role === 'moderator') ? EXTENDED_AVATARS : BASE_AVATARS;
+  }
 
   const DEFAULT_ROOMS = ["Sala General","Sala Alternativa","Sala Retro","Sala VIP"];
   let ROOMS = [...DEFAULT_ROOMS];
@@ -426,7 +443,44 @@
     "porfaaa alguien me tira la talla","no sean malos con los nuevos igual po",
     "escuchando musica y aqui webeando nomas",":( me tuve q ir del pc de al lado",
     "quien es de la V region?","esta sala esta buena para variar jeje","xD xD xD no lo puedo creer",
-    "hola hola, alguien despierto?","ya me tengo que ir, se cuidan!","jajaj este chat es como en el 2005"
+    "hola hola, alguien despierto?","ya me tengo que ir, se cuidan!","jajaj este chat es como en el 2005",
+    "oigan cachai que ayer igual estuvo entretenida la sala jajaj","nooo la caga el profe nos paso una prueba sorpresa",
+    "alguien ha visto la ultima peli que salio? esta buenisima dicen",
+    "jajaja se acuerdan cuando la sala se cayo por 10 minutos? que caos",
+    "estoy fome aqui en la casa así que me quede webeando en el compu",
+    "oye y tu de que color tienes el nick? yo cambiando el mio recien",
+    "la wea llovio tan fuerte anoche que se corto la luz como 2 horas",
+    "jajajaj no puedo creer lo que me paso hoy en el liceo, cuento despues",
+    "alguien tiene el link de esa cancion que sono denante? quedo pegada",
+    "voy a comer algo ya vuelvo no se vayan",
+    "hola gente bonita como estan todos el dia de hoy? :)",
+    "esta sala esta como muerta hoy dia jajaja alguien que hable",
+    "puchas que dan ganas de salir pero esta lloviendo a cantaros afuera",
+    "oye alguien juega counter? me faltan para completar el equipo",
+    "recien descubri este chat y ya me encanto la onda retro jaja",
+    "yo llevo conectado desde temprano y la sala se ha puesto buena",
+    "que weas tan buenas se conversan aqui jajajaja de verdad",
+    "se nota que este chat es como el 2005 total, me encanta la nostalgia",
+    "oye cuentame algo interesante que me estoy aburriendo un poco",
+    "jajaja la wea que me rei recien casi me caigo de la silla",
+    "alguien sabe si va a ver clases mañana? escuche que puede que no"
+  ];
+  const BOT_REPLY_LINES = [
+    "@{nick} jajaja tienes toda la razon",
+    "@{nick} sisi te entiendo total",
+    "@{nick} concuerdo contigo total",
+    "@{nick} no way, en serio? cuenta mas",
+    "@{nick} jajajaj que buena esa broder",
+    "@{nick} yo tambien pienso lo mismo la verdad",
+    "@{nick} nooo enserio? no lo puedo creer",
+    "@{nick} XD que risa me diste",
+    "@{nick} de acuerdo contigo amigx",
+    "@{nick} eso mismo iba a decir yo jajaja",
+    "@{nick} ondiaa tienes toda la razon en eso",
+    "@{nick} jajaja calla que tengo la misma onda",
+    "@{nick} bacan lo que dices, sigue contando",
+    "@{nick} pucha no sabia eso, cuentame mas porfa",
+    "@{nick} jajaj eso paso igual una vez conmigo"
   ];
   const PM_REPLIES = [
     "ola! como estas? :)","jaja q cuentas","no te escucho bien la sala esta llena xD",
@@ -461,11 +515,11 @@
     app.innerHTML = `
       <div class="dc-window">
         <div class="dc-titlebar">
-          <div class="dc-logo"><span class="dc-tbicon"></span><span id="dc-titletext">DigiChat</span></div>
-          <div class="dc-wbtns"><span class="dc-wbtn-float" id="dc-wbtn-float" title="Abrir en ventana flotante">&#9974;</span><span class="dc-wbtn-min">_</span><span class="dc-wbtn-max">&#9633;</span><span class="dc-wbtn-close">&#10005;</span></div>
+          <div class="dc-logo"><span class="dc-tbicon"></span><span id="dc-titletext">CHAT AEGIS</span></div>
+          <div class="dc-wbtns"><a class="dc-wbtn-float" id="dc-wbtn-float" title="Abrir en ventana flotante" target="_blank" rel="noopener noreferrer">&#9974;</a><span class="dc-wbtn-min">_</span><span class="dc-wbtn-max">&#9633;</span><span class="dc-wbtn-close">&#10005;</span></div>
         </div>
         <div class="dc-menubar">
-          <span class="dc-menuitem" id="dc-menu-digichat">DigiChat
+          <span class="dc-menuitem" id="dc-menu-digichat">Opciones
             <div class="dc-menudrop" id="dc-menudrop">
               <div class="dc-menudrop-item" id="dc-menu-siteoptions">Set Site Options...</div>
               <div class="dc-menudrop-item" id="dc-menu-broadcast">Send Chat Broadcast...</div>
@@ -476,13 +530,13 @@
         <div class="dc-logohead">
           <div class="dc-logoplate">
             <span class="dc-logoq"></span>
-            <span class="dc-logotext">DigiChat</span>
+            <span class="dc-logotext">CHAT AEGIS</span>
           </div>
         </div>
 
         <div class="dc-main">
           <div class="dc-login active" id="dc-login">
-            <h2>Bienvenido a DigiChat</h2>
+            <h2>Bienvenido a CHAT AEGIS</h2>
             <p class="sub">Elige tu apodo para comenzar a chatear</p>
 
             <div class="dc-field">
@@ -490,9 +544,12 @@
               <input type="text" id="dc-nick" class="dc-sunken" maxlength="18">
             </div>
 
-            <div class="dc-field">
+            <div class="dc-field" style="position:relative;">
               <label>Tu ícono:</label>
-              <div class="dc-avatargrid" id="dc-login-avatars"></div>
+              <button type="button" class="dc-btn dc-smallbtn" id="dc-login-avatar-toggle">Elegir ícono &#9662;</button>
+              <div class="dc-avatardrop" id="dc-login-avatardrop">
+                <div class="dc-avatargrid" id="dc-login-avatars"></div>
+              </div>
             </div>
 
             <div class="dc-error" id="dc-error"></div>
@@ -556,7 +613,7 @@
         <div class="dc-overlay" id="dc-loginauth-overlay">
           <div class="dc-dialog">
             <div class="dc-titlebar">
-              <div class="dc-logo"><span class="dc-tbicon"></span><span>DigiChat Login</span></div>
+              <div class="dc-logo"><span class="dc-tbicon"></span><span>CHAT AEGIS Login</span></div>
               <span class="dc-closex" data-close="loginauth">&#10005;</span>
             </div>
             <div class="dc-dialog-body">
@@ -575,7 +632,7 @@
         <div class="dc-overlay" id="dc-settings-overlay">
           <div class="dc-dialog">
             <div class="dc-titlebar">
-              <div class="dc-logo"><span class="dc-tbicon"></span><span>DigiChat Settings</span></div>
+              <div class="dc-logo"><span class="dc-tbicon"></span><span>CHAT AEGIS Settings</span></div>
               <span class="dc-closex" data-close="settings">&#10005;</span>
             </div>
             <div class="dc-dialog-tabs" id="dc-settings-tabs"></div>
@@ -608,7 +665,7 @@
         <div class="dc-overlay" id="dc-admin-overlay">
           <div class="dc-dialog">
             <div class="dc-titlebar">
-              <div class="dc-logo"><span class="dc-tbicon"></span><span>DigiChat Site Options</span></div>
+              <div class="dc-logo"><span class="dc-tbicon"></span><span>CHAT AEGIS Site Options</span></div>
               <span class="dc-closex" data-close="admin">&#10005;</span>
             </div>
             <div class="dc-dialog-tabs" id="dc-admin-tabs"></div>
@@ -678,12 +735,7 @@
     let isEmbedded = false;
     try { isEmbedded = window.self !== window.top; } catch (e) { isEmbedded = true; }
     btn.classList.toggle('visible', isEmbedded);
-    btn.onclick = () => {
-      const w = 620, h = 580;
-      const left = Math.round((screen.width - w) / 2);
-      const top = Math.round((screen.height - h) / 2);
-      window.open(window.location.href, 'digichat_float', `width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes`);
-    };
+    btn.setAttribute('href', window.location.href);
   }
 
   function wireOverlayClosers(){
@@ -750,13 +802,17 @@
   }
 
   function updateTitle(){
-    document.getElementById('dc-titletext').textContent = me.nick ? `DigiChat: ${me.room}: ${me.nick}` : 'DigiChat';
+    document.getElementById('dc-titletext').textContent = me.nick ? `CHAT AEGIS: ${me.room}: ${me.nick}` : 'CHAT AEGIS';
   }
 
   /* ---------- LOGIN ---------- */
   function wireLogin(){
     let loginAvatar = 'default';
-    buildAvatarGrid('dc-login-avatars', loginAvatar, (val) => { loginAvatar = val; });
+    buildAvatarGrid('dc-login-avatars', loginAvatar, (val) => {
+      loginAvatar = val;
+      document.getElementById('dc-login-avatardrop').classList.remove('active');
+    }, BASE_AVATARS);
+    wireAvatarDropdown('dc-login-avatar-toggle', 'dc-login-avatardrop');
 
     document.getElementById('dc-enter').onclick = () => {
       const nick = document.getElementById('dc-nick').value.trim();
@@ -897,6 +953,8 @@
       list = [...roomUsers[me.room].map(u => ({ ...u, room: me.room })), { ...me, room: me.room, isMe:true }];
     }
     list = list.filter(u => u.nick.toLowerCase().includes(q));
+    const rolePriority = { admin: 0, moderator: 1, general: 2 };
+    list.sort((a, b) => (rolePriority[a.role] ?? 2) - (rolePriority[b.role] ?? 2));
     const el = document.getElementById('dc-userlist');
     el.innerHTML = list.map(u => `
       <div class="dc-user ${selectedNick===u.nick?'selected':''}" data-nick="${escapeHtml(u.nick)}">
@@ -1177,6 +1235,23 @@
     localSystem(`${me.nick} quitó a todos los bots.`);
   }
 
+  function scheduleBotReply(room, aboutNick, chainDepth){
+    chainDepth = chainDepth || 0;
+    if (chainDepth >= 3) return;
+    if (Math.random() > 0.55) return;
+    const botUsers = (roomUsers[room] || []).filter(u => !mutedNicks.has(u.nick.toLowerCase()) && u.nick !== aboutNick);
+    if (!botUsers.length) return;
+    const replier = botUsers[Math.floor(Math.random()*botUsers.length)];
+    const template = BOT_REPLY_LINES[Math.floor(Math.random()*BOT_REPLY_LINES.length)];
+    const line = template.replace('{nick}', aboutNick);
+    setTimeout(() => {
+      if (!roomUsers[room] || !roomUsers[room].find(u => u.nick === replier.nick)) return;
+      addLogEntry(room, { nick: replier.nick, color: replier.color, textColor: replier.textColor, avatar: replier.avatar, text: line });
+      if (room === me.room) renderLog();
+      scheduleBotReply(room, replier.nick, chainDepth + 1);
+    }, 1500 + Math.random()*2500);
+  }
+
   function scheduleBotActivity(){
     const tick = () => {
       const room = me.room;
@@ -1187,6 +1262,7 @@
         const line = BOT_LINES[Math.floor(Math.random()*BOT_LINES.length)];
         addLogEntry(room, { nick:u.nick, color:u.color, textColor:u.textColor, avatar:u.avatar, text:line });
         renderLog();
+        scheduleBotReply(room, u.nick);
       } else if (action < 0.85 && (roomUsers[room]||[]).length < 9 && totalBotCount() < MAX_BOTS){
         const n = nextBotName();
         const isMod = moderatorNicks.has(n.toLowerCase());
@@ -1370,7 +1446,21 @@
   }
 
   /* ---------- COLOR PICKER COMPARTIDO (nick / texto) ---------- */
-  function buildAvatarGrid(gridId, current, onPick){
+  function wireAvatarDropdown(toggleId, dropId){
+    const btn = document.getElementById(toggleId);
+    const drop = document.getElementById(dropId);
+    if (!btn || !drop) return;
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      drop.classList.toggle('active');
+    };
+    document.addEventListener('click', (e) => {
+      if (!drop.contains(e.target) && e.target !== btn) drop.classList.remove('active');
+    });
+  }
+
+  function buildAvatarGrid(gridId, current, onPick, list){
+    list = list || BASE_AVATARS;
     const grid = document.getElementById(gridId);
     grid.innerHTML = '';
     const optDefault = document.createElement('div');
@@ -1382,7 +1472,7 @@
       onPick('default');
     };
     grid.appendChild(optDefault);
-    USER_AVATARS.forEach(a => {
+    list.forEach(a => {
       const el = document.createElement('div');
       el.className = 'dc-avatarpick' + (current===a?' selected':'');
       el.textContent = a;
@@ -1456,7 +1546,7 @@
     overlay.className = 'dc-globalbroadcast';
     overlay.innerHTML = `
       <div class="dc-globalbroadcast-box">
-        <div class="dc-globalbroadcast-title">DigiChat — Mensaje del administrador</div>
+        <div class="dc-globalbroadcast-title">CHAT AEGIS — Mensaje del administrador</div>
         <div class="dc-globalbroadcast-body">${escapeHtml(text)}</div>
         <button type="button">OK</button>
       </div>
@@ -1500,11 +1590,16 @@
       body.innerHTML = `
         <h4>Profile</h4>
         <div class="dc-field"><label>Nickname</label><input type="text" id="dc-set-nick" value="${escapeHtml(me.nick)}"></div>
-        ${showAvatarPicker ? `<div class="dc-field"><label>Tu ícono</label><div class="dc-avatargrid" id="dc-set-avatars"></div></div>` : ''}
+        ${showAvatarPicker ? `<div class="dc-field" style="position:relative;"><label>Tu ícono</label><button type="button" class="dc-btn dc-smallbtn" id="dc-set-avatar-toggle">Elegir ícono &#9662;</button><div class="dc-avatardrop" id="dc-set-avatardrop"><div class="dc-avatargrid" id="dc-set-avatars"></div></div></div>` : ''}
         <p style="color:#333;">Tu color se asigna según tu rol: negro (usuario), azul (moderador) o el que elijas si eres administrador.</p>
       `;
       if (showAvatarPicker) {
-        buildAvatarGrid('dc-set-avatars', me.avatar, (val) => { me.avatar = val; renderUsers(); });
+        buildAvatarGrid('dc-set-avatars', me.avatar, (val) => {
+          me.avatar = val;
+          renderUsers();
+          document.getElementById('dc-set-avatardrop').classList.remove('active');
+        }, avatarSetForRole(me.role));
+        wireAvatarDropdown('dc-set-avatar-toggle', 'dc-set-avatardrop');
       }
     } else if (settingsTab === "options"){
       body.innerHTML = `
@@ -1801,11 +1896,15 @@
         <label style="display:flex; align-items:center; gap:5px; margin-top:6px; font-weight:normal;"><input type="checkbox" id="dc-admin-text-default" ${!me.textColor?'checked':''}> Usar color por defecto (negro)</label>
         <label style="display:flex; align-items:center; gap:5px; margin-top:4px; font-weight:normal;"><input type="checkbox" id="dc-admin-text-rainbow" ${me.textColor===RAINBOW?'checked':''}> Multicolor (arcoíris)</label>
       </div>
-      <div class="dc-field"><label>Tu avatar</label>
+      <div class="dc-field" style="position:relative;"><label>Tu avatar</label>
         <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
           <span id="dc-admin-avatar-preview" style="display:inline-flex; width:28px; height:28px; align-items:center; justify-content:center; background:#fff; box-shadow:inset 1px 1px 0 #808080, inset -1px -1px 0 #fff;"></span>
           <button class="dc-btn dc-smallbtn" id="dc-admin-avatar-default" type="button">Ícono clásico</button>
           <button class="dc-btn dc-smallbtn" id="dc-admin-avatar-none" type="button">Sin avatar</button>
+          <button class="dc-btn dc-smallbtn" id="dc-admin-avatar-toggle" type="button">Elegir ícono &#9662;</button>
+        </div>
+        <div class="dc-avatardrop" id="dc-admin-avatardrop">
+          <div class="dc-avatargrid" id="dc-admin-avatars"></div>
         </div>
         <input type="file" id="dc-admin-avatar-upload" accept="image/*">
       </div>
@@ -1819,6 +1918,13 @@
       document.getElementById('dc-admin-text-default').checked = false;
     });
     refreshAdminAvatarPreview();
+    buildAvatarGrid('dc-admin-avatars', me.avatar, (val) => {
+      me.avatar = val;
+      refreshAdminAvatarPreview();
+      renderUsers();
+      document.getElementById('dc-admin-avatardrop').classList.remove('active');
+    }, EXTENDED_AVATARS);
+    wireAvatarDropdown('dc-admin-avatar-toggle', 'dc-admin-avatardrop');
     document.getElementById('dc-admin-avatar-default').onclick = () => {
       me.avatar = 'default';
       refreshAdminAvatarPreview();
