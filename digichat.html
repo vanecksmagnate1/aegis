@@ -659,6 +659,7 @@
     btn.disabled = true;
     err.textContent = "Verificando...";
     let ok = false;
+    let locked = false;
     try {
       const res = await fetch('/api/admin-login', {
         method: 'POST',
@@ -667,8 +668,14 @@
       });
       const data = await res.json();
       ok = !!data.ok;
+      locked = !!data.locked;
     } catch (e) {
       err.textContent = "No se pudo verificar. Intenta de nuevo.";
+      btn.disabled = false;
+      return;
+    }
+    if (locked) {
+      err.textContent = "Demasiados intentos fallidos. Espera unos minutos antes de volver a intentar.";
       btn.disabled = false;
       return;
     }
