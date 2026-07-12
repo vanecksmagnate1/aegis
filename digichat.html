@@ -407,7 +407,7 @@
   /* ventana de mensaje privado */
   #dc-pm-log { min-height: 130px; max-height: 180px; }
 </style>
-
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 (function(){
   const GENERAL_COLOR = "#000000";
@@ -442,15 +442,10 @@
     return EXTENDED_AVATARS[Math.floor(Math.random()*EXTENDED_AVATARS.length)];
   }
 
-  const DEFAULT_ROOMS = ["Sala General","Sala Alternativa","Sala Retro","Sala VIP"];
-  let ROOMS = [...DEFAULT_ROOMS];
   const LOCKED_ROOM = "Sala General";
+  let ROOMS = [LOCKED_ROOM];
 
   const BOT_NAMES = ["Pekeña_Lokura","DarkAngel_29","MoRe_ChiLe","xX_Seba_Xx","Lunatik","Valee.:","PunkRockero","AnaMaria87","el_Colo","Nashe__"];
-  const NICK_PREFIXES = ["Dark","Sweet","Mr","Lady","El","La","Chico","Chica","Punk","Emo","Retro","Neo","Mega","Ultra","Loko","Loka","Fire","Ice","Star","Moon","Shadow","Ghost","Cyber","Pixel"];
-  const NICK_WORDS = ["Angel","Lokura","Rockero","Soñador","Guerrero","Princesa","Rebelde","Vampiro","Gamer","Cazador","Nena","Crack","Bandido","Solitario","Fantasma","Viajero","Rayo","Trueno","Luna"];
-  const NICK_SUFFIXES = ["","_29","07","2005","_Xx","_VIP","99","_Chile","21","_RD","89"];
-  const MAX_BOTS = 40;
   const BOT_LINES = [
     "holaaaa como estan todos? :)","alguien de santiago por aqui?? xD","jajajaja q buena esa",
     "aaalguien kiere hablar? tengo msn jsjs","recien llego, saludos a toda la sala",":P jajaj no way",
@@ -460,67 +455,50 @@
     "hola hola, alguien despierto?","ya me tengo que ir, se cuidan!","jajaj este chat es como en el 2005",
     "oigan cachai que ayer igual estuvo entretenida la sala jajaj","nooo la caga el profe nos paso una prueba sorpresa",
     "alguien ha visto la ultima peli que salio? esta buenisima dicen",
-    "jajaja se acuerdan cuando la sala se cayo por 10 minutos? que caos",
     "estoy fome aqui en la casa así que me quede webeando en el compu",
     "oye y tu de que color tienes el nick? yo cambiando el mio recien",
-    "la wea llovio tan fuerte anoche que se corto la luz como 2 horas",
     "jajajaj no puedo creer lo que me paso hoy en el liceo, cuento despues",
     "alguien tiene el link de esa cancion que sono denante? quedo pegada",
     "voy a comer algo ya vuelvo no se vayan",
     "hola gente bonita como estan todos el dia de hoy? :)",
     "esta sala esta como muerta hoy dia jajaja alguien que hable",
-    "puchas que dan ganas de salir pero esta lloviendo a cantaros afuera",
     "oye alguien juega counter? me faltan para completar el equipo",
     "recien descubri este chat y ya me encanto la onda retro jaja",
-    "yo llevo conectado desde temprano y la sala se ha puesto buena",
     "que weas tan buenas se conversan aqui jajajaja de verdad",
     "se nota que este chat es como el 2005 total, me encanta la nostalgia",
-    "oye cuentame algo interesante que me estoy aburriendo un poco",
-    "jajaja la wea que me rei recien casi me caigo de la silla",
-    "alguien sabe si va a ver clases mañana? escuche que puede que no"
-  ];
-  const BOT_REPLY_LINES = [
-    "@{nick} jajaja tienes toda la razon",
-    "@{nick} sisi te entiendo total",
-    "@{nick} concuerdo contigo total",
-    "@{nick} no way, en serio? cuenta mas",
-    "@{nick} jajajaj que buena esa broder",
-    "@{nick} yo tambien pienso lo mismo la verdad",
-    "@{nick} nooo enserio? no lo puedo creer",
-    "@{nick} XD que risa me diste",
-    "@{nick} de acuerdo contigo amigx",
-    "@{nick} eso mismo iba a decir yo jajaja",
-    "@{nick} ondiaa tienes toda la razon en eso",
-    "@{nick} jajaja calla que tengo la misma onda",
-    "@{nick} bacan lo que dices, sigue contando",
-    "@{nick} pucha no sabia eso, cuentame mas porfa",
-    "@{nick} jajaj eso paso igual una vez conmigo"
-  ];
-  const PM_REPLIES = [
-    "ola! como estas? :)","jaja q cuentas","no te escucho bien la sala esta llena xD",
-    "hablamos aca mejor jeje","jajaja bueno eso", "cuentame mas", "yo bien y tu?",
-    "sisi de acuerdo","no c yo creo q si", ":) ok"
+    "jajaja la wea que me rei recien casi me caigo de la silla"
   ];
 
-  let me = { nick: "", color: GENERAL_COLOR, textColor: null, avatar: "default", room: DEFAULT_ROOMS[0], role: "general", ip: "", invisible: false };
+  const SUPABASE_URL = "https://ukcegumvoujltkwjabjn.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_1Z7N0P80cA8gUKkuXbeeDw_l7MWA4T7";
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const CLIENT_ID = 'c' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+
+  let me = { nick: "", color: GENERAL_COLOR, textColor: null, avatar: "default", room: LOCKED_ROOM, role: "general", invisible: false };
+  let adminToken = null;
   let moderatorNicks = new Set();
   let bannedNicks = new Set();
   let mutedNicks = new Set();
   let blockedNicks = new Set();
-  let roomUsers = {};
   let roomLogs = {};
+  let presenceList = [];
   let pmThreads = {};
   let pmTarget = null;
+  let pmReadOnly = false;
   let selectedNick = null;
   let settingsTab = "profile";
   let adminTab = "rooms";
   let filterQ = "";
-  let botTimer = null;
   let floodTimestamps = [];
   let floodUntil = 0;
   const FLOOD_LIMIT = 5;
   const FLOOD_WINDOW_MS = 8000;
   const FLOOD_PENALTY_MS = 2 * 60 * 1000;
+
+  let presenceChannel = null;
+  let messagesChannel = null;
+  let pmChannel = null;
+  let globalsChannel = null;
 
   const app = document.getElementById('dc-app');
   const PICO = '<span class="dc-pico"></span>';
@@ -728,10 +706,7 @@
               <textarea id="dc-kick-reason" class="dc-sunken" style="width:100%; min-height:70px; padding:5px;" placeholder="Escribe un mensaje que verá el usuario expulsado"></textarea>
               <div id="dc-kick-banrow" style="margin-top:10px;">
                 <label style="display:flex; align-items:center; gap:5px; font-weight:normal;">
-                  <input type="checkbox" id="dc-kick-banip"> Banear la IP de este usuario [<span id="dc-kick-ip-label"></span>]
-                </label>
-                <label style="display:flex; align-items:center; gap:5px; font-weight:normal; margin-top:4px;">
-                  <input type="checkbox" id="dc-kick-banhost"> Banear a cualquiera con este mismo origen
+                  <input type="checkbox" id="dc-kick-ban"> Banear permanentemente este nickname (además de expulsarlo)
                 </label>
               </div>
             </div>
@@ -781,18 +756,6 @@
   }
 
   /* ---------- helpers de estado ---------- */
-  function ensureRoomSeeded(room){
-    if (roomUsers[room]) return;
-    roomUsers[room] = [];
-    roomLogs[room] = [{ sys:true, text: `Bienvenido a ${room}.` }];
-    const pool = BOT_NAMES.filter(n => !bannedNicks.has(n.toLowerCase()));
-    const shuffled = [...pool].sort(() => Math.random() - 0.5).slice(0, 3 + Math.floor(Math.random()*3));
-    shuffled.forEach(n => {
-      const isMod = moderatorNicks.has(n.toLowerCase());
-      roomUsers[room].push({ nick:n, color: isMod ? MOD_COLOR : GENERAL_COLOR, textColor: null, role: isMod ? 'moderator':'general', avatar: randomBotAvatar(), ip: randomIp() });
-    });
-  }
-
   function addLogEntry(room, entry){
     if (!roomLogs[room]) roomLogs[room] = [];
     roomLogs[room].push(entry);
@@ -800,12 +763,8 @@
   }
 
   function findUserObject(nick){
-    if (nick === me.nick) return { ...me, isMe:true, room: me.room };
-    for (const r of Object.keys(roomUsers)){
-      const u = roomUsers[r].find(x => x.nick === nick);
-      if (u) return { ...u, room:r };
-    }
-    return null;
+    if (nick === me.nick) return { ...me, isMe:true };
+    return presenceList.find(p => p.nick === nick) || null;
   }
 
   function userIconHtml(u){
@@ -843,6 +802,30 @@
     document.getElementById('dc-titletext').textContent = me.nick ? `CHAT AEGIS: ${me.room}: ${me.nick}` : 'CHAT AEGIS';
   }
 
+  function presencePayload(){
+    return { clientId: CLIENT_ID, nick: me.nick, color: me.color, textColor: me.textColor, avatar: me.avatar, role: me.role, room: me.room };
+  }
+
+  function retrackPresence(){
+    if (!me.invisible && presenceChannel) presenceChannel.track(presencePayload());
+  }
+
+  async function callAdminAction(action, payload){
+    try {
+      const res = await fetch('/api/admin-action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: adminToken, action, payload })
+      });
+      const data = await res.json();
+      if (!data.ok) { localSystem(`Acción falló: ${data.error || 'error desconocido'}`); return false; }
+      return true;
+    } catch (e) {
+      localSystem(`No se pudo conectar con el servidor (${e.message || 'error de red'}).`);
+      return false;
+    }
+  }
+
   /* ---------- LOGIN ---------- */
   function wireLogin(){
     let loginAvatar = 'default';
@@ -857,6 +840,7 @@
       const err = document.getElementById('dc-error');
       if (!nick) { err.textContent = "Debes escribir un apodo para entrar."; return; }
       if (nick.length < 2) { err.textContent = "El apodo es muy corto."; return; }
+      if (/[,()]/.test(nick)) { err.textContent = "El apodo no puede contener , ( o )."; return; }
       if (nick.toLowerCase() === 'admin') { err.textContent = "Ese nombre está reservado. Usa el botón Login."; return; }
       if (bannedNicks.has(nick.toLowerCase())) { err.textContent = "Este apodo está baneado."; return; }
       me.nick = nick;
@@ -865,7 +849,7 @@
       me.textColor = null;
       me.avatar = loginAvatar;
       me.room = LOCKED_ROOM;
-      me.ip = randomIp();
+      me.invisible = false;
       err.textContent = "";
       enterRoom();
     };
@@ -895,6 +879,7 @@
     err.textContent = "Verificando...";
     let ok = false;
     let locked = false;
+    let token = null;
     try {
       const res = await fetch('/api/admin-login', {
         method: 'POST',
@@ -904,6 +889,7 @@
       const data = await res.json();
       ok = !!data.ok;
       locked = !!data.locked;
+      token = data.token || null;
     } catch (e) {
       const detail = e && e.message ? e.message : 'error de red desconocido';
       err.textContent = `No se pudo conectar con el servidor (${detail}). Revisa tu conexión e intenta de nuevo.`;
@@ -921,6 +907,7 @@
       return;
     }
     if (bannedNicks.has('admin')) { err.textContent = "Esta cuenta está baneada."; btn.disabled = false; return; }
+    adminToken = token;
     const invisible = document.getElementById('dc-auth-invisible').checked;
     me.nick = "Admin";
     me.role = "admin";
@@ -929,22 +916,18 @@
     me.invisible = invisible;
     me.avatar = invisible ? 'none' : 'default';
     me.room = LOCKED_ROOM;
-    me.ip = randomIp();
     document.getElementById('dc-loginauth-overlay').classList.remove('active');
     btn.disabled = false;
     enterRoom();
   }
 
   /* ---------- ENTRAR A LA SALA ---------- */
-  function enterRoom(){
+  async function enterRoom(){
     document.getElementById('dc-login').classList.remove('active');
     document.getElementById('dc-chatscreen').classList.add('active');
     document.getElementById('dc-adminrow').style.display = me.role === 'admin' ? 'flex' : 'none';
 
-    ensureRoomSeeded(me.room);
-    if (!me.invisible) {
-      addLogEntry(me.room, { sys:true, nick: me.nick, avatar: me.avatar, text: `This user has entered ${me.room}.` });
-    }
+    await ensureRoomLog(me.room);
     updateTitle();
     renderLog();
     renderUsers();
@@ -953,25 +936,97 @@
     wireChat();
     wireSettingsDialog();
     wireAdminDialog();
-    scheduleBotActivity();
+
+    subscribeRoomMessages(me.room);
+    subscribeMyPms();
+    if (!me.invisible) await presenceChannel.track(presencePayload());
   }
 
-  function switchRoom(target){
+  async function ensureRoomLog(room){
+    if (roomLogs[room]) return;
+    const entries = await fetchRoomHistory(room);
+    roomLogs[room] = [{ sys:true, text:`Bienvenido a ${room}.` }, ...entries];
+  }
+
+  async function fetchRoomHistory(room){
+    const { data, error } = await sb.from('chat_messages').select('*').eq('room', room).order('created_at', { ascending:true }).limit(200);
+    if (error || !data) return [];
+    const out = [];
+    data.forEach(row => {
+      if (row.kind === 'system') {
+        let parsed = null;
+        try { parsed = JSON.parse(row.body); } catch (e) { parsed = null; }
+        if (!parsed || parsed.type === 'kick') return;
+        if (parsed.type === 'move') out.push({ sys:true, text: `${parsed.nick} fue movido a ${parsed.targetRoom}.` });
+        else if (parsed.type === 'notice') out.push({ sys:true, text: parsed.text });
+      } else {
+        out.push({ nick: row.nick, color: row.color, textColor: row.text_color, avatar: row.avatar, text: row.body });
+      }
+    });
+    return out;
+  }
+
+  function subscribeRoomMessages(room){
+    if (messagesChannel) { sb.removeChannel(messagesChannel); messagesChannel = null; }
+    messagesChannel = sb.channel('chat-messages-' + room + '-' + CLIENT_ID)
+      .on('postgres_changes', { event:'INSERT', schema:'public', table:'chat_messages', filter:`room=eq.${room}` }, (payload) => handleIncomingMessage(payload.new))
+      .subscribe();
+  }
+
+  function handleIncomingMessage(row){
+    if (row.kind === 'system') {
+      let parsed = null;
+      try { parsed = JSON.parse(row.body); } catch (e) { parsed = null; }
+      if (!parsed) return;
+      if (parsed.type === 'kick') {
+        if (parsed.nick && me.nick && parsed.nick.toLowerCase() === me.nick.toLowerCase()) { forceLogout(parsed.reason); return; }
+        addLogEntry(row.room, { sys:true, text: `${parsed.nick} fue expulsado${parsed.reason ? ': "'+parsed.reason+'"' : ''}.` });
+      } else if (parsed.type === 'move') {
+        if (parsed.nick && me.nick && parsed.nick.toLowerCase() === me.nick.toLowerCase()) { switchRoom(parsed.targetRoom); return; }
+        addLogEntry(row.room, { sys:true, text: `${parsed.nick} fue movido a ${parsed.targetRoom}.` });
+      } else if (parsed.type === 'notice') {
+        addLogEntry(row.room, { sys:true, text: parsed.text });
+      }
+    } else {
+      addLogEntry(row.room, { nick: row.nick, color: row.color, textColor: row.text_color, avatar: row.avatar, text: row.body });
+    }
+    if (row.room === me.room) renderLog();
+  }
+
+  function forceLogout(reason){
+    alert(`Has sido expulsado del chat.${reason ? ' Motivo: ' + reason : ''}`);
+    doLogout();
+  }
+
+  async function doLogout(){
+    if (presenceChannel) await presenceChannel.untrack();
+    if (messagesChannel) { sb.removeChannel(messagesChannel); messagesChannel = null; }
+    if (pmChannel) { sb.removeChannel(pmChannel); pmChannel = null; }
+    document.getElementById('dc-chatscreen').classList.remove('active');
+    document.getElementById('dc-login').classList.add('active');
+    document.getElementById('dc-adminrow').style.display = 'none';
+    me = { nick: "", color: GENERAL_COLOR, textColor: null, avatar: 'default', room: LOCKED_ROOM, role: "general", invisible: false };
+    adminToken = null;
+    selectedNick = null;
+    filterQ = "";
+    blockedNicks = new Set();
+    floodTimestamps = [];
+    floodUntil = 0;
+    roomLogs = {};
+    updateTitle();
+    document.getElementById('dc-nick').value = '';
+  }
+
+  async function switchRoom(target){
     if (target === me.room || !ROOMS.includes(target)) return;
-    ensureRoomSeeded(target);
-    if (!me.invisible) {
-      addLogEntry(me.room, { sys:true, nick: me.nick, avatar: me.avatar, text: `This user has left ${me.room}.` });
-    }
     me.room = target;
-    if (!me.invisible) {
-      addLogEntry(me.room, { sys:true, nick: me.nick, avatar: me.avatar, text: `This user has entered ${me.room}.` });
-    }
-    clearTimeout(botTimer);
+    await ensureRoomLog(target);
     updateTitle();
     renderLog();
+    subscribeRoomMessages(target);
+    if (!me.invisible) await presenceChannel.track(presencePayload());
     renderUsers();
     renderRoomsPanel();
-    scheduleBotActivity();
   }
 
   /* ---------- RENDER LOG / USERS / ROOMS ---------- */
@@ -1000,15 +1055,8 @@
   function renderUsers(){
     const q = filterQ.toLowerCase();
     const showAll = document.getElementById('dc-showall')?.checked;
-    let list = [];
-    if (showAll) {
-      ROOMS.forEach(r => { ensureRoomSeeded(r); roomUsers[r].forEach(u => list.push({ ...u, room:r })); });
-      if (!me.invisible) list.push({ ...me, room: me.room, isMe:true });
-    } else {
-      ensureRoomSeeded(me.room);
-      list = [...roomUsers[me.room].map(u => ({ ...u, room: me.room }))];
-      if (!me.invisible) list.push({ ...me, room: me.room, isMe:true });
-    }
+    let list = (showAll ? presenceList : presenceList.filter(p => p.room === me.room))
+      .map(p => ({ ...p, isMe: p.clientId === CLIENT_ID }));
     list = list.filter(u => u.nick.toLowerCase().includes(q));
     const rolePriority = { admin: 0, moderator: 1, general: 2 };
     list.sort((a, b) => (rolePriority[a.role] ?? 2) - (rolePriority[b.role] ?? 2));
@@ -1038,8 +1086,7 @@
   }
 
   function roomPersonCount(room){
-    ensureRoomSeeded(room);
-    return roomUsers[room].length + (me.room === room && !me.invisible ? 1 : 0);
+    return presenceList.filter(p => p.room === room).length;
   }
 
   function renderRoomsPanel(){
@@ -1125,23 +1172,7 @@
     document.getElementById('dc-settings').onclick = () => { settingsTab = "profile"; wireSettingsDialog(); document.getElementById('dc-settings-overlay').classList.add('active'); };
     document.getElementById('dc-adminpanel').onclick = () => { renderAdminBody(); document.getElementById('dc-admin-overlay').classList.add('active'); };
 
-    document.getElementById('dc-logout').onclick = () => {
-      clearTimeout(botTimer);
-      if (!me.invisible) {
-        addLogEntry(me.room, { sys:true, nick: me.nick, avatar: me.avatar, text: `This user has left ${me.room}.` });
-      }
-      document.getElementById('dc-chatscreen').classList.remove('active');
-      document.getElementById('dc-login').classList.add('active');
-      document.getElementById('dc-adminrow').style.display = 'none';
-      me = { nick: "", color: GENERAL_COLOR, textColor: null, avatar: 'default', room: LOCKED_ROOM, role: "general", ip: "", invisible: false };
-      selectedNick = null;
-      filterQ = "";
-      blockedNicks = new Set();
-      floodTimestamps = [];
-      floodUntil = 0;
-      updateTitle();
-      document.getElementById('dc-nick').value = '';
-    };
+    document.getElementById('dc-logout').onclick = async () => { await doLogout(); };
 
     // emoticones
     const pop = document.getElementById('dc-emopop');
@@ -1195,10 +1226,9 @@
     document.getElementById('dc-kick-confirm').onclick = () => {
       if (!kickTarget) return;
       const reason = document.getElementById('dc-kick-reason').value.trim();
-      const banIp = document.getElementById('dc-kick-banip').checked;
-      const banHost = document.getElementById('dc-kick-banhost').checked;
+      const alsoBan = document.getElementById('dc-kick-ban').checked;
       document.getElementById('dc-kick-overlay').classList.remove('active');
-      performKick(kickTarget, reason, me.role === 'admin' && (banIp || banHost));
+      performKick(kickTarget, reason, me.role === 'admin' && alsoBan);
       kickTarget = null;
     };
 
@@ -1211,7 +1241,7 @@
     renderLog();
   }
 
-  function sendMyMessage(){
+  async function sendMyMessage(){
     const input = document.getElementById('dc-msg');
     const text = input.value.trim();
     if (!text) return;
@@ -1235,125 +1265,62 @@
       input.value = "";
       return;
     }
-    addLogEntry(me.room, { nick: me.nick, color: me.color, textColor: me.textColor, avatar: me.avatar, text });
-    renderLog();
     input.value = "";
-  }
-
-  function totalBotCount(){
-    return ROOMS.reduce((sum, r) => sum + ((roomUsers[r] && roomUsers[r].length) || 0), 0);
-  }
-
-  function generateBotNick(){
-    const existing = new Set();
-    ROOMS.forEach(r => (roomUsers[r]||[]).forEach(u => existing.add(u.nick.toLowerCase())));
-    existing.add(me.nick.toLowerCase());
-    let attempt = '';
-    let tries = 0;
-    do {
-      const p = NICK_PREFIXES[Math.floor(Math.random()*NICK_PREFIXES.length)];
-      const w = NICK_WORDS[Math.floor(Math.random()*NICK_WORDS.length)];
-      const s = NICK_SUFFIXES[Math.floor(Math.random()*NICK_SUFFIXES.length)];
-      attempt = `${p}_${w}${s}`;
-      tries++;
-    } while (existing.has(attempt.toLowerCase()) && tries < 30);
-    return attempt;
-  }
-
-  function nextBotName(){
-    const takenLower = new Set();
-    ROOMS.forEach(r => (roomUsers[r]||[]).forEach(u => takenLower.add(u.nick.toLowerCase())));
-    const availableFixed = BOT_NAMES.filter(n => !takenLower.has(n.toLowerCase()) && !bannedNicks.has(n.toLowerCase()));
-    if (availableFixed.length) return availableFixed[Math.floor(Math.random()*availableFixed.length)];
-    return generateBotNick();
-  }
-
-  function addBotManually(room){
-    if (!ROOMS.includes(room)) return;
-    ensureRoomSeeded(room);
-    if (totalBotCount() >= MAX_BOTS) { localSystem(`Límite de ${MAX_BOTS} bots alcanzado.`); return; }
-    const nick = nextBotName();
-    if (bannedNicks.has(nick.toLowerCase())) return;
-    const isMod = moderatorNicks.has(nick.toLowerCase());
-    const avatar = randomBotAvatar();
-    roomUsers[room].push({ nick, color: isMod?MOD_COLOR:GENERAL_COLOR, textColor:null, role: isMod?'moderator':'general', avatar, ip: randomIp() });
-    addLogEntry(room, { sys:true, nick, avatar, text:`This user has entered ${room}.` });
-    if (room === me.room) { renderUsers(); renderLog(); }
-    renderRoomsPanel();
-    localSystem(`${me.nick} agregó un bot (${nick}) a ${room}.`);
-  }
-
-  function removeAllBots(){
-    if (!confirm('¿Quitar TODOS los bots de todas las salas?')) return;
-    ROOMS.forEach(r => {
-      ensureRoomSeeded(r);
-      roomUsers[r].forEach(u => addLogEntry(r, { sys:true, nick:u.nick, avatar:u.avatar, text:`This user has left ${r}.` }));
-      roomUsers[r] = [];
+    const { error } = await sb.from('chat_messages').insert({
+      room: me.room, nick: me.nick, color: me.color, text_color: me.textColor, avatar: me.avatar, role: me.role, kind: 'chat', body: text
     });
-    renderUsers();
-    renderLog();
-    renderRoomsPanel();
-    localSystem(`${me.nick} quitó a todos los bots.`);
-  }
-
-  function scheduleBotReply(room, aboutNick, chainDepth){
-    chainDepth = chainDepth || 0;
-    if (chainDepth >= 3) return;
-    if (Math.random() > 0.55) return;
-    const botUsers = (roomUsers[room] || []).filter(u => !mutedNicks.has(u.nick.toLowerCase()) && u.nick !== aboutNick);
-    if (!botUsers.length) return;
-    const replier = botUsers[Math.floor(Math.random()*botUsers.length)];
-    const template = BOT_REPLY_LINES[Math.floor(Math.random()*BOT_REPLY_LINES.length)];
-    const line = template.replace('{nick}', aboutNick);
-    setTimeout(() => {
-      if (!roomUsers[room] || !roomUsers[room].find(u => u.nick === replier.nick)) return;
-      addLogEntry(room, { nick: replier.nick, color: replier.color, textColor: replier.textColor, avatar: replier.avatar, text: line });
-      if (room === me.room) renderLog();
-      scheduleBotReply(room, replier.nick, chainDepth + 1);
-    }, 1500 + Math.random()*2500);
-  }
-
-  function scheduleBotActivity(){
-    const tick = () => {
-      const room = me.room;
-      const botUsers = (roomUsers[room] || []).filter(u => !mutedNicks.has(u.nick.toLowerCase()));
-      const action = Math.random();
-      if (botUsers.length && action < 0.72){
-        const u = botUsers[Math.floor(Math.random()*botUsers.length)];
-        const line = BOT_LINES[Math.floor(Math.random()*BOT_LINES.length)];
-        addLogEntry(room, { nick:u.nick, color:u.color, textColor:u.textColor, avatar:u.avatar, text:line });
-        renderLog();
-        scheduleBotReply(room, u.nick);
-      } else if (action < 0.85 && (roomUsers[room]||[]).length < 9 && totalBotCount() < MAX_BOTS){
-        const n = nextBotName();
-        const isMod = moderatorNicks.has(n.toLowerCase());
-        const nAvatar = randomBotAvatar();
-        roomUsers[room].push({ nick:n, color: isMod?MOD_COLOR:GENERAL_COLOR, textColor: null, role: isMod?'moderator':'general', avatar: nAvatar, ip: randomIp() });
-        if (room === me.room) { renderUsers(); renderRoomsPanel(); }
-        addLogEntry(room, { sys:true, nick:n, avatar: nAvatar, text:`This user has entered ${room}.` });
-        renderLog();
-      } else if (botUsers.length > 2){
-        const u = botUsers[Math.floor(Math.random()*botUsers.length)];
-        roomUsers[room] = roomUsers[room].filter(x => x.nick !== u.nick);
-        if (room === me.room) { renderUsers(); renderRoomsPanel(); }
-        addLogEntry(room, { sys:true, nick:u.nick, avatar:u.avatar, text:`This user has left ${room}.` });
-        renderLog();
-      }
-      botTimer = setTimeout(tick, 3500 + Math.random()*4500);
-    };
-    botTimer = setTimeout(tick, 2500);
+    if (error) localSystem(`No se pudo enviar el mensaje (${error.message}).`);
   }
 
   /* ---------- PRIVADOS ---------- */
+  function subscribeMyPms(){
+    if (pmChannel) { sb.removeChannel(pmChannel); pmChannel = null; }
+    pmChannel = sb.channel('pm-inbox-' + CLIENT_ID)
+      .on('postgres_changes', { event:'INSERT', schema:'public', table:'chat_pms', filter:`to_nick=eq.${me.nick}` }, (payload) => {
+        const row = payload.new;
+        pmThreads[row.from_nick] = pmThreads[row.from_nick] || [];
+        pmThreads[row.from_nick].push({ from: row.from_nick, text: row.body });
+        if (pmTarget === row.from_nick && !pmReadOnly && document.getElementById('dc-pm-overlay').classList.contains('active')) {
+          renderPM();
+        } else {
+          addLogEntry(me.room, { sys:true, text: `Tienes un nuevo mensaje privado de ${row.from_nick}.` });
+          if (document.getElementById('dc-chatscreen').classList.contains('active')) renderLog();
+        }
+      })
+      .subscribe();
+  }
+
+  async function loadPmHistory(nick){
+    const [{ data: sent }, { data: recv }] = await Promise.all([
+      sb.from('chat_pms').select('*').eq('from_nick', me.nick).eq('to_nick', nick).order('created_at', { ascending:true }).limit(200),
+      sb.from('chat_pms').select('*').eq('from_nick', nick).eq('to_nick', me.nick).order('created_at', { ascending:true }).limit(200),
+    ]);
+    const merged = [...(sent||[]), ...(recv||[])].sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
+    pmThreads[nick] = merged.map(row => ({ from: row.from_nick === me.nick ? 'me' : row.from_nick, text: row.body }));
+  }
+
+  async function loadFullPmHistory(nick){
+    const [{ data: sent }, { data: recv }] = await Promise.all([
+      sb.from('chat_pms').select('*').eq('from_nick', nick).order('created_at', { ascending:true }).limit(300),
+      sb.from('chat_pms').select('*').eq('to_nick', nick).order('created_at', { ascending:true }).limit(300),
+    ]);
+    const merged = [...(sent||[]), ...(recv||[])].sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
+    pmThreads[nick] = merged.map(row => ({ from: row.from_nick, to: row.to_nick, text: row.body }));
+  }
+
   function openPM(nick, readOnly){
     pmTarget = nick;
+    pmReadOnly = !!readOnly;
     pmThreads[nick] = pmThreads[nick] || [];
     document.getElementById('dc-pm-title').textContent = readOnly ? `Privados de ${nick} (solo lectura)` : `Privado con ${nick}`;
-    renderPM();
-    document.getElementById('dc-pm-overlay').classList.add('active');
     const inputRow = document.getElementById('dc-pm-inputrow');
     inputRow.style.display = readOnly ? 'none' : 'flex';
-    if (!readOnly) {
+    document.getElementById('dc-pm-overlay').classList.add('active');
+    renderPM();
+    if (readOnly) {
+      loadFullPmHistory(nick).then(renderPM);
+    } else {
+      loadPmHistory(nick).then(renderPM);
       const input = document.getElementById('dc-pm-input');
       input.value = '';
       document.getElementById('dc-pm-send').onclick = sendPM;
@@ -1364,28 +1331,28 @@
   function renderPM(){
     const log = document.getElementById('dc-pm-log');
     const isBlocked = pmTarget && blockedNicks.has(pmTarget.toLowerCase());
-    const entries = (pmThreads[pmTarget] || []).filter(e => e.from === 'me' || !isBlocked);
+    let entries = pmThreads[pmTarget] || [];
+    if (!pmReadOnly) entries = entries.filter(e => e.from === 'me' || !isBlocked);
     log.innerHTML = entries.length
-      ? entries.map(e => `<div class="msg"><span class="nick" style="color:${e.from==='me'?me.color:'#000'}">${escapeHtml(e.from==='me'?me.nick:pmTarget)}</span><br>${linkifyText(escapeHtml(e.text))}</div>`).join('')
+      ? entries.map(e => {
+          if (pmReadOnly) return `<div class="msg"><span class="nick" style="color:#000">${escapeHtml(e.from)} &rarr; ${escapeHtml(e.to)}</span><br>${linkifyText(escapeHtml(e.text))}</div>`;
+          return `<div class="msg"><span class="nick" style="color:${e.from==='me'?me.color:'#000'}">${escapeHtml(e.from==='me'?me.nick:pmTarget)}</span><br>${linkifyText(escapeHtml(e.text))}</div>`;
+        }).join('')
       : `<div class="msg sys"><span class="msgtext">(Sin mensajes aún, escribe algo)</span></div>`;
     log.scrollTop = log.scrollHeight;
   }
 
-  function sendPM(){
+  async function sendPM(){
     const input = document.getElementById('dc-pm-input');
     const text = input.value.trim();
     if (!text || !pmTarget) return;
-    pmThreads[pmTarget].push({ from:'me', text });
     input.value = '';
-    renderPM();
-    const target = pmTarget;
-    setTimeout(() => {
-      if (bannedNicks.has(target.toLowerCase())) return;
-      if (blockedNicks.has(target.toLowerCase())) return;
-      const reply = PM_REPLIES[Math.floor(Math.random()*PM_REPLIES.length)];
-      pmThreads[target].push({ from: target, text: reply });
-      if (pmTarget === target) renderPM();
-    }, 1000 + Math.random()*2000);
+    const targetNick = pmTarget;
+    const { error } = await sb.from('chat_pms').insert({ from_nick: me.nick, to_nick: targetNick, color: me.color, body: text });
+    if (error) { localSystem(`No se pudo enviar el privado (${error.message}).`); return; }
+    pmThreads[targetNick] = pmThreads[targetNick] || [];
+    pmThreads[targetNick].push({ from:'me', text });
+    if (pmTarget === targetNick) renderPM();
   }
 
   /* ---------- ACCIONES DE MODERACION ---------- */
@@ -1396,122 +1363,66 @@
     const u = findUserObject(nick);
     document.getElementById('dc-kick-user').innerHTML = `${userIconHtml(u)}<span>${escapeHtml(nick)}</span>`;
     document.getElementById('dc-kick-reason').value = '';
-    document.getElementById('dc-kick-banip').checked = false;
-    document.getElementById('dc-kick-banhost').checked = false;
-    document.getElementById('dc-kick-ip-label').textContent = (u && u.ip) ? u.ip : '0.0.0.0';
+    document.getElementById('dc-kick-ban').checked = false;
     document.getElementById('dc-kick-banrow').style.display = me.role === 'admin' ? 'block' : 'none';
     document.getElementById('dc-kick-overlay').classList.add('active');
   }
 
-  function performKick(nick, reason, alsoBan){
+  async function performKick(nick, reason, alsoBan){
     const u = findUserObject(nick);
     if (!u) return;
-    if (u.room && roomUsers[u.room]) roomUsers[u.room] = roomUsers[u.room].filter(x => x.nick !== nick);
     if (selectedNick === nick) selectedNick = null;
-    if (alsoBan) bannedNicks.add(nick.toLowerCase());
-    renderUsers();
-    renderRoomsPanel();
-    const suffix = reason ? `: "${reason}"` : '';
-    localSystem(`${nick} fue expulsado${alsoBan?' y baneado':''} de la sala por ${me.nick}${suffix}.`);
+    await callAdminAction(alsoBan ? 'ban' : 'kick', { nick, reason, room: u.room });
   }
 
-  function banUser(nick){
+  async function banUser(nick){
     const u = findUserObject(nick);
-    bannedNicks.add(nick.toLowerCase());
-    if (u && u.room && roomUsers[u.room]) roomUsers[u.room] = roomUsers[u.room].filter(x => x.nick !== nick);
     if (selectedNick === nick) selectedNick = null;
-    renderUsers();
-    renderRoomsPanel();
-    localSystem(`${nick} fue baneado por ${me.nick}.`);
+    await callAdminAction('ban', { nick, room: u ? u.room : LOCKED_ROOM });
   }
 
-  function toggleMute(nick){
+  async function toggleMute(nick){
     const key = nick.toLowerCase();
-    if (mutedNicks.has(key)) mutedNicks.delete(key); else mutedNicks.add(key);
-    renderUsers();
+    const isMuted = mutedNicks.has(key);
+    const u = findUserObject(nick);
+    await callAdminAction(isMuted ? 'unmute' : 'mute', { nick, room: u ? u.room : me.room });
   }
 
-  function toggleModerator(nick){
+  async function toggleModerator(nick){
     const key = nick.toLowerCase();
     const willBeMod = !moderatorNicks.has(key);
-    if (willBeMod) moderatorNicks.add(key); else moderatorNicks.delete(key);
     const u = findUserObject(nick);
-    if (u && u.role !== 'admin' && u.room && roomUsers[u.room]) {
-      const obj = roomUsers[u.room].find(x => x.nick === nick);
-      if (obj) { obj.role = willBeMod ? 'moderator' : 'general'; obj.color = willBeMod ? MOD_COLOR : GENERAL_COLOR; obj.textColor = null; }
-    }
-    renderUsers();
-    localSystem(`${nick} ${willBeMod?'fue ascendido a moderador':'ya no es moderador'} por ${me.nick}.`);
+    await callAdminAction(willBeMod ? 'promote' : 'demote', { nick, room: u ? u.room : me.room });
   }
 
-  function renameUser(nick){
-    const newNick = prompt(`Nuevo nombre para ${nick}:`, nick);
-    if (!newNick || !newNick.trim() || newNick.trim() === nick) return;
-    const u = findUserObject(nick);
-    if (!u || !u.room || !roomUsers[u.room]) return;
-    const obj = roomUsers[u.room].find(x => x.nick === nick);
-    if (obj) obj.nick = newNick.trim();
-    if (selectedNick === nick) selectedNick = newNick.trim();
-    renderUsers();
-    localSystem(`${nick} ahora se llama ${newNick.trim()} (cambiado por ${me.nick}).`);
-  }
-
-  function changeIcon(nick){
-    const u = findUserObject(nick);
-    if (!u || !u.room || !roomUsers[u.room]) return;
-    const val = prompt(`Nuevo ícono (emoji) para ${nick}. Deja vacío para el ícono clásico:`, u.avatar === 'default' ? '' : u.avatar);
-    if (val === null) return;
-    const obj = roomUsers[u.room].find(x => x.nick === nick);
-    if (obj) obj.avatar = val.trim() ? val.trim() : 'default';
-    renderUsers();
-  }
-
-  function moveUser(nick, targetRoom){
+  async function moveUser(nick, targetRoom){
     if (!targetRoom || !ROOMS.includes(targetRoom)) return;
     if (nick === me.nick) { switchRoom(targetRoom); return; }
     const u = findUserObject(nick);
-    if (!u || !u.room || u.room === targetRoom) return;
-    ensureRoomSeeded(targetRoom);
-    const obj = roomUsers[u.room].find(x => x.nick === nick);
-    if (!obj) return;
-    roomUsers[u.room] = roomUsers[u.room].filter(x => x.nick !== nick);
-    roomUsers[targetRoom].push(obj);
-    addLogEntry(u.room, { sys:true, nick, avatar: obj.avatar, text:`This user has left ${u.room}.` });
-    addLogEntry(targetRoom, { sys:true, nick, avatar: obj.avatar, text:`This user has entered ${targetRoom}.` });
-    if (me.room === u.room || me.room === targetRoom) renderLog();
-    renderUsers();
-    renderRoomsPanel();
-    localSystem(`${nick} fue movido a ${targetRoom} por ${me.nick}.`);
+    if (!u || u.room === targetRoom) return;
+    await callAdminAction('move', { nick, targetRoom, room: u.room });
   }
 
-  function moveAllUsersToRoom(target){
+  async function moveAllUsersToRoom(target){
     if (!ROOMS.includes(target)) return;
-    ensureRoomSeeded(target);
-    ROOMS.forEach(r => {
-      if (r === target) return;
-      ensureRoomSeeded(r);
-      if (roomUsers[r].length) {
-        roomUsers[r].forEach(u => {
-          addLogEntry(r, { sys:true, nick:u.nick, avatar:u.avatar, text:`This user has left ${r}.` });
-          addLogEntry(target, { sys:true, nick:u.nick, avatar:u.avatar, text:`This user has entered ${target}.` });
-          roomUsers[target].push(u);
-        });
-        roomUsers[r] = [];
-      }
-    });
-    if (me.room !== target) {
-      addLogEntry(me.room, { sys:true, nick: me.nick, avatar: me.avatar, text:`This user has left ${me.room}.` });
-      me.room = target;
-      addLogEntry(target, { sys:true, nick: me.nick, avatar: me.avatar, text:`This user has entered ${target}.` });
-      clearTimeout(botTimer);
-      updateTitle();
-      scheduleBotActivity();
+    const others = presenceList.filter(p => p.clientId !== CLIENT_ID && p.room !== target);
+    for (const p of others) {
+      await callAdminAction('move', { nick: p.nick, targetRoom: target, room: p.room });
     }
+    if (me.room !== target) await switchRoom(target);
     renderRoomsPanel();
     localSystem(`${me.nick} movió a todos los usuarios a ${target}.`);
   }
 
-  /* ---------- COLOR PICKER COMPARTIDO (nick / texto) ---------- */
+  /* ---------- BOTS (mensajes puntuales, sin presencia falsa) ---------- */
+  async function insertBotLine(room){
+    const nick = BOT_NAMES[Math.floor(Math.random()*BOT_NAMES.length)];
+    const text = BOT_LINES[Math.floor(Math.random()*BOT_LINES.length)];
+    const avatar = randomBotAvatar();
+    await callAdminAction('botLine', { room, nick, text, avatar });
+  }
+
+  /* ---------- SELECTOR DE AVATAR / COLOR COMPARTIDO ---------- */
   function wireAvatarDropdown(toggleId, dropId){
     const btn = document.getElementById(toggleId);
     const drop = document.getElementById(dropId);
@@ -1551,10 +1462,6 @@
     });
   }
 
-  function randomIp(){
-    return `${180+Math.floor(Math.random()*70)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}`;
-  }
-
   function buildColorGrid(gridId, currentColor, onPick){
     const grid = document.getElementById(gridId);
     grid.innerHTML = '';
@@ -1570,40 +1477,6 @@
       };
       grid.appendChild(sw);
     });
-  }
-
-  function openColorPicker(title, currentColor, onSave){
-    document.getElementById('dc-color-title').textContent = title;
-    buildColorGrid('dc-color-swatches', currentColor, () => {
-      document.getElementById('dc-color-rainbow').checked = false;
-    });
-    document.getElementById('dc-color-rainbow').checked = currentColor === RAINBOW;
-    document.getElementById('dc-color-overlay').classList.add('active');
-    document.getElementById('dc-color-save').onclick = () => {
-      const rainbow = document.getElementById('dc-color-rainbow').checked;
-      let value;
-      if (rainbow) value = RAINBOW;
-      else {
-        const sel = document.querySelector('#dc-color-swatches .dc-swatch.selected');
-        value = sel ? sel.dataset.color : currentColor;
-      }
-      document.getElementById('dc-color-overlay').classList.remove('active');
-      onSave(value);
-    };
-  }
-
-  function colorFieldOfUser(nick, field){
-    const u = findUserObject(nick);
-    if (!u) return ADMIN_COLORS[0];
-    return field === 'textColor' ? (u.textColor || ADMIN_COLORS[0]) : (u.color || ADMIN_COLORS[0]);
-  }
-
-  function setUserColor(nick, field, value){
-    const u = findUserObject(nick);
-    if (!u || !u.room || !roomUsers[u.room]) return;
-    const obj = roomUsers[u.room].find(x => x.nick === nick);
-    if (obj) obj[field] = value;
-    renderUsers();
   }
 
   /* ---------- BROADCAST (fuera del chat) ---------- */
@@ -1640,8 +1513,10 @@
       if (nickInput && nickInput.value.trim() && nickInput.value.trim() !== me.nick) {
         const newNick = nickInput.value.trim();
         if (bannedNicks.has(newNick.toLowerCase())) { alert("Ese apodo está baneado."); return; }
+        if (/[,()]/.test(newNick)) { alert("El apodo no puede contener , ( o )."); return; }
         me.nick = newNick;
         updateTitle();
+        retrackPresence();
         renderUsers();
       }
       document.getElementById('dc-settings-overlay').classList.remove('active');
@@ -1662,6 +1537,7 @@
       if (showAvatarPicker) {
         buildAvatarGrid('dc-set-avatars', me.avatar, (val) => {
           me.avatar = val;
+          retrackPresence();
           renderUsers();
           document.getElementById('dc-set-avatardrop').classList.remove('active');
         }, avatarSetForRole(me.role));
@@ -1688,12 +1564,13 @@
     } else if (settingsTab === "info"){
       body.innerHTML = `
         <h4>Info</h4>
-        <p>Este chat es una recreación con estilo retro inspirada en clientes de chat de applet de comienzos de los 2000.</p>
+        <p>Este chat es una recreación con estilo retro inspirada en clientes de chat de applet de comienzos de los 2000. Ahora es un chat real: cualquiera con el enlace puede entrar y hablar contigo.</p>
         <p>Rol actual: ${me.role==='admin'?'Administrador':me.role==='moderator'?'Moderador':'Usuario'} — Sala actual: ${escapeHtml(me.room)}</p>
       `;
     } else if (settingsTab === "patch"){
       body.innerHTML = `
         <h4>Patch</h4>
+        <p>v3.0 — Chat real y compartido en vivo (Supabase): mensajes, usuarios conectados, salas y privados reales entre visitantes.</p>
         <p>v2.0 — Roles (usuario/moderador/admin), salas múltiples, privados, emoticones y panel de admin funcional.</p>
         <p>v1.4 — Estética clásica fiel al cliente original.</p>
         <p>v1.0 — Versión inicial.</p>
@@ -1718,8 +1595,13 @@
     renderAdminBody();
   }
 
+  function refreshAdminPanelIfOpen(){
+    if (document.getElementById('dc-admin-overlay')?.classList.contains('active')) renderAdminBody();
+  }
+
   function renderAdminBody(){
     const body = document.getElementById('dc-admin-body');
+    if (!body) return;
     if (adminTab === "rooms") return renderAdminRooms(body);
     if (adminTab === "usuarios") return renderAdminUsers(body);
     if (adminTab === "bots") return renderAdminBots(body);
@@ -1743,23 +1625,18 @@
       </div>
     `;
     renderRoomRows();
-    document.getElementById('dc-addroom').onclick = () => {
+    document.getElementById('dc-addroom').onclick = async () => {
       const input = document.getElementById('dc-newroom');
       const v = input.value.trim();
       if (!v || ROOMS.includes(v)) return;
-      ROOMS.push(v);
       input.value = "";
-      renderRoomRows();
-      renderRoomsPanel();
-      renderAdminRooms(body);
+      await callAdminAction('addRoom', { name: v });
     };
     document.getElementById('dc-moveall-btn').onclick = () => {
       const target = document.getElementById('dc-moveall-room').value;
       if (!target) return;
       if (!confirm(`¿Mover a TODOS los usuarios (incluido tú) a "${target}"?`)) return;
       moveAllUsersToRoom(target);
-      renderUsers();
-      renderAdminRooms(body);
     };
   }
 
@@ -1772,57 +1649,20 @@
         <td><button class="dc-btn dc-smallbtn" data-rename-room="${escapeHtml(r)}" ${locked?'disabled':''}>Renombrar</button></td>
         <td><button class="dc-btn dc-smallbtn dc-danger" data-remove-room="${escapeHtml(r)}" ${locked || ROOMS.length<=1?'disabled':''}>Borrar</button></td></tr>`;
     }).join('');
-    el.querySelectorAll('[data-remove-room]').forEach(btn => btn.onclick = () => {
-      deleteRoom(btn.dataset.removeRoom);
-      renderRoomRows();
-      renderRoomsPanel();
-      renderUsers();
+    el.querySelectorAll('[data-remove-room]').forEach(btn => btn.onclick = async () => {
+      if (!confirm(`¿Borrar la sala "${btn.dataset.removeRoom}"?`)) return;
+      await callAdminAction('deleteRoom', { name: btn.dataset.removeRoom });
     });
-    el.querySelectorAll('[data-rename-room]').forEach(btn => btn.onclick = () => {
+    el.querySelectorAll('[data-rename-room]').forEach(btn => btn.onclick = async () => {
       const oldName = btn.dataset.renameRoom;
       const newName = prompt(`Nuevo nombre para "${oldName}":`, oldName);
-      if (newName === null) return;
-      renameRoom(oldName, newName.trim());
-      renderRoomRows();
-      renderRoomsPanel();
+      if (newName === null || !newName.trim()) return;
+      await callAdminAction('renameRoom', { oldName, newName: newName.trim() });
     });
-  }
-
-  function renameRoom(oldName, newName){
-    if (!newName || oldName === LOCKED_ROOM || ROOMS.includes(newName)) return false;
-    const idx = ROOMS.indexOf(oldName);
-    if (idx < 0) return false;
-    ROOMS[idx] = newName;
-    if (roomUsers[oldName]) { roomUsers[newName] = roomUsers[oldName]; delete roomUsers[oldName]; }
-    if (roomLogs[oldName]) { roomLogs[newName] = roomLogs[oldName]; delete roomLogs[oldName]; }
-    if (me.room === oldName) { me.room = newName; updateTitle(); renderLog(); }
-    return true;
-  }
-
-  function deleteRoom(name){
-    if (name === LOCKED_ROOM || ROOMS.length <= 1) return;
-    ensureRoomSeeded(LOCKED_ROOM);
-    if (roomUsers[name]) {
-      roomUsers[name].forEach(u => {
-        u.color = u.role === 'moderator' ? MOD_COLOR : (u.role === 'admin' ? u.color : GENERAL_COLOR);
-        roomUsers[LOCKED_ROOM].push(u);
-      });
-    }
-    delete roomUsers[name];
-    delete roomLogs[name];
-    ROOMS = ROOMS.filter(r => r !== name);
-    if (me.room === name) {
-      me.room = LOCKED_ROOM;
-      addLogEntry(me.room, { sys:true, nick: me.nick, avatar: me.avatar, text:`This user has entered ${me.room}.` });
-      updateTitle();
-      renderLog();
-    }
   }
 
   function renderAdminUsers(body){
-    ROOMS.forEach(r => ensureRoomSeeded(r));
-    const all = [];
-    ROOMS.forEach(r => roomUsers[r].forEach(u => all.push({ ...u, room:r })));
+    const all = [...presenceList].sort((a,b) => a.nick.localeCompare(b.nick));
     body.innerHTML = `<h4>Usuarios conectados</h4><div id="dc-admin-userlist"></div>`;
     const list = document.getElementById('dc-admin-userlist');
     if (!all.length) { list.innerHTML = '<p style="color:#555;">No hay usuarios conectados.</p>'; return; }
@@ -1834,7 +1674,7 @@
           <div class="dc-admincard-head">
             ${userIconHtml(u)}
             <strong style="${u.color==='rainbow'?'':`color:${u.color};`}" class="${u.color==='rainbow'?'dc-rainbow-text':''}">${escapeHtml(u.nick)}</strong>
-            <span class="dc-admincard-tag">${u.role==='moderator'?'Moderador':'Usuario'}</span>
+            <span class="dc-admincard-tag">${u.role==='moderator'?'Moderador':u.role==='admin'?'Admin':'Usuario'}</span>
             <span class="dc-admincard-tag">${escapeHtml(u.room)}</span>
             ${muted?'<span class="dc-admincard-tag" style="color:#b00000;">Muteado</span>':''}
           </div>
@@ -1843,10 +1683,6 @@
             <button class="dc-btn dc-smallbtn" data-act="move" data-nick="${escapeHtml(u.nick)}">Mover</button>
             <button class="dc-btn dc-smallbtn" data-act="mute" data-nick="${escapeHtml(u.nick)}">${muted?'Desmutear':'Mutear'}</button>
             <button class="dc-btn dc-smallbtn" data-act="mod" data-nick="${escapeHtml(u.nick)}">${u.role==='moderator'?'Quitar mod':'Ascender'}</button>
-            <button class="dc-btn dc-smallbtn" data-act="rename" data-nick="${escapeHtml(u.nick)}">Renombrar</button>
-            <button class="dc-btn dc-smallbtn" data-act="icon" data-nick="${escapeHtml(u.nick)}">Ícono</button>
-            <button class="dc-btn dc-smallbtn" data-act="colornick" data-nick="${escapeHtml(u.nick)}">Color nick</button>
-            <button class="dc-btn dc-smallbtn" data-act="colortext" data-nick="${escapeHtml(u.nick)}">Color texto</button>
             <button class="dc-btn dc-smallbtn" data-act="readpm" data-nick="${escapeHtml(u.nick)}">Leer privados</button>
             <button class="dc-btn dc-smallbtn" data-act="kick" data-nick="${escapeHtml(u.nick)}">Kick</button>
             <button class="dc-btn dc-smallbtn dc-danger" data-act="ban" data-nick="${escapeHtml(u.nick)}">Ban</button>
@@ -1863,49 +1699,25 @@
           if (sel && sel.value) moveUser(nick, sel.value);
         } else if (act === 'mute') toggleMute(nick);
         else if (act === 'mod') toggleModerator(nick);
-        else if (act === 'rename') renameUser(nick);
-        else if (act === 'icon') changeIcon(nick);
         else if (act === 'kick') { openKickDialog(nick); return; }
         else if (act === 'ban') banUser(nick);
         else if (act === 'readpm') { openPM(nick, true); return; }
-        else if (act === 'colornick') {
-          openColorPicker(`Color de nick — ${nick}`, colorFieldOfUser(nick,'color'), (val) => {
-            setUserColor(nick, 'color', val);
-            renderAdminUsers(body);
-          });
-          return;
-        } else if (act === 'colortext') {
-          openColorPicker(`Color de texto — ${nick}`, colorFieldOfUser(nick,'textColor'), (val) => {
-            setUserColor(nick, 'textColor', val);
-            renderAdminUsers(body);
-          });
-          return;
-        }
-        renderAdminUsers(body);
       };
     });
   }
 
   function renderAdminBots(body){
-    const count = totalBotCount();
     body.innerHTML = `
       <h4>Bots</h4>
-      <p>Bots activos: <strong>${count} / ${MAX_BOTS}</strong></p>
+      <p>Inserta un mensaje puntual con un nombre inventado en una sala (no crea un usuario falso conectado).</p>
       <div class="dc-inlineform">
         <select id="dc-bot-room" style="flex:1; padding:2px 4px;">${ROOMS.map(r=>`<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`).join('')}</select>
-        <button class="dc-btn" id="dc-addbot-btn" ${count>=MAX_BOTS?'disabled':''}>Agregar bot</button>
+        <button class="dc-btn" id="dc-addbot-btn">Insertar mensaje de bot</button>
       </div>
-      <button class="dc-btn dc-danger" id="dc-removeallbots-btn" style="margin-top:12px;" ${count===0?'disabled':''}>Quitar todos los bots</button>
-      <p style="color:#555; margin-top:10px;">Los bots nuevos entran con un nombre al azar y conversan solos. Para quitar un bot puntual, usa Kick en la pestaña Usuarios.</p>
     `;
     document.getElementById('dc-addbot-btn').onclick = () => {
       const room = document.getElementById('dc-bot-room').value;
-      addBotManually(room);
-      renderAdminBots(body);
-    };
-    document.getElementById('dc-removeallbots-btn').onclick = () => {
-      removeAllBots();
-      renderAdminBots(body);
+      insertBotLine(room);
     };
   }
 
@@ -1917,13 +1729,12 @@
       <div class="dc-inlineform"><input type="text" id="dc-newban" placeholder="Nickname a banear"><button class="dc-btn" id="dc-addban">Add</button></div>
     `;
     renderBanRows();
-    document.getElementById('dc-addban').onclick = () => {
+    document.getElementById('dc-addban').onclick = async () => {
       const input = document.getElementById('dc-newban');
       const v = input.value.trim();
       if (!v) return;
-      banUser(v);
       input.value = "";
-      renderBanRows();
+      await banUser(v);
     };
   }
 
@@ -1933,9 +1744,8 @@
     const arr = [...bannedNicks];
     el.innerHTML = arr.length ? arr.map(n => `<tr><td>${escapeHtml(n)}</td><td><button class="dc-btn dc-smallbtn" data-unban="${escapeHtml(n)}">Remove</button></td></tr>`).join('')
       : `<tr><td colspan="2" style="color:#555;">No hay usuarios baneados.</td></tr>`;
-    el.querySelectorAll('[data-unban]').forEach(btn => btn.onclick = () => {
-      bannedNicks.delete(btn.dataset.unban);
-      renderBanRows();
+    el.querySelectorAll('[data-unban]').forEach(btn => btn.onclick = async () => {
+      await callAdminAction('unban', { nick: btn.dataset.unban });
     });
   }
 
@@ -1945,8 +1755,10 @@
     if (invisible) {
       me._prevAvatar = me.avatar;
       me.avatar = 'none';
+      if (presenceChannel) presenceChannel.untrack();
     } else {
       me.avatar = me._prevAvatar || 'default';
+      if (presenceChannel) presenceChannel.track(presencePayload());
     }
     renderUsers();
     renderRoomsPanel();
@@ -2009,6 +1821,7 @@
     buildAvatarGrid('dc-admin-avatars', me.avatar, (val) => {
       me.avatar = val;
       refreshAdminAvatarPreview();
+      retrackPresence();
       renderUsers();
       document.getElementById('dc-admin-avatardrop').classList.remove('active');
     }, EXTENDED_AVATARS);
@@ -2023,11 +1836,13 @@
     document.getElementById('dc-admin-avatar-default').onclick = () => {
       me.avatar = 'default';
       refreshAdminAvatarPreview();
+      retrackPresence();
       renderUsers();
     };
     document.getElementById('dc-admin-avatar-none').onclick = () => {
       me.avatar = 'none';
       refreshAdminAvatarPreview();
+      retrackPresence();
       renderUsers();
     };
     document.getElementById('dc-admin-avatar-upload').onchange = (e) => {
@@ -2048,6 +1863,7 @@
           ctx.drawImage(img, sx, sy, sw, sh, 0, 0, SIZE, SIZE);
           me.avatar = canvas.toDataURL('image/png');
           refreshAdminAvatarPreview();
+          retrackPresence();
           renderUsers();
         };
         img.src = ev.target.result;
@@ -2079,6 +1895,7 @@
         if (selT) me.textColor = selT.dataset.color;
       }
       updateTitle();
+      retrackPresence();
       renderUsers();
       localSystem("Perfil de administrador actualizado.");
     };
@@ -2087,20 +1904,138 @@
   function renderAdminBroadcast(body){
     body.innerHTML = `
       <h4>Broadcast</h4>
-      <p>Envía un mensaje emergente que se muestra por encima de toda la página y debe cerrarse con OK.</p>
+      <p>Envía un mensaje emergente que se muestra por encima de toda la página a todos los conectados, y debe cerrarse con OK.</p>
       <div class="dc-field"><textarea id="dc-broadcast-text" rows="4"></textarea></div>
       <button class="dc-btn dc-default" id="dc-broadcast-send">Enviar Broadcast</button>
     `;
-    document.getElementById('dc-broadcast-send').onclick = () => {
+    document.getElementById('dc-broadcast-send').onclick = async () => {
       const ta = document.getElementById('dc-broadcast-text');
       const text = ta.value.trim();
       if (!text) return;
-      showBroadcast(text);
       ta.value = '';
+      await callAdminAction('broadcast', { body: text });
     };
   }
 
+  /* ---------- REALTIME GLOBAL: presencia, bans, mutes, mods, salas, broadcasts ---------- */
+  function rebuildPresenceList(){
+    if (!presenceChannel) { presenceList = []; return; }
+    const state = presenceChannel.presenceState();
+    const list = [];
+    Object.values(state).forEach(arr => arr.forEach(p => list.push(p)));
+    presenceList = list;
+  }
+
+  function setupPresence(){
+    presenceChannel = sb.channel('chat-aegis-presence', { config: { presence: { key: CLIENT_ID } } });
+    presenceChannel.on('presence', { event:'sync' }, () => {
+      rebuildPresenceList();
+      renderUsers();
+      renderRoomsPanel();
+      refreshAdminPanelIfOpen();
+    });
+    presenceChannel.on('presence', { event:'join' }, ({ newPresences }) => {
+      newPresences.forEach(p => {
+        if (p.clientId !== CLIENT_ID && p.room === me.room && me.nick) {
+          addLogEntry(p.room, { sys:true, nick:p.nick, avatar:p.avatar, text:`This user has entered ${p.room}.` });
+        }
+      });
+      if (me.nick) renderLog();
+    });
+    presenceChannel.on('presence', { event:'leave' }, ({ leftPresences }) => {
+      leftPresences.forEach(p => {
+        if (p.clientId !== CLIENT_ID && p.room === me.room && me.nick) {
+          addLogEntry(p.room, { sys:true, nick:p.nick, avatar:p.avatar, text:`This user has left ${p.room}.` });
+        }
+      });
+      if (me.nick) renderLog();
+    });
+    presenceChannel.subscribe((status) => {
+      if (status === 'SUBSCRIBED' && me.nick && !me.invisible) {
+        presenceChannel.track(presencePayload());
+      }
+    });
+  }
+
+  function handleBansChange(payload){
+    if (payload.eventType === 'INSERT') {
+      bannedNicks.add(payload.new.nick_lower);
+      if (me.nick && payload.new.nick_lower === me.nick.toLowerCase()) { forceLogout('Fuiste baneado.'); return; }
+    } else if (payload.eventType === 'DELETE') {
+      bannedNicks.delete(payload.old.nick_lower);
+    }
+    renderUsers();
+    refreshAdminPanelIfOpen();
+  }
+
+  function handleMutesChange(payload){
+    if (payload.eventType === 'INSERT') {
+      mutedNicks.add(payload.new.nick_lower);
+      if (me.nick && payload.new.nick_lower === me.nick.toLowerCase()) localSystem('Has sido muteado por un administrador.');
+    } else if (payload.eventType === 'DELETE') {
+      mutedNicks.delete(payload.old.nick_lower);
+      if (me.nick && payload.old.nick_lower === me.nick.toLowerCase()) localSystem('Ya puedes volver a escribir.');
+    }
+    renderUsers();
+    refreshAdminPanelIfOpen();
+  }
+
+  function handleModsChange(payload){
+    if (payload.eventType === 'INSERT') moderatorNicks.add(payload.new.nick_lower);
+    else if (payload.eventType === 'DELETE') moderatorNicks.delete(payload.old.nick_lower);
+    if (me.nick && me.role !== 'admin') {
+      const shouldBeMod = moderatorNicks.has(me.nick.toLowerCase());
+      const newRole = shouldBeMod ? 'moderator' : 'general';
+      if (newRole !== me.role) {
+        me.role = newRole;
+        me.color = newRole === 'moderator' ? MOD_COLOR : GENERAL_COLOR;
+        retrackPresence();
+        localSystem(newRole === 'moderator' ? 'Has sido ascendido a moderador.' : 'Ya no eres moderador.');
+      }
+    }
+    renderUsers();
+    refreshAdminPanelIfOpen();
+  }
+
+  async function refreshRooms(){
+    const { data } = await sb.from('chat_rooms').select('name').order('sort_order', { ascending:true });
+    ROOMS = (data||[]).map(r=>r.name);
+    if (!ROOMS.length) ROOMS = [LOCKED_ROOM];
+    if (me.nick && !ROOMS.includes(me.room)) await switchRoom(LOCKED_ROOM);
+    renderRoomsPanel();
+    refreshAdminPanelIfOpen();
+  }
+
+  function setupGlobalSubscriptions(){
+    globalsChannel = sb.channel('chat-aegis-globals')
+      .on('postgres_changes', { event:'*', schema:'public', table:'chat_bans' }, handleBansChange)
+      .on('postgres_changes', { event:'*', schema:'public', table:'chat_mutes' }, handleMutesChange)
+      .on('postgres_changes', { event:'*', schema:'public', table:'chat_moderators' }, handleModsChange)
+      .on('postgres_changes', { event:'*', schema:'public', table:'chat_rooms' }, () => refreshRooms())
+      .on('postgres_changes', { event:'INSERT', schema:'public', table:'chat_broadcasts' }, (payload) => showBroadcast(payload.new.body))
+      .subscribe();
+  }
+
+  async function loadInitialData(){
+    const [{ data: rooms }, { data: bans }, { data: mutes }, { data: mods }] = await Promise.all([
+      sb.from('chat_rooms').select('name').order('sort_order', { ascending:true }),
+      sb.from('chat_bans').select('nick_lower'),
+      sb.from('chat_mutes').select('nick_lower'),
+      sb.from('chat_moderators').select('nick_lower'),
+    ]);
+    ROOMS = (rooms||[]).map(r=>r.name);
+    if (!ROOMS.length) ROOMS = [LOCKED_ROOM];
+    bannedNicks = new Set((bans||[]).map(b=>b.nick_lower));
+    mutedNicks = new Set((mutes||[]).map(m=>m.nick_lower));
+    moderatorNicks = new Set((mods||[]).map(m=>m.nick_lower));
+    renderRoomsPanel();
+    renderUsers();
+  }
+
   render();
+  setupGlobalSubscriptions();
+  setupPresence();
+  loadInitialData();
 })();
 </script>
 </body>

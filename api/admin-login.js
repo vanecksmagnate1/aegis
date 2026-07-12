@@ -1,3 +1,5 @@
+import { issueAdminToken } from './_lib/adminToken.js';
+
 const attempts = new Map();
 const WINDOW_MS = 5 * 60 * 1000;
 const MAX_ATTEMPTS = 5;
@@ -46,5 +48,6 @@ export default async function handler(req, res) {
     rec.count += 1;
   }
 
-  res.status(ok ? 200 : 401).json({ ok });
+  const token = ok ? issueAdminToken() : undefined;
+  res.status(ok ? 200 : 401).json({ ok, token });
 }
