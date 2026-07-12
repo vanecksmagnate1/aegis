@@ -324,7 +324,7 @@
   .dc-btncol { margin-top: 6px; display: flex; flex-direction: column; gap: 5px; }
   .dc-btncol .dc-row2 { display: flex; gap: 5px; }
   .dc-btncol .dc-row2 .dc-btn { flex: 1; }
-  .dc-btncol .dc-send { width: 100%; padding: 4px 10px; }
+  .dc-btncol .dc-send { padding: 4px 10px; }
 
   .dc-helpbar {
     background: #E8E6DE;
@@ -415,6 +415,7 @@
 (function(){
   const GENERAL_COLOR = "#000000";
   const MOD_COLOR = "#1958D6";
+  const MAX_NICK_LEN = 8;
   const ADMIN_COLORS = [
     "#000000","#434343","#666666","#999999","#B7B7B7","#DDDDDD",
     "#800000","#c0392b","#e74c3c","#ff6b6b","#d35400","#e67e22","#f39c12","#f1c40f",
@@ -536,7 +537,7 @@
 
             <div class="dc-field">
               <label>Tu apodo:</label>
-              <input type="text" id="dc-nick" class="dc-sunken" maxlength="18">
+              <input type="text" id="dc-nick" class="dc-sunken" maxlength="8">
             </div>
 
             <div class="dc-field" style="position:relative;">
@@ -593,7 +594,10 @@
                     <button class="dc-btn" id="dc-settings">Settings</button>
                     <button class="dc-btn" id="dc-logout">Logout</button>
                   </div>
-                  <button class="dc-btn dc-default dc-send" id="dc-send">Send</button>
+                  <div class="dc-row2">
+                    <button class="dc-btn dc-default dc-send" id="dc-send">Send</button>
+                    <button class="dc-btn dc-danger" id="dc-broadcast-quick" style="display:none;" title="Enviar este texto como Broadcast a todos">Broadcast</button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -848,6 +852,7 @@
       const err = document.getElementById('dc-error');
       if (!nick) { err.textContent = "Debes escribir un apodo para entrar."; return; }
       if (nick.length < 2) { err.textContent = "El apodo es muy corto."; return; }
+      if (nick.length > MAX_NICK_LEN) { err.textContent = `El apodo no puede tener más de ${MAX_NICK_LEN} letras.`; return; }
       if (/[,()]/.test(nick)) { err.textContent = "El apodo no puede contener , ( o )."; return; }
       if (nick.toLowerCase() === 'admin') { err.textContent = "Ese nombre está reservado. Usa el botón Login."; return; }
       if (bannedNicks.has(nick.toLowerCase())) { err.textContent = "Este apodo está baneado."; return; }
@@ -1194,6 +1199,16 @@
     document.getElementById('dc-msg').addEventListener('keydown', (e)=>{
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMyMessage(); }
     });
+
+    const broadcastBtn = document.getElementById('dc-broadcast-quick');
+    broadcastBtn.style.display = me.role === 'admin' ? 'inline-block' : 'none';
+    broadcastBtn.onclick = async () => {
+      const input = document.getElementById('dc-msg');
+      const text = input.value.trim();
+      if (!text) return;
+      input.value = '';
+      await callAdminAction('broadcast', { body: text });
+    };
 
     document.querySelectorAll('.dc-tab').forEach(t => t.onclick = () => {
       document.querySelectorAll('.dc-tab').forEach(x=>x.classList.remove('active'));
@@ -1558,6 +1573,7 @@
       const nickInput = document.getElementById('dc-set-nick');
       if (nickInput && nickInput.value.trim() && nickInput.value.trim() !== me.nick) {
         const newNick = nickInput.value.trim();
+        if (newNick.length > MAX_NICK_LEN) { alert(`El apodo no puede tener más de ${MAX_NICK_LEN} letras.`); return; }
         if (bannedNicks.has(newNick.toLowerCase())) { alert("Ese apodo está baneado."); return; }
         if (/[,()]/.test(newNick)) { alert("El apodo no puede contener , ( o )."); return; }
         me.nick = newNick;
@@ -1576,7 +1592,7 @@
       const showAvatarPicker = me.role !== 'admin';
       body.innerHTML = `
         <h4>Profile</h4>
-        <div class="dc-field"><label>Nickname</label><input type="text" id="dc-set-nick" value="${escapeHtml(me.nick)}"></div>
+        <div class="dc-field"><label>Nickname</label><input type="text" id="dc-set-nick" maxlength="${MAX_NICK_LEN}" value="${escapeHtml(me.nick)}"></div>
         ${showAvatarPicker ? `<div class="dc-field" style="position:relative;"><label>Tu ícono</label><button type="button" class="dc-btn dc-smallbtn" id="dc-set-avatar-toggle">Elegir ícono &#9662;</button><div class="dc-avatardrop" id="dc-set-avatardrop"><div class="dc-avatargrid" id="dc-set-avatars"></div></div></div>` : ''}
         <p style="color:#333;">Tu color se asigna según tu rol: negro (usuario), azul (moderador) o el que elijas si eres administrador.</p>
       `;
@@ -1828,7 +1844,7 @@
   function renderAdminProfile(body){
     body.innerHTML = `
       <h4>Mi Perfil (Admin)</h4>
-      <div class="dc-field"><label>Nick que se muestra en el chat</label><input type="text" id="dc-admin-nick" value="${escapeHtml(me.nick)}"></div>
+      <div class="dc-field"><label>Nick que se muestra en el chat</label><input type="text" id="dc-admin-nick" maxlength="${MAX_NICK_LEN}" value="${escapeHtml(me.nick)}"></div>
       <div class="dc-field"><label>Color de tu nick</label>
         <div class="dc-colors" id="dc-admin-colors"></div>
         <label style="display:flex; align-items:center; gap:5px; margin-top:6px; font-weight:normal;"><input type="checkbox" id="dc-admin-rainbow" ${me.color===RAINBOW?'checked':''}> Multicolor (arcoíris)</label>
@@ -1923,6 +1939,7 @@
       const nickInput = document.getElementById('dc-admin-nick');
       const newNick = nickInput.value.trim();
       if (newNick && newNick !== me.nick) {
+        if (newNick.length > MAX_NICK_LEN) { alert(`El apodo no puede tener más de ${MAX_NICK_LEN} letras.`); return; }
         if (bannedNicks.has(newNick.toLowerCase())) { alert("Ese apodo está baneado."); return; }
         me.nick = newNick;
       }
@@ -2102,6 +2119,16 @@
     renderRoomsPanel();
     renderUsers();
   }
+
+  // Si cierran la pestaña/navegador sin darle a Logout, avisamos de todas
+  // formas que nos desconectamos para que no quede un usuario fantasma en
+  // la lista (Supabase igual lo detecta solo tras un rato sin respuesta,
+  // pero esto lo hace prácticamente inmediato en un cierre normal).
+  window.addEventListener('pagehide', () => {
+    if (presenceChannel && me.nick && !me.invisible) {
+      try { presenceChannel.untrack(); } catch (e) { /* noop */ }
+    }
+  });
 
   render();
   setupGlobalSubscriptions();
