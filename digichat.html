@@ -103,7 +103,7 @@
   .dc-titlebar {
     background: linear-gradient(90deg, #0A246A 0%, #2A5AD1 55%, #A6CAF0 100%);
     color: #fff; font-weight: bold; font-size: 11px;
-    padding: 2px 3px 2px 4px; height: 20px;
+    padding: 2px 3px 2px 4px; height: 20px; flex-shrink: 0;
     display: flex; align-items: center; justify-content: space-between;
   }
   .dc-titlebar .dc-logo { display: flex; align-items: center; gap: 4px; overflow: hidden; white-space: nowrap; }
@@ -113,9 +113,9 @@
     border: 1px solid #2A0E40;
   }
   .dc-titlebar .dc-wbtns { display: flex; gap: 2px; }
-  .dc-titlebar .dc-wbtns span, .dc-titlebar .dc-wbtns a {
+  .dc-titlebar .dc-wbtns span, .dc-titlebar .dc-wbtns a, .dc-titlebar .dc-wbtns button {
     display: inline-flex; align-items: center; justify-content: center;
-    width: 19px; height: 17px; border-radius: 3px;
+    width: 19px; height: 17px; border-radius: 3px; margin: 0; padding: 0;
     font-size: 10px; color: #fff; font-weight: bold; font-family: Tahoma, sans-serif;
     text-shadow: 0 -1px 0 rgba(0,0,0,0.3);
     border: 1px solid rgba(0,0,0,0.35);
@@ -241,12 +241,15 @@
   .dc-log .msg:nth-child(even) { background: #F3F3F3; }
   .dc-log .msg .msgtext { min-width: 0; }
   .dc-log .nick { font-weight: bold; color: #000; cursor: default; }
+  .dc-log .msg:not(.sys) .nick { cursor: pointer; }
+  .dc-log .msg:not(.sys) .nick:hover { text-decoration: underline; }
   .dc-log .sys { color: #000; }
 
   .dc-composerow { display: flex; justify-content: flex-end; position: relative; }
   .dc-emopop {
     display: none; position: absolute; bottom: 22px; right: 0; z-index: 5;
-    background: #D4D0C8; padding: 5px; width: 140px; flex-wrap: wrap; gap: 3px;
+    background: #D4D0C8; padding: 5px; width: 190px; max-height: 150px; overflow-y: auto;
+    flex-wrap: wrap; gap: 3px; align-content: flex-start;
     box-shadow: inset -1px -1px 0 #404040, inset 1px 1px 0 #FFF, inset -2px -2px 0 #808080, inset 2px 2px 0 #DFDFDF, 2px 2px 6px rgba(0,0,0,0.4);
   }
   .dc-emopop.active { display: flex; }
@@ -354,7 +357,7 @@
                 2px 2px 8px rgba(0,0,0,0.5);
     display: flex; flex-direction: column;
   }
-  .dc-dialog-tabs { display: flex; background: #D4D0C8; padding: 4px 4px 0; overflow-x: auto; }
+  .dc-dialog-tabs { display: flex; flex-shrink: 0; background: #D4D0C8; padding: 4px 4px 0; overflow-x: auto; }
   .dc-dialog-tab {
     padding: 3px 9px; font-size: 10px; color: #000; cursor: pointer;
     background: #D4D0C8; white-space: nowrap;
@@ -388,7 +391,7 @@
     flex: 1; padding: 2px 4px; background: #fff; border: none; font-family: inherit; font-size: 11px;
     box-shadow: inset 1px 1px 0 #808080, inset -1px -1px 0 #FFF, inset 2px 2px 0 #404040, inset -2px -2px 0 #D4D0C8;
   }
-  .dc-dialog-footer { display: flex; justify-content: flex-end; gap: 6px; padding: 8px 4px 4px; }
+  .dc-dialog-footer { display: flex; flex-shrink: 0; justify-content: flex-end; gap: 6px; padding: 8px 4px 4px; }
   .dc-closex { cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
     width: 16px; height: 14px; background: #D4D0C8; color: #000; font-size: 8px; font-weight: bold;
     box-shadow: inset -1px -1px 0 #404040, inset 1px 1px 0 #FFF, inset -2px -2px 0 #808080, inset 2px 2px 0 #DFDFDF; }
@@ -418,6 +421,12 @@
   ];
   const RAINBOW = "rainbow";
   const EMOTICONS = ["🙂","😂","😍","😢","😡","😉","👍","❤️","🎉","😎","😱","🤔","🙌","😴","🥳","😭",":)",":(","xD","<3"];
+  const EMOTICONS_EXTENDED = [...EMOTICONS,
+    "😁","😆","😅","🤣","😊","😇","🙃","😌","😘","😗","😋","😛","😜","🤪","🤨",
+    "🧐","🤓","😏","😒","😞","😔","😟","😕","🙁","😣","😖","😫","😩","🥺",
+    "😤","😠","🤬","😳","😨","😰","🥵","🥶","🤤","😪","😵","🤯",
+    "🔥","💯","👀","👏","🤝","💪","✌️","🤞","😶","🤐","😑","😐","🙄","😯","😦"
+  ];
   const BASE_AVATARS = ["😀","😎","😺","🐶","🐱","🦊","🐸","🐼","👽","🤖","👾","🎃","⭐","🌙","❤️","⚡","😂","🥳","😴","🔥"];
   const EXTENDED_AVATARS = [...BASE_AVATARS,
     "🐵","🐨","🐧","🐦","🐺","🐹","🐰","🦄","🐝","🦋",
@@ -426,6 +435,11 @@
   ];
   function avatarSetForRole(role){
     return (role === 'admin' || role === 'moderator') ? EXTENDED_AVATARS : BASE_AVATARS;
+  }
+
+  function randomBotAvatar(){
+    if (Math.random() < 0.5) return 'default';
+    return EXTENDED_AVATARS[Math.floor(Math.random()*EXTENDED_AVATARS.length)];
   }
 
   const DEFAULT_ROOMS = ["Sala General","Sala Alternativa","Sala Retro","Sala VIP"];
@@ -488,7 +502,7 @@
     "sisi de acuerdo","no c yo creo q si", ":) ok"
   ];
 
-  let me = { nick: "", color: GENERAL_COLOR, textColor: null, avatar: "default", room: DEFAULT_ROOMS[0], role: "general", ip: "" };
+  let me = { nick: "", color: GENERAL_COLOR, textColor: null, avatar: "default", room: DEFAULT_ROOMS[0], role: "general", ip: "", invisible: false };
   let moderatorNicks = new Set();
   let bannedNicks = new Set();
   let mutedNicks = new Set();
@@ -516,7 +530,7 @@
       <div class="dc-window">
         <div class="dc-titlebar">
           <div class="dc-logo"><span class="dc-tbicon"></span><span id="dc-titletext">CHAT AEGIS</span></div>
-          <div class="dc-wbtns"><a class="dc-wbtn-float" id="dc-wbtn-float" title="Abrir en ventana flotante" target="_blank" rel="noopener noreferrer">&#9974;</a><span class="dc-wbtn-min">_</span><span class="dc-wbtn-max">&#9633;</span><span class="dc-wbtn-close">&#10005;</span></div>
+          <div class="dc-wbtns"><button type="button" class="dc-wbtn-float" id="dc-wbtn-float" title="Abrir en ventana flotante">&#9974;</button><span class="dc-wbtn-min">_</span><span class="dc-wbtn-max">&#9633;</span><span class="dc-wbtn-close">&#10005;</span></div>
         </div>
         <div class="dc-menubar">
           <span class="dc-menuitem" id="dc-menu-digichat">Opciones
@@ -619,6 +633,11 @@
             <div class="dc-dialog-body">
               <div class="dc-field"><label>Nombre</label><input type="text" id="dc-auth-nombre"></div>
               <div class="dc-field"><label>Clave</label><input type="password" id="dc-auth-clave"></div>
+              <div class="dc-field">
+                <label style="display:flex; align-items:center; gap:6px; font-weight:normal;">
+                  <input type="checkbox" id="dc-auth-invisible"> Entrar en modo invisible
+                </label>
+              </div>
               <div class="dc-error" id="dc-auth-error"></div>
             </div>
             <div class="dc-dialog-footer">
@@ -653,7 +672,7 @@
             </div>
             <div class="dc-dialog-body">
               <div class="dc-sunken" id="dc-pm-log" style="overflow-y:auto; padding:6px; margin-bottom:6px;"></div>
-              <div style="display:flex; gap:5px;">
+              <div style="display:flex; gap:5px;" id="dc-pm-inputrow">
                 <input type="text" id="dc-pm-input" class="dc-sunken" style="flex:1; padding:4px 5px;" maxlength="200">
                 <button class="dc-btn dc-default" id="dc-pm-send">Enviar</button>
               </div>
@@ -735,7 +754,16 @@
     let isEmbedded = false;
     try { isEmbedded = window.self !== window.top; } catch (e) { isEmbedded = true; }
     btn.classList.toggle('visible', isEmbedded);
-    btn.setAttribute('href', window.location.href);
+    btn.onclick = () => {
+      const w = 640, h = 600;
+      const left = Math.max(0, Math.round((screen.width - w) / 2));
+      const top = Math.max(0, Math.round((screen.height - h) / 2));
+      const features = `width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=no,status=no`;
+      const win = window.open(window.location.href, 'chat_aegis_float', features);
+      if (!win) {
+        alert('Tu navegador bloqueó la ventana emergente. Habilita las ventanas emergentes para este sitio e intenta de nuevo.');
+      }
+    };
   }
 
   function wireOverlayClosers(){
@@ -761,7 +789,7 @@
     const shuffled = [...pool].sort(() => Math.random() - 0.5).slice(0, 3 + Math.floor(Math.random()*3));
     shuffled.forEach(n => {
       const isMod = moderatorNicks.has(n.toLowerCase());
-      roomUsers[room].push({ nick:n, color: isMod ? MOD_COLOR : GENERAL_COLOR, textColor: null, role: isMod ? 'moderator':'general', avatar:'default', ip: randomIp() });
+      roomUsers[room].push({ nick:n, color: isMod ? MOD_COLOR : GENERAL_COLOR, textColor: null, role: isMod ? 'moderator':'general', avatar: randomBotAvatar(), ip: randomIp() });
     });
   }
 
@@ -789,13 +817,23 @@
     return `<span class="dc-icon-emoji">${u.avatar}</span>`;
   }
 
-  function colorNickHtml(nick, color){
-    if (color === RAINBOW) return `<span class="nick dc-rainbow-text">${escapeHtml(nick)}</span>`;
-    return `<span class="nick" style="color:${color}">${escapeHtml(nick)}</span>`;
+  function colorNickHtml(nick, color, pureNick){
+    const dataNick = pureNick !== undefined ? pureNick : nick;
+    const dataAttr = ` data-nick="${escapeHtml(dataNick)}"`;
+    if (color === RAINBOW) return `<span class="nick dc-rainbow-text"${dataAttr}>${escapeHtml(nick)}</span>`;
+    return `<span class="nick"${dataAttr} style="color:${color}">${escapeHtml(nick)}</span>`;
+  }
+
+  function linkifyText(escapedText){
+    return escapedText.replace(/((https?:\/\/|www\.)[^\s<]+)/gi, (match) => {
+      let href = match;
+      if (!/^https?:\/\//i.test(href)) href = 'https://' + href;
+      return `<a href="${href}" target="_blank" rel="noopener noreferrer" style="color:#1958D6; -webkit-text-fill-color:#1958D6; text-decoration:underline;">${match}</a>`;
+    });
   }
 
   function textSpanHtml(text, textColor){
-    const escaped = escapeHtml(text);
+    const escaped = linkifyText(escapeHtml(text));
     if (!textColor) return escaped;
     if (textColor === RAINBOW) return `<span class="dc-rainbow-text">${escaped}</span>`;
     return `<span style="color:${textColor}">${escaped}</span>`;
@@ -838,6 +876,7 @@
     document.getElementById('dc-loginbtn').onclick = () => {
       document.getElementById('dc-auth-nombre').value = '';
       document.getElementById('dc-auth-clave').value = '';
+      document.getElementById('dc-auth-invisible').checked = false;
       document.getElementById('dc-auth-error').textContent = '';
       document.getElementById('dc-loginauth-overlay').classList.add('active');
     };
@@ -882,11 +921,13 @@
       return;
     }
     if (bannedNicks.has('admin')) { err.textContent = "Esta cuenta está baneada."; btn.disabled = false; return; }
+    const invisible = document.getElementById('dc-auth-invisible').checked;
     me.nick = "Admin";
     me.role = "admin";
     me.color = ADMIN_COLORS[1];
     me.textColor = null;
-    me.avatar = 'default';
+    me.invisible = invisible;
+    me.avatar = invisible ? 'none' : 'default';
     me.room = LOCKED_ROOM;
     me.ip = randomIp();
     document.getElementById('dc-loginauth-overlay').classList.remove('active');
@@ -901,7 +942,9 @@
     document.getElementById('dc-adminrow').style.display = me.role === 'admin' ? 'flex' : 'none';
 
     ensureRoomSeeded(me.room);
-    addLogEntry(me.room, { sys:true, nick: me.nick, avatar: me.avatar, text: `This user has entered ${me.room}.` });
+    if (!me.invisible) {
+      addLogEntry(me.room, { sys:true, nick: me.nick, avatar: me.avatar, text: `This user has entered ${me.room}.` });
+    }
     updateTitle();
     renderLog();
     renderUsers();
@@ -916,9 +959,13 @@
   function switchRoom(target){
     if (target === me.room || !ROOMS.includes(target)) return;
     ensureRoomSeeded(target);
-    addLogEntry(me.room, { sys:true, nick: me.nick, avatar: me.avatar, text: `This user has left ${me.room}.` });
+    if (!me.invisible) {
+      addLogEntry(me.room, { sys:true, nick: me.nick, avatar: me.avatar, text: `This user has left ${me.room}.` });
+    }
     me.room = target;
-    addLogEntry(me.room, { sys:true, nick: me.nick, avatar: me.avatar, text: `This user has entered ${me.room}.` });
+    if (!me.invisible) {
+      addLogEntry(me.room, { sys:true, nick: me.nick, avatar: me.avatar, text: `This user has entered ${me.room}.` });
+    }
     clearTimeout(botTimer);
     updateTitle();
     renderLog();
@@ -938,6 +985,15 @@
       }
       return `<div class="msg">${userIconHtml(e)}<span class="msgtext">${colorNickHtml(e.nick, e.color)}<br>${textSpanHtml(e.text, e.textColor)}</span></div>`;
     }).join('');
+    log.querySelectorAll('.msg:not(.sys) .nick[data-nick]').forEach(span => {
+      span.onclick = (e) => {
+        e.stopPropagation();
+        const input = document.getElementById('dc-msg');
+        const mention = `@${span.dataset.nick} `;
+        input.value = input.value ? (input.value.replace(/\s*$/, ' ') + mention) : mention;
+        input.focus();
+      };
+    });
     log.scrollTop = log.scrollHeight;
   }
 
@@ -947,10 +1003,11 @@
     let list = [];
     if (showAll) {
       ROOMS.forEach(r => { ensureRoomSeeded(r); roomUsers[r].forEach(u => list.push({ ...u, room:r })); });
-      list.push({ ...me, room: me.room, isMe:true });
+      if (!me.invisible) list.push({ ...me, room: me.room, isMe:true });
     } else {
       ensureRoomSeeded(me.room);
-      list = [...roomUsers[me.room].map(u => ({ ...u, room: me.room })), { ...me, room: me.room, isMe:true }];
+      list = [...roomUsers[me.room].map(u => ({ ...u, room: me.room }))];
+      if (!me.invisible) list.push({ ...me, room: me.room, isMe:true });
     }
     list = list.filter(u => u.nick.toLowerCase().includes(q));
     const rolePriority = { admin: 0, moderator: 1, general: 2 };
@@ -982,7 +1039,7 @@
 
   function roomPersonCount(room){
     ensureRoomSeeded(room);
-    return roomUsers[room].length + (me.room === room ? 1 : 0);
+    return roomUsers[room].length + (me.room === room && !me.invisible ? 1 : 0);
   }
 
   function renderRoomsPanel(){
@@ -1070,11 +1127,13 @@
 
     document.getElementById('dc-logout').onclick = () => {
       clearTimeout(botTimer);
-      addLogEntry(me.room, { sys:true, nick: me.nick, avatar: me.avatar, text: `This user has left ${me.room}.` });
+      if (!me.invisible) {
+        addLogEntry(me.room, { sys:true, nick: me.nick, avatar: me.avatar, text: `This user has left ${me.room}.` });
+      }
       document.getElementById('dc-chatscreen').classList.remove('active');
       document.getElementById('dc-login').classList.add('active');
       document.getElementById('dc-adminrow').style.display = 'none';
-      me = { nick: "", color: GENERAL_COLOR, textColor: null, avatar: 'default', room: LOCKED_ROOM, role: "general", ip: "" };
+      me = { nick: "", color: GENERAL_COLOR, textColor: null, avatar: 'default', room: LOCKED_ROOM, role: "general", ip: "", invisible: false };
       selectedNick = null;
       filterQ = "";
       blockedNicks = new Set();
@@ -1086,7 +1145,8 @@
 
     // emoticones
     const pop = document.getElementById('dc-emopop');
-    pop.innerHTML = EMOTICONS.map(e => `<span data-emo="${escapeHtml(e)}">${e}</span>`).join('');
+    const emoticonSet = (me.role === 'admin' || me.role === 'moderator') ? EMOTICONS_EXTENDED : EMOTICONS;
+    pop.innerHTML = emoticonSet.map(e => `<span data-emo="${escapeHtml(e)}">${e}</span>`).join('');
     pop.querySelectorAll('span').forEach(s => s.onclick = () => {
       const input = document.getElementById('dc-msg');
       input.value += s.dataset.emo;
@@ -1215,8 +1275,9 @@
     const nick = nextBotName();
     if (bannedNicks.has(nick.toLowerCase())) return;
     const isMod = moderatorNicks.has(nick.toLowerCase());
-    roomUsers[room].push({ nick, color: isMod?MOD_COLOR:GENERAL_COLOR, textColor:null, role: isMod?'moderator':'general', avatar:'default', ip: randomIp() });
-    addLogEntry(room, { sys:true, nick, avatar:'default', text:`This user has entered ${room}.` });
+    const avatar = randomBotAvatar();
+    roomUsers[room].push({ nick, color: isMod?MOD_COLOR:GENERAL_COLOR, textColor:null, role: isMod?'moderator':'general', avatar, ip: randomIp() });
+    addLogEntry(room, { sys:true, nick, avatar, text:`This user has entered ${room}.` });
     if (room === me.room) { renderUsers(); renderLog(); }
     renderRoomsPanel();
     localSystem(`${me.nick} agregó un bot (${nick}) a ${room}.`);
@@ -1266,9 +1327,10 @@
       } else if (action < 0.85 && (roomUsers[room]||[]).length < 9 && totalBotCount() < MAX_BOTS){
         const n = nextBotName();
         const isMod = moderatorNicks.has(n.toLowerCase());
-        roomUsers[room].push({ nick:n, color: isMod?MOD_COLOR:GENERAL_COLOR, textColor: null, role: isMod?'moderator':'general', avatar:'default', ip: randomIp() });
+        const nAvatar = randomBotAvatar();
+        roomUsers[room].push({ nick:n, color: isMod?MOD_COLOR:GENERAL_COLOR, textColor: null, role: isMod?'moderator':'general', avatar: nAvatar, ip: randomIp() });
         if (room === me.room) { renderUsers(); renderRoomsPanel(); }
-        addLogEntry(room, { sys:true, nick:n, avatar:'default', text:`This user has entered ${room}.` });
+        addLogEntry(room, { sys:true, nick:n, avatar: nAvatar, text:`This user has entered ${room}.` });
         renderLog();
       } else if (botUsers.length > 2){
         const u = botUsers[Math.floor(Math.random()*botUsers.length)];
@@ -1283,16 +1345,20 @@
   }
 
   /* ---------- PRIVADOS ---------- */
-  function openPM(nick){
+  function openPM(nick, readOnly){
     pmTarget = nick;
     pmThreads[nick] = pmThreads[nick] || [];
-    document.getElementById('dc-pm-title').textContent = `Privado con ${nick}`;
+    document.getElementById('dc-pm-title').textContent = readOnly ? `Privados de ${nick} (solo lectura)` : `Privado con ${nick}`;
     renderPM();
     document.getElementById('dc-pm-overlay').classList.add('active');
-    const input = document.getElementById('dc-pm-input');
-    input.value = '';
-    document.getElementById('dc-pm-send').onclick = sendPM;
-    input.onkeydown = (e) => { if (e.key === 'Enter') sendPM(); };
+    const inputRow = document.getElementById('dc-pm-inputrow');
+    inputRow.style.display = readOnly ? 'none' : 'flex';
+    if (!readOnly) {
+      const input = document.getElementById('dc-pm-input');
+      input.value = '';
+      document.getElementById('dc-pm-send').onclick = sendPM;
+      input.onkeydown = (e) => { if (e.key === 'Enter') sendPM(); };
+    }
   }
 
   function renderPM(){
@@ -1300,7 +1366,7 @@
     const isBlocked = pmTarget && blockedNicks.has(pmTarget.toLowerCase());
     const entries = (pmThreads[pmTarget] || []).filter(e => e.from === 'me' || !isBlocked);
     log.innerHTML = entries.length
-      ? entries.map(e => `<div class="msg"><span class="nick" style="color:${e.from==='me'?me.color:'#000'}">${escapeHtml(e.from==='me'?me.nick:pmTarget)}</span><br>${escapeHtml(e.text)}</div>`).join('')
+      ? entries.map(e => `<div class="msg"><span class="nick" style="color:${e.from==='me'?me.color:'#000'}">${escapeHtml(e.from==='me'?me.nick:pmTarget)}</span><br>${linkifyText(escapeHtml(e.text))}</div>`).join('')
       : `<div class="msg sys"><span class="msgtext">(Sin mensajes aún, escribe algo)</span></div>`;
     log.scrollTop = log.scrollHeight;
   }
@@ -1781,6 +1847,7 @@
             <button class="dc-btn dc-smallbtn" data-act="icon" data-nick="${escapeHtml(u.nick)}">Ícono</button>
             <button class="dc-btn dc-smallbtn" data-act="colornick" data-nick="${escapeHtml(u.nick)}">Color nick</button>
             <button class="dc-btn dc-smallbtn" data-act="colortext" data-nick="${escapeHtml(u.nick)}">Color texto</button>
+            <button class="dc-btn dc-smallbtn" data-act="readpm" data-nick="${escapeHtml(u.nick)}">Leer privados</button>
             <button class="dc-btn dc-smallbtn" data-act="kick" data-nick="${escapeHtml(u.nick)}">Kick</button>
             <button class="dc-btn dc-smallbtn dc-danger" data-act="ban" data-nick="${escapeHtml(u.nick)}">Ban</button>
           </div>
@@ -1800,6 +1867,7 @@
         else if (act === 'icon') changeIcon(nick);
         else if (act === 'kick') { openKickDialog(nick); return; }
         else if (act === 'ban') banUser(nick);
+        else if (act === 'readpm') { openPM(nick, true); return; }
         else if (act === 'colornick') {
           openColorPicker(`Color de nick — ${nick}`, colorFieldOfUser(nick,'color'), (val) => {
             setUserColor(nick, 'color', val);
@@ -1871,6 +1939,19 @@
     });
   }
 
+  function setAdminInvisible(invisible){
+    if (invisible === me.invisible) return;
+    me.invisible = invisible;
+    if (invisible) {
+      me._prevAvatar = me.avatar;
+      me.avatar = 'none';
+    } else {
+      me.avatar = me._prevAvatar || 'default';
+    }
+    renderUsers();
+    renderRoomsPanel();
+  }
+
   function refreshAdminAvatarPreview(){
     const el = document.getElementById('dc-admin-avatar-preview');
     if (!el) return;
@@ -1908,6 +1989,13 @@
         </div>
         <input type="file" id="dc-admin-avatar-upload" accept="image/*">
       </div>
+      <div class="dc-field">
+        <label style="display:flex; align-items:center; gap:6px; font-weight:normal;">
+          <input type="checkbox" id="dc-admin-invisible" ${me.invisible?'checked':''}> Modo invisible
+        </label>
+        <p style="color:#555; margin-top:4px;">No apareces en la lista de usuarios ni se avisa tu entrada o salida de las salas.</p>
+        <p id="dc-admin-invisible-status" style="font-weight:bold; color:${me.invisible?'#7a0000':'#1a7a24'};">${me.invisible?'Estás invisible ahora mismo.':'Estás visible ahora mismo.'}</p>
+      </div>
       <button class="dc-btn dc-default" id="dc-admin-profile-save">Guardar</button>
     `;
     buildColorGrid('dc-admin-colors', me.color, () => {
@@ -1925,6 +2013,13 @@
       document.getElementById('dc-admin-avatardrop').classList.remove('active');
     }, EXTENDED_AVATARS);
     wireAvatarDropdown('dc-admin-avatar-toggle', 'dc-admin-avatardrop');
+    document.getElementById('dc-admin-invisible').onchange = (e) => {
+      setAdminInvisible(e.target.checked);
+      refreshAdminAvatarPreview();
+      const status = document.getElementById('dc-admin-invisible-status');
+      status.textContent = me.invisible ? 'Estás invisible ahora mismo.' : 'Estás visible ahora mismo.';
+      status.style.color = me.invisible ? '#7a0000' : '#1a7a24';
+    };
     document.getElementById('dc-admin-avatar-default').onclick = () => {
       me.avatar = 'default';
       refreshAdminAvatarPreview();
