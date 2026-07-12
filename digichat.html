@@ -244,6 +244,9 @@
   .dc-log .msg:not(.sys) .nick { cursor: pointer; }
   .dc-log .msg:not(.sys) .nick:hover { text-decoration: underline; }
   .dc-log .sys { color: #000; }
+  .dc-log .msg.sys.dc-joinleave { font-size: 9px; padding-top: 1px; padding-bottom: 1px; }
+  .dc-log .msg.sys.dc-joinleave .nick { color: #999; font-weight: normal; }
+  .dc-log .msg.sys.dc-joinleave .msgtext { color: #999; }
 
   .dc-composerow { display: flex; justify-content: flex-end; position: relative; }
   .dc-emopop {
@@ -843,6 +846,7 @@
       if (/[,()]/.test(nick)) { err.textContent = "El apodo no puede contener , ( o )."; return; }
       if (nick.toLowerCase() === 'admin') { err.textContent = "Ese nombre está reservado. Usa el botón Login."; return; }
       if (bannedNicks.has(nick.toLowerCase())) { err.textContent = "Este apodo está baneado."; return; }
+      if (presenceList.some(p => p.nick.toLowerCase() === nick.toLowerCase())) { err.textContent = "Ese apodo ya está en uso ahora mismo. Elige otro."; return; }
       me.nick = nick;
       me.role = moderatorNicks.has(nick.toLowerCase()) ? 'moderator' : 'general';
       me.color = me.role === 'moderator' ? MOD_COLOR : GENERAL_COLOR;
@@ -942,6 +946,9 @@
     if (!me.invisible) await presenceChannel.track(presencePayload());
   }
 
+  let lastSeenMessageId = {}; // room -> id del mensaje más reciente ya procesado
+  let seenMessageIds = {}; // room -> Set de ids ya renderizados (evita duplicados en un reconexión)
+
   async function ensureRoomLog(room){
     if (roomLogs[room]) return;
     const entries = await fetchRoomHistory(room);
@@ -949,16 +956,20 @@
   }
 
   async function fetchRoomHistory(room){
-    const { data, error } = await sb.from('chat_messages').select('*').eq('room', room).order('created_at', { ascending:true }).limit(200);
+    const { data, error } = await sb.from('chat_messages').select('*').eq('room', room).order('created_at', { ascending:false }).limit(40);
     if (error || !data) return [];
     const out = [];
-    data.forEach(row => {
+    seenMessageIds[room] = new Set();
+    [...data].reverse().forEach(row => {
+      seenMessageIds[room].add(row.id);
+      if (row.id > (lastSeenMessageId[room]||0)) lastSeenMessageId[room] = row.id;
       if (row.kind === 'system') {
         let parsed = null;
         try { parsed = JSON.parse(row.body); } catch (e) { parsed = null; }
         if (!parsed || parsed.type === 'kick') return;
         if (parsed.type === 'move') out.push({ sys:true, text: `${parsed.nick} fue movido a ${parsed.targetRoom}.` });
         else if (parsed.type === 'notice') out.push({ sys:true, text: parsed.text });
+        else if (parsed.type === 'kickRoom') out.push({ sys:true, text: `El administrador expulsó a todos los usuarios generales de la sala${parsed.reason ? ': "'+parsed.reason+'"' : ''}.` });
       } else {
         out.push({ nick: row.nick, color: row.color, textColor: row.text_color, avatar: row.avatar, text: row.body });
       }
@@ -966,14 +977,30 @@
     return out;
   }
 
+  async function catchUpRoomMessages(room){
+    const since = lastSeenMessageId[room] || 0;
+    const { data } = await sb.from('chat_messages').select('*').eq('room', room).gt('id', since).order('created_at', { ascending:true }).limit(50);
+    (data||[]).forEach(row => handleIncomingMessage(row));
+  }
+
   function subscribeRoomMessages(room){
     if (messagesChannel) { sb.removeChannel(messagesChannel); messagesChannel = null; }
+    let joinedOnce = false;
     messagesChannel = sb.channel('chat-messages-' + room + '-' + CLIENT_ID)
       .on('postgres_changes', { event:'INSERT', schema:'public', table:'chat_messages', filter:`room=eq.${room}` }, (payload) => handleIncomingMessage(payload.new))
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          if (joinedOnce) catchUpRoomMessages(room);
+          joinedOnce = true;
+        }
+      });
   }
 
   function handleIncomingMessage(row){
+    if (!seenMessageIds[row.room]) seenMessageIds[row.room] = new Set();
+    if (seenMessageIds[row.room].has(row.id)) return;
+    seenMessageIds[row.room].add(row.id);
+    if (row.id > (lastSeenMessageId[row.room]||0)) lastSeenMessageId[row.room] = row.id;
     if (row.kind === 'system') {
       let parsed = null;
       try { parsed = JSON.parse(row.body); } catch (e) { parsed = null; }
@@ -986,6 +1013,10 @@
         addLogEntry(row.room, { sys:true, text: `${parsed.nick} fue movido a ${parsed.targetRoom}.` });
       } else if (parsed.type === 'notice') {
         addLogEntry(row.room, { sys:true, text: parsed.text });
+      } else if (parsed.type === 'kickRoom') {
+        const nicksLower = (parsed.nicks || []).map(n => n.toLowerCase());
+        if (me.nick && nicksLower.includes(me.nick.toLowerCase())) { forceLogout(parsed.reason || 'Se expulsó a toda la sala.'); return; }
+        addLogEntry(row.room, { sys:true, text: `El administrador expulsó a todos los usuarios generales de la sala${parsed.reason ? ': "'+parsed.reason+'"' : ''}.` });
       }
     } else {
       addLogEntry(row.room, { nick: row.nick, color: row.color, textColor: row.text_color, avatar: row.avatar, text: row.body });
@@ -1013,6 +1044,8 @@
     floodTimestamps = [];
     floodUntil = 0;
     roomLogs = {};
+    lastSeenMessageId = {};
+    seenMessageIds = {};
     updateTitle();
     document.getElementById('dc-nick').value = '';
   }
@@ -1035,8 +1068,9 @@
     const entries = (roomLogs[me.room] || []).filter(e => !e.nick || !blockedNicks.has(e.nick.toLowerCase()));
     log.innerHTML = entries.map(e => {
       if (e.sys) {
-        if (e.nick) return `<div class="msg sys">${userIconHtml(e)}<span class="msgtext"><span class="nick">${escapeHtml(e.nick)}</span><br>(${escapeHtml(e.text)})</span></div>`;
-        return `<div class="msg sys"><span class="msgtext">(${escapeHtml(e.text)})</span></div>`;
+        const jlClass = e.joinleave ? ' dc-joinleave' : '';
+        if (e.nick) return `<div class="msg sys${jlClass}">${userIconHtml(e)}<span class="msgtext"><span class="nick">${escapeHtml(e.nick)}</span><br>(${escapeHtml(e.text)})</span></div>`;
+        return `<div class="msg sys${jlClass}"><span class="msgtext">(${escapeHtml(e.text)})</span></div>`;
       }
       return `<div class="msg">${userIconHtml(e)}<span class="msgtext">${colorNickHtml(e.nick, e.color)}<br>${textSpanHtml(e.text, e.textColor)}</span></div>`;
     }).join('');
@@ -1414,6 +1448,13 @@
     localSystem(`${me.nick} movió a todos los usuarios a ${target}.`);
   }
 
+  async function kickWholeRoom(room){
+    const targets = presenceList.filter(p => p.room === room && p.role === 'general').map(p => p.nick);
+    if (!targets.length) { localSystem('No hay usuarios expulsables en esa sala (admins y moderadores no cuentan).'); return; }
+    if (!confirm(`¿Expulsar a los ${targets.length} usuario(s) normales de "${room}"? Los admins y moderadores no serán afectados.`)) return;
+    await callAdminAction('kickRoomAll', { room, nicks: targets });
+  }
+
   /* ---------- BOTS (mensajes puntuales, sin presencia falsa) ---------- */
   async function insertBotLine(room){
     const nick = BOT_NAMES[Math.floor(Math.random()*BOT_NAMES.length)];
@@ -1613,7 +1654,7 @@
   function renderAdminRooms(body){
     body.innerHTML = `
       <h4>Rooms</h4>
-      <table class="dc-table"><thead><tr><th>ID</th><th>Nombre</th><th>Personas</th><th colspan="2"></th></tr></thead>
+      <table class="dc-table"><thead><tr><th>ID</th><th>Nombre</th><th>Personas</th><th colspan="3"></th></tr></thead>
       <tbody id="dc-admin-roomrows"></tbody></table>
       <div class="dc-inlineform"><input type="text" id="dc-newroom" placeholder="Nombre de la nueva sala"><button class="dc-btn" id="dc-addroom">Add</button></div>
       <div class="dc-field" style="margin-top:14px;">
@@ -1645,9 +1686,11 @@
     if (!el) return;
     el.innerHTML = ROOMS.map((r,i) => {
       const locked = r === LOCKED_ROOM;
+      const generalCount = presenceList.filter(p => p.room === r && p.role === 'general').length;
       return `<tr><td>${1000+i}</td><td>${escapeHtml(r)}${locked?' (fija)':''}</td><td>${roomPersonCount(r)}</td>
         <td><button class="dc-btn dc-smallbtn" data-rename-room="${escapeHtml(r)}" ${locked?'disabled':''}>Renombrar</button></td>
-        <td><button class="dc-btn dc-smallbtn dc-danger" data-remove-room="${escapeHtml(r)}" ${locked || ROOMS.length<=1?'disabled':''}>Borrar</button></td></tr>`;
+        <td><button class="dc-btn dc-smallbtn dc-danger" data-remove-room="${escapeHtml(r)}" ${locked || ROOMS.length<=1?'disabled':''}>Borrar</button></td>
+        <td><button class="dc-btn dc-smallbtn dc-danger" data-kickroom="${escapeHtml(r)}" ${generalCount===0?'disabled':''}>Kick sala</button></td></tr>`;
     }).join('');
     el.querySelectorAll('[data-remove-room]').forEach(btn => btn.onclick = async () => {
       if (!confirm(`¿Borrar la sala "${btn.dataset.removeRoom}"?`)) return;
@@ -1659,6 +1702,7 @@
       if (newName === null || !newName.trim()) return;
       await callAdminAction('renameRoom', { oldName, newName: newName.trim() });
     });
+    el.querySelectorAll('[data-kickroom]').forEach(btn => btn.onclick = () => kickWholeRoom(btn.dataset.kickroom));
   }
 
   function renderAdminUsers(body){
@@ -1921,9 +1965,21 @@
   function rebuildPresenceList(){
     if (!presenceChannel) { presenceList = []; return; }
     const state = presenceChannel.presenceState();
-    const list = [];
-    Object.values(state).forEach(arr => arr.forEach(p => list.push(p)));
-    presenceList = list;
+    const raw = [];
+    Object.values(state).forEach(arr => arr.forEach(p => raw.push(p)));
+    // Dedupe by nickname (case-insensitive): la lista visible nunca debe mostrar
+    // el mismo nombre dos veces. Object.values(state) respeta el orden de inserción
+    // de las claves, así que la sesión trackeada más recientemente para un nick
+    // queda última y gana por defecto ("last wins"); la excepción es que mi propia
+    // entrada nunca debe ser reemplazada por un fantasma ajeno.
+    const byNick = new Map();
+    raw.forEach(p => {
+      const key = p.nick.toLowerCase();
+      const existing = byNick.get(key);
+      if (existing && existing.clientId === CLIENT_ID && p.clientId !== CLIENT_ID) return;
+      byNick.set(key, p);
+    });
+    presenceList = [...byNick.values()];
   }
 
   function setupPresence(){
@@ -1937,7 +1993,7 @@
     presenceChannel.on('presence', { event:'join' }, ({ newPresences }) => {
       newPresences.forEach(p => {
         if (p.clientId !== CLIENT_ID && p.room === me.room && me.nick) {
-          addLogEntry(p.room, { sys:true, nick:p.nick, avatar:p.avatar, text:`This user has entered ${p.room}.` });
+          addLogEntry(p.room, { sys:true, nick:p.nick, avatar:p.avatar, text:`This user has entered ${p.room}.`, joinleave:true });
         }
       });
       if (me.nick) renderLog();
@@ -1945,7 +2001,7 @@
     presenceChannel.on('presence', { event:'leave' }, ({ leftPresences }) => {
       leftPresences.forEach(p => {
         if (p.clientId !== CLIENT_ID && p.room === me.room && me.nick) {
-          addLogEntry(p.room, { sys:true, nick:p.nick, avatar:p.avatar, text:`This user has left ${p.room}.` });
+          addLogEntry(p.room, { sys:true, nick:p.nick, avatar:p.avatar, text:`This user has left ${p.room}.`, joinleave:true });
         }
       });
       if (me.nick) renderLog();
