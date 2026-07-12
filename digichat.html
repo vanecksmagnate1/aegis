@@ -806,7 +806,12 @@
   }
 
   function presencePayload(){
-    return { clientId: CLIENT_ID, nick: me.nick, color: me.color, textColor: me.textColor, avatar: me.avatar, role: me.role, room: me.room };
+    // updatedAt es la fuente de verdad para decidir cuál es la versión más
+    // reciente de mi propia presencia cuando quedan varias metas momentáneas
+    // bajo la misma sesión (p.ej. al cambiar de nick rápido varias veces
+    // seguidas); no podemos confiar en el orden del array que devuelve
+    // Supabase porque no siempre refleja cuál se trackeó al final.
+    return { clientId: CLIENT_ID, nick: me.nick, color: me.color, textColor: me.textColor, avatar: me.avatar, role: me.role, room: me.room, updatedAt: Date.now() };
   }
 
   function retrackPresence(){
@@ -1968,22 +1973,25 @@
     const raw = [];
     Object.values(state).forEach(arr => arr.forEach(p => raw.push(p)));
     // 1) Colapsa por clientId: al re-trackear (p.ej. al cambiar de nick, color o
-    // avatar) Supabase puede dejar momentáneamente dos metas bajo la misma sesión
-    // (la vieja "saliendo" y la nueva "entrando"). Nos quedamos solo con la última
-    // meta de cada clientId, así nunca aparecemos duplicados como si fuéramos dos
-    // personas ni se queda pegado el nombre/color anterior.
+    // avatar) Supabase puede dejar momentáneamente (o si los cambios son muy
+    // rápidos, hasta un buen rato) varias metas bajo la misma sesión. Nos
+    // quedamos con la de mayor updatedAt, no con "la última del array": el
+    // orden que devuelve Supabase no siempre refleja cuál se trackeó al final.
     const byClient = new Map();
-    raw.forEach(p => byClient.set(p.clientId, p));
+    raw.forEach(p => {
+      const existing = byClient.get(p.clientId);
+      if (!existing || (p.updatedAt||0) >= (existing.updatedAt||0)) byClient.set(p.clientId, p);
+    });
     // 2) Dedupe by nickname (case-insensitive): la lista visible nunca debe mostrar
-    // el mismo nombre dos veces entre personas distintas. Object.values(state)
-    // respeta el orden de inserción, así que la sesión trackeada más recientemente
-    // para un nick gana por defecto ("last wins"); la excepción es que mi propia
-    // entrada nunca debe ser reemplazada por un fantasma ajeno.
+    // el mismo nombre dos veces entre personas distintas. Igual que arriba, gana
+    // la de mayor updatedAt; la excepción es que mi propia entrada nunca debe ser
+    // reemplazada por un fantasma ajeno.
     const byNick = new Map();
     [...byClient.values()].forEach(p => {
       const key = p.nick.toLowerCase();
       const existing = byNick.get(key);
       if (existing && existing.clientId === CLIENT_ID && p.clientId !== CLIENT_ID) return;
+      if (existing && existing.clientId !== CLIENT_ID && p.clientId !== CLIENT_ID && (existing.updatedAt||0) > (p.updatedAt||0)) return;
       byNick.set(key, p);
     });
     presenceList = [...byNick.values()];
