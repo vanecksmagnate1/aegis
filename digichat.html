@@ -600,7 +600,7 @@
   }
   window.addEventListener('resize', rescaleDigichat);
 
-  let me = { nick: "", color: GENERAL_COLOR, textColor: null, avatar: "default", room: LOCKED_ROOM, role: "general", invisible: false };
+  let me = { nick: "", color: GENERAL_COLOR, textColor: null, avatar: "default", room: LOCKED_ROOM, role: "general", invisible: false, nickInvisible: false };
   let adminToken = null;
   let moderatorNicks = new Set();
   let bannedNicks = new Set();
@@ -968,7 +968,7 @@
     // bajo la misma sesión (p.ej. al cambiar de nick rápido varias veces
     // seguidas); no podemos confiar en el orden del array que devuelve
     // Supabase porque no siempre refleja cuál se trackeó al final.
-    return { clientId: CLIENT_ID, nick: me.nick, color: me.color, textColor: me.textColor, avatar: me.avatar, role: me.role, room: me.room, updatedAt: Date.now() };
+    return { clientId: CLIENT_ID, nick: me.nick, color: me.color, textColor: me.textColor, avatar: me.avatar, role: me.role, room: me.room, nickHidden: !!me.nickInvisible, updatedAt: Date.now() };
   }
 
   function retrackPresence(){
@@ -995,8 +995,13 @@
   // el admin entró, salió o actualizó su perfil — a diferencia del aviso de
   // entrada/salida normal (que es efímero y solo lo ven quienes ya están
   // conectados en ese momento), esto queda en el historial de la sala.
-  async function announceAdmin(room, text){
+  async function announceAdmin(room, action){
     if (me.role !== 'admin' || me.invisible || !room) return;
+    const label = me.nickInvisible ? 'Un administrador' : me.nick;
+    const text = action === 'enter' ? `${label} ha entrado a la sala.`
+      : action === 'leave' ? `${label} ha salido de la sala.`
+      : action === 'profile' ? `${label} actualizó su perfil.`
+      : action;
     await callAdminAction('notice', { room, text });
   }
 
@@ -1124,7 +1129,7 @@
     subscribeRoomMessages(me.room);
     subscribeMyPms();
     if (!me.invisible) await presenceChannel.track(presencePayload());
-    await announceAdmin(me.room, `${me.nick} ha entrado a la sala.`);
+    await announceAdmin(me.room, 'enter');
   }
 
   let lastSeenMessageId = {}; // room -> id del mensaje más reciente ya procesado
@@ -1152,7 +1157,7 @@
         else if (parsed.type === 'notice') out.push({ sys:true, text: parsed.text });
         else if (parsed.type === 'kickRoom') out.push({ sys:true, text: `El administrador expulsó a todos los usuarios generales de la sala${parsed.reason ? ': "'+parsed.reason+'"' : ''}.` });
       } else {
-        out.push({ nick: row.nick, color: row.color, textColor: row.text_color, avatar: row.avatar, text: row.body });
+        out.push({ nick: row.nick, color: row.color, textColor: row.text_color, avatar: row.avatar, text: row.body, nickHidden: !!row.nick_hidden });
       }
     });
     return out;
@@ -1200,7 +1205,7 @@
         addLogEntry(row.room, { sys:true, text: `El administrador expulsó a todos los usuarios generales de la sala${parsed.reason ? ': "'+parsed.reason+'"' : ''}.` });
       }
     } else {
-      addLogEntry(row.room, { nick: row.nick, color: row.color, textColor: row.text_color, avatar: row.avatar, text: row.body });
+      addLogEntry(row.room, { nick: row.nick, color: row.color, textColor: row.text_color, avatar: row.avatar, text: row.body, nickHidden: !!row.nick_hidden });
     }
     if (row.room === me.room) renderLog();
   }
@@ -1212,7 +1217,7 @@
 
   async function doLogout(){
     const wasAdminRoom = (me.role === 'admin' && !me.invisible) ? me.room : null;
-    const wasAdminNick = me.nick;
+    const wasAdminLabel = me.nickInvisible ? 'Un administrador' : me.nick;
     if (presenceChannel) await presenceChannel.untrack();
     if (messagesChannel) { sb.removeChannel(messagesChannel); messagesChannel = null; }
     if (pmChannel) { sb.removeChannel(pmChannel); pmChannel = null; }
@@ -1220,8 +1225,8 @@
     document.getElementById('dc-login').classList.add('active');
     document.getElementById('dc-adminrow').style.display = 'none';
     document.querySelectorAll('.dc-overlay.active').forEach(o => o.classList.remove('active'));
-    if (wasAdminRoom) callAdminAction('notice', { room: wasAdminRoom, text: `${wasAdminNick} ha salido de la sala.` });
-    me = { nick: "", color: GENERAL_COLOR, textColor: null, avatar: 'default', room: LOCKED_ROOM, role: "general", invisible: false };
+    if (wasAdminRoom) callAdminAction('notice', { room: wasAdminRoom, text: `${wasAdminLabel} ha salido de la sala.` });
+    me = { nick: "", color: GENERAL_COLOR, textColor: null, avatar: 'default', room: LOCKED_ROOM, role: "general", invisible: false, nickInvisible: false };
     adminToken = null;
     selectedNick = null;
     filterQ = "";
@@ -1246,8 +1251,8 @@
     if (!me.invisible) await presenceChannel.track(presencePayload());
     renderUsers();
     renderRoomsPanel();
-    await announceAdmin(previousRoom, `${me.nick} ha salido de la sala.`);
-    await announceAdmin(target, `${me.nick} ha entrado a la sala.`);
+    await announceAdmin(previousRoom, 'leave');
+    await announceAdmin(target, 'enter');
   }
 
   /* ---------- RENDER LOG / USERS / ROOMS ---------- */
@@ -1260,7 +1265,7 @@
         if (e.nick) return `<div class="msg sys${jlClass}">${userIconHtml(e)}<span class="msgtext"><span class="nick">${escapeHtml(e.nick)}</span><br>(${escapeHtml(e.text)})</span></div>`;
         return `<div class="msg sys${jlClass}"><span class="msgtext">(${escapeHtml(e.text)})</span></div>`;
       }
-      return `<div class="msg">${userIconHtml(e)}<span class="msgtext">${colorNickHtml(e.nick, e.color)}<br>${textSpanHtml(e.text, e.textColor)}</span></div>`;
+      return `<div class="msg">${userIconHtml(e)}<span class="msgtext">${e.nickHidden ? '' : colorNickHtml(e.nick, e.color) + '<br>'}${textSpanHtml(e.text, e.textColor)}</span></div>`;
     }).join('');
     log.querySelectorAll('.msg:not(.sys) .nick[data-nick]').forEach(span => {
       span.onclick = (e) => {
@@ -1286,7 +1291,7 @@
     el.innerHTML = list.map(u => `
       <div class="dc-user ${selectedNick===u.nick?'selected':''}" data-nick="${escapeHtml(u.nick)}">
         ${userIconHtml(u)}
-        ${colorNickHtml(u.nick + (u.isMe?' (tú)':''), u.color)}
+        ${(u.nickHidden && !u.isMe) ? '' : colorNickHtml(u.nick + (u.isMe?' (tú)':''), u.color)}
         ${u.role==='moderator' ? '<span title="Moderador" style="font-size:9px;">&#9733;</span>' : ''}
         ${u.role==='admin' ? '<span title="Admin" style="font-size:9px;">&#9819;</span>' : ''}
         ${mutedNicks.has(u.nick.toLowerCase()) ? '<span title="Muteado" style="font-size:9px;">&#128263;</span>' : ''}
@@ -1499,7 +1504,8 @@
     }
     input.value = "";
     const { error } = await sb.from('chat_messages').insert({
-      room: me.room, nick: me.nick, color: me.color, text_color: me.textColor, avatar: me.avatar, role: me.role, kind: 'chat', body: text
+      room: me.room, nick: me.nick, color: me.color, text_color: me.textColor, avatar: me.avatar, role: me.role, kind: 'chat', body: text,
+      nick_hidden: !!(me.nickInvisible || me.invisible)
     });
     if (error) localSystem(`No se pudo enviar el mensaje (${error.message}).`);
   }
@@ -2125,6 +2131,17 @@
     renderRoomsPanel();
   }
 
+  // "Nick invisible": a diferencia de "modo invisible" (setAdminInvisible),
+  // acá el admin sigue presente (aparece en la lista con su ícono, se sigue
+  // avisando su entrada/salida) pero su nick no se muestra en la lista de
+  // usuarios ni en los mensajes que envía.
+  function setNickInvisible(hidden){
+    if (hidden === me.nickInvisible) return;
+    me.nickInvisible = hidden;
+    if (!me.invisible) retrackPresence();
+    renderUsers();
+  }
+
   function refreshAdminAvatarPreview(){
     const el = document.getElementById('dc-admin-avatar-preview');
     if (!el) return;
@@ -2179,10 +2196,11 @@
     body.innerHTML = `
       <h4>Mi Perfil (Admin)</h4>
       <div class="dc-field"><label>Nick que se muestra en el chat</label><input type="text" id="dc-admin-nick" maxlength="${MAX_NICK_LEN}" value="${escapeHtml(me.nick)}"></div>
-      <label style="display:flex; align-items:center; gap:6px; margin:-6px 0 16px; font-weight:normal; color:#fff; cursor:pointer; width:fit-content;">
-        <input type="checkbox" id="dc-admin-nick-invisible" ${me.invisible?'checked':''}>
+      <label style="display:flex; align-items:center; gap:6px; margin:-6px 0 2px; font-weight:normal; color:#fff; cursor:pointer; width:fit-content;">
+        <input type="checkbox" id="dc-admin-nick-invisible" ${me.nickInvisible?'checked':''}>
         <span style="font-weight:bold; letter-spacing:0.3px; text-transform:uppercase; font-size:12px;">Nick invisible</span>
       </label>
+      <p style="color:#dfe8f7; font-size:12px; margin:0 0 16px;">Sigues visible en la lista de usuarios (con tu ícono) y avisando tu entrada/salida, pero tu nick no se muestra ahí ni en los mensajes que envíes.</p>
 
       <div class="dc-profilerow">
         ${profileColorCardHtml('dc-nickpick', 'Color de tu nick', me.color, '#e9457a')}
@@ -2233,17 +2251,16 @@
       document.getElementById('dc-admin-avatardrop').classList.remove('active');
     }, EXTENDED_AVATARS);
     wireAvatarDropdown('dc-admin-avatar-toggle', 'dc-admin-avatardrop');
-    function applyAdminInvisible(invisible){
-      setAdminInvisible(invisible);
+    document.getElementById('dc-admin-nick-invisible').onchange = (e) => {
+      setNickInvisible(e.target.checked);
+    };
+    document.getElementById('dc-admin-visibility').onchange = (e) => {
+      setAdminInvisible(e.target.value === 'invisible');
       refreshAdminAvatarPreview();
-      document.getElementById('dc-admin-nick-invisible').checked = me.invisible;
-      document.getElementById('dc-admin-visibility').value = me.invisible ? 'invisible' : 'visible';
       const status = document.getElementById('dc-admin-invisible-status');
       status.textContent = me.invisible ? 'Estás invisible ahora mismo.' : 'Estás visible ahora mismo.';
       status.style.color = me.invisible ? '#7a0000' : '#1a7a24';
-    }
-    document.getElementById('dc-admin-nick-invisible').onchange = (e) => applyAdminInvisible(e.target.checked);
-    document.getElementById('dc-admin-visibility').onchange = (e) => applyAdminInvisible(e.target.value === 'invisible');
+    };
     document.getElementById('dc-admin-avatar-default').onclick = () => {
       me.avatar = 'default';
       refreshAdminAvatarPreview();
@@ -2304,7 +2321,7 @@
       retrackPresence();
       renderUsers();
       localSystem("Perfil de administrador actualizado.");
-      await announceAdmin(me.room, `${me.nick} actualizó su perfil.`);
+      await announceAdmin(me.room, 'profile');
     };
   }
 
