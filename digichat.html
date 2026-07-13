@@ -2179,6 +2179,10 @@
     body.innerHTML = `
       <h4>Mi Perfil (Admin)</h4>
       <div class="dc-field"><label>Nick que se muestra en el chat</label><input type="text" id="dc-admin-nick" maxlength="${MAX_NICK_LEN}" value="${escapeHtml(me.nick)}"></div>
+      <label style="display:flex; align-items:center; gap:6px; margin:-6px 0 16px; font-weight:normal; color:#fff; cursor:pointer; width:fit-content;">
+        <input type="checkbox" id="dc-admin-nick-invisible" ${me.invisible?'checked':''}>
+        <span style="font-weight:bold; letter-spacing:0.3px; text-transform:uppercase; font-size:12px;">Nick invisible</span>
+      </label>
 
       <div class="dc-profilerow">
         ${profileColorCardHtml('dc-nickpick', 'Color de tu nick', me.color, '#e9457a')}
@@ -2229,13 +2233,17 @@
       document.getElementById('dc-admin-avatardrop').classList.remove('active');
     }, EXTENDED_AVATARS);
     wireAvatarDropdown('dc-admin-avatar-toggle', 'dc-admin-avatardrop');
-    document.getElementById('dc-admin-visibility').onchange = (e) => {
-      setAdminInvisible(e.target.value === 'invisible');
+    function applyAdminInvisible(invisible){
+      setAdminInvisible(invisible);
       refreshAdminAvatarPreview();
+      document.getElementById('dc-admin-nick-invisible').checked = me.invisible;
+      document.getElementById('dc-admin-visibility').value = me.invisible ? 'invisible' : 'visible';
       const status = document.getElementById('dc-admin-invisible-status');
       status.textContent = me.invisible ? 'Estás invisible ahora mismo.' : 'Estás visible ahora mismo.';
       status.style.color = me.invisible ? '#7a0000' : '#1a7a24';
-    };
+    }
+    document.getElementById('dc-admin-nick-invisible').onchange = (e) => applyAdminInvisible(e.target.checked);
+    document.getElementById('dc-admin-visibility').onchange = (e) => applyAdminInvisible(e.target.value === 'invisible');
     document.getElementById('dc-admin-avatar-default').onclick = () => {
       me.avatar = 'default';
       refreshAdminAvatarPreview();
