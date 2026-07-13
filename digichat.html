@@ -968,11 +968,18 @@
     // bajo la misma sesión (p.ej. al cambiar de nick rápido varias veces
     // seguidas); no podemos confiar en el orden del array que devuelve
     // Supabase porque no siempre refleja cuál se trackeó al final.
-    return { clientId: CLIENT_ID, nick: me.nick, color: me.color, textColor: me.textColor, avatar: me.avatar, role: me.role, room: me.room, nickHidden: !!me.nickInvisible, updatedAt: Date.now() };
+    return { clientId: CLIENT_ID, nick: me.nick, color: me.color, textColor: me.textColor, avatar: me.avatar, role: me.role, room: me.room, nickHidden: !!me.nickInvisible, invisible: !!me.invisible, updatedAt: Date.now() };
   }
 
   function retrackPresence(){
-    if (!me.invisible && presenceChannel) presenceChannel.track(presencePayload());
+    // Siempre trackeamos, incluso invisible: el flag "invisible" del payload
+    // es lo que decide si otros clientes lo muestran o no (admin/moderador
+    // siempre pueden verse entre si; el resto no ve a un admin invisible).
+    if (presenceChannel) presenceChannel.track(presencePayload());
+  }
+
+  function isStaffViewer(){
+    return me.role === 'admin' || me.role === 'moderator';
   }
 
   async function callAdminAction(action, payload){
@@ -1127,7 +1134,7 @@
 
     subscribeRoomMessages(me.room);
     subscribeMyPms();
-    if (!me.invisible) await presenceChannel.track(presencePayload());
+    await presenceChannel.track(presencePayload());
     await announceAdmin(me.room, 'enter');
   }
 
@@ -1247,7 +1254,7 @@
     updateTitle();
     renderLog();
     subscribeRoomMessages(target);
-    if (!me.invisible) await presenceChannel.track(presencePayload());
+    await presenceChannel.track(presencePayload());
     renderUsers();
     renderRoomsPanel();
     await announceAdmin(previousRoom, 'leave');
@@ -1264,7 +1271,8 @@
         if (e.nick) return `<div class="msg sys${jlClass}">${userIconHtml(e)}<span class="msgtext"><span class="nick">${escapeHtml(e.nick)}</span><br>(${escapeHtml(e.text)})</span></div>`;
         return `<div class="msg sys${jlClass}"><span class="msgtext">(${escapeHtml(e.text)})</span></div>`;
       }
-      return `<div class="msg">${userIconHtml(e)}<span class="msgtext">${e.nickHidden ? '' : colorNickHtml(e.nick, e.color) + '<br>'}${textSpanHtml(e.text, e.textColor)}</span></div>`;
+      const showNick = !e.nickHidden || isStaffViewer() || e.nick === me.nick;
+      return `<div class="msg">${userIconHtml(e)}<span class="msgtext">${showNick ? colorNickHtml(e.nick, e.color) + '<br>' : ''}${textSpanHtml(e.text, e.textColor)}</span></div>`;
     }).join('');
     log.querySelectorAll('.msg:not(.sys) .nick[data-nick]').forEach(span => {
       span.onclick = (e) => {
@@ -1283,6 +1291,10 @@
     const showAll = document.getElementById('dc-showall')?.checked;
     let list = (showAll ? presenceList : presenceList.filter(p => p.room === me.room))
       .map(p => ({ ...p, isMe: p.clientId === CLIENT_ID }));
+    // Modo invisible: solo se oculta para usuarios generales. Entre
+    // administradores y moderadores siempre pueden verse entre sí.
+    const staffViewer = isStaffViewer();
+    list = list.filter(u => u.isMe || !u.invisible || staffViewer);
     list = list.filter(u => u.nick.toLowerCase().includes(q));
     const rolePriority = { admin: 0, moderator: 1, general: 2 };
     list.sort((a, b) => (rolePriority[a.role] ?? 2) - (rolePriority[b.role] ?? 2));
@@ -1290,7 +1302,7 @@
     el.innerHTML = list.map(u => `
       <div class="dc-user ${selectedNick===u.nick?'selected':''}" data-nick="${escapeHtml(u.nick)}">
         ${userIconHtml(u)}
-        ${(u.nickHidden && !u.isMe) ? '' : colorNickHtml(u.nick + (u.isMe?' (tú)':''), u.color)}
+        ${(u.nickHidden && !u.isMe && !staffViewer) ? '' : colorNickHtml(u.nick + (u.isMe?' (tú)':''), u.color)}
         ${u.role==='moderator' ? '<span title="Moderador" style="font-size:9px;">&#9733;</span>' : ''}
         ${u.role==='admin' ? '<span title="Admin" style="font-size:9px;">&#9819;</span>' : ''}
         ${mutedNicks.has(u.nick.toLowerCase()) ? '<span title="Muteado" style="font-size:9px;">&#128263;</span>' : ''}
@@ -1315,10 +1327,17 @@
     return presenceList.filter(p => p.room === room).length;
   }
 
+  // Igual que roomPersonCount pero, para usuarios generales, no cuenta a un
+  // admin invisible (así el numero no delata que hay alguien invisible).
+  function visibleRoomPersonCount(room){
+    const staffViewer = isStaffViewer();
+    return presenceList.filter(p => p.room === room && (p.clientId === CLIENT_ID || !p.invisible || staffViewer)).length;
+  }
+
   function renderRoomsPanel(){
     const el = document.getElementById('dc-roomlist');
     if (!el) return;
-    el.innerHTML = ROOMS.map(r => `<div class="dc-user" data-room="${escapeHtml(r)}" style="cursor:pointer;"><span class="dc-doorico"></span> ${escapeHtml(r)} (${roomPersonCount(r)})${r===me.room?' *':''}</div>`).join('');
+    el.innerHTML = ROOMS.map(r => `<div class="dc-user" data-room="${escapeHtml(r)}" style="cursor:pointer;"><span class="dc-doorico"></span> ${escapeHtml(r)} (${visibleRoomPersonCount(r)})${r===me.room?' *':''}</div>`).join('');
     el.querySelectorAll('[data-room]').forEach(row => {
       row.onclick = () => switchRoom(row.dataset.room);
     });
@@ -2121,11 +2140,13 @@
     if (invisible) {
       me._prevAvatar = me.avatar;
       me.avatar = 'none';
-      if (presenceChannel) presenceChannel.untrack();
     } else {
       me.avatar = me._prevAvatar || 'default';
-      if (presenceChannel) presenceChannel.track(presencePayload());
     }
+    // Nunca hacemos untrack(): seguimos presentes en el canal para que
+    // otros admins/moderadores puedan vernos igual. El flag "invisible" en
+    // el payload es lo que decide si un usuario general nos ve o no.
+    retrackPresence();
     renderUsers();
     renderRoomsPanel();
   }
@@ -2137,7 +2158,7 @@
   function setNickInvisible(hidden){
     if (hidden === me.nickInvisible) return;
     me.nickInvisible = hidden;
-    if (!me.invisible) retrackPresence();
+    retrackPresence();
     renderUsers();
   }
 
@@ -2199,7 +2220,7 @@
         <input type="checkbox" id="dc-admin-nick-invisible" ${me.nickInvisible?'checked':''}>
         <span style="font-weight:bold; letter-spacing:0.3px; text-transform:uppercase; font-size:12px;">Nick invisible</span>
       </label>
-      <p style="color:#dfe8f7; font-size:12px; margin:0 0 16px;">Sigues visible en la lista de usuarios (con tu ícono) y avisando tu entrada/salida, pero tu nick no se muestra ahí ni en los mensajes que envíes.</p>
+      <p style="color:#dfe8f7; font-size:12px; margin:0 0 16px;">Sigues visible en la lista de usuarios (con tu ícono) y avisando tu entrada/salida, pero tu nick no se muestra ahí ni en los mensajes que envíes — salvo para otros admins/moderadores, que siempre lo ven.</p>
 
       <div class="dc-profilerow">
         ${profileColorCardHtml('dc-nickpick', 'Color de tu nick', me.color, '#e9457a')}
@@ -2222,7 +2243,7 @@
       <div class="dc-field" style="margin-top:16px;"><label>Visibilidad en el chat</label>
         <select id="dc-admin-visibility">
           <option value="visible" ${!me.invisible?'selected':''}>Visible — apareces en la lista de usuarios</option>
-          <option value="invisible" ${me.invisible?'selected':''}>Invisible — no apareces en la lista ni se avisa tu entrada o salida</option>
+          <option value="invisible" ${me.invisible?'selected':''}>Invisible — no apareces en la lista ni se avisa tu entrada o salida (otros admins/moderadores igual te ven)</option>
         </select>
         <p id="dc-admin-invisible-status" style="font-weight:bold; color:${me.invisible?'#7a0000':'#1a7a24'}; margin-top:6px;">${me.invisible?'Estás invisible ahora mismo.':'Estás visible ahora mismo.'}</p>
       </div>
@@ -2399,7 +2420,7 @@
       if (me.nick) renderLog();
     });
     presenceChannel.subscribe((status) => {
-      if (status === 'SUBSCRIBED' && me.nick && !me.invisible) {
+      if (status === 'SUBSCRIBED' && me.nick) {
         presenceChannel.track(presencePayload());
       }
     });
@@ -2485,7 +2506,7 @@
   // la lista (Supabase igual lo detecta solo tras un rato sin respuesta,
   // pero esto lo hace prácticamente inmediato en un cierre normal).
   window.addEventListener('pagehide', () => {
-    if (presenceChannel && me.nick && !me.invisible) {
+    if (presenceChannel && me.nick) {
       try { presenceChannel.untrack(); } catch (e) { /* noop */ }
     }
   });
