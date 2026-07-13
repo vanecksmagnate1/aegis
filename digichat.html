@@ -351,8 +351,9 @@
   .dc-avatardrop .dc-avatargrid { max-height: 220px; overflow-y: auto; margin-top: 0; }
   .dc-user .dc-usertag { margin-left: auto; font-size: 13px; color: #333; }
 
-  /* fila de botones inferior, anclada como settings-logout/send-btn del mockup */
-  .dc-btncol { position: absolute; top: 344px; left: 0; width: 255px; display: flex; flex-direction: column; gap: 6px; }
+  /* fila de botones inferior, anclada desde abajo (crece hacia arriba si hay
+     una fila extra de "Admin Panel") para no salirse nunca del footer */
+  .dc-btncol { position: absolute; bottom: -96px; left: 0; width: 255px; display: flex; flex-direction: column; gap: 6px; }
   .dc-btncol .dc-row2 { display: flex; gap: 6px; }
   .dc-btncol .dc-row2 .dc-btn { flex: 1; padding: 7px 8px; font-size: 14px; }
   .dc-btncol .dc-send { padding: 7px 8px; }
