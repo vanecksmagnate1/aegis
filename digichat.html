@@ -1000,7 +1000,6 @@
     const label = me.nickInvisible ? 'Un administrador' : me.nick;
     const text = action === 'enter' ? `${label} ha entrado a la sala.`
       : action === 'leave' ? `${label} ha salido de la sala.`
-      : action === 'profile' ? `${label} actualizó su perfil.`
       : action;
     await callAdminAction('notice', { room, text });
   }
@@ -2321,7 +2320,6 @@
       retrackPresence();
       renderUsers();
       localSystem("Perfil de administrador actualizado.");
-      await announceAdmin(me.room, 'profile');
     };
   }
 
