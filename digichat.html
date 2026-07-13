@@ -466,6 +466,7 @@
     border-radius: 2px; font-family: inherit; font-size: 13px;
   }
   .dc-moot-note { display: block; color: #ffd2d2; font-size: 11px; margin-top: 6px; }
+  .dc-info-note { display: block; color: #dfe8f7; font-size: 11px; margin-top: 6px; }
   .dc-profilecard-moot { opacity: 0.55; }
 
   /* ===== selector unico de visibilidad del nick (4 opciones excluyentes) ===== */
@@ -1322,17 +1323,20 @@
     const rolePriority = { admin: 0, moderator: 1, general: 2 };
     list.sort((a, b) => (rolePriority[a.role] ?? 2) - (rolePriority[b.role] ?? 2));
     const el = document.getElementById('dc-userlist');
-    el.innerHTML = list.map(u => `
+    el.innerHTML = list.map(u => {
+      const showNick = !(u.nickHiddenInList && !u.isMe && !staffViewer);
+      return `
       <div class="dc-user ${selectedNick===u.nick?'selected':''}" data-nick="${escapeHtml(u.nick)}">
         ${userIconHtml(u)}
-        ${(u.nickHiddenInList && !u.isMe && !staffViewer) ? '' : colorNickHtml(u.nick + (u.isMe?' (tú)':''), u.color)}
-        ${u.role==='moderator' ? '<span title="Moderador" style="font-size:9px;">&#9733;</span>' : ''}
-        ${u.role==='admin' ? '<span title="Admin" style="font-size:9px;">&#9819;</span>' : ''}
+        ${showNick ? colorNickHtml(u.nick + (u.isMe?' (tú)':''), u.color) : ''}
+        ${showNick && u.role==='moderator' ? '<span title="Moderador" style="font-size:14px;">&#9733;</span>' : ''}
+        ${showNick && u.role==='admin' ? '<span title="Admin" style="font-size:16px;">&#9819;</span>' : ''}
         ${mutedNicks.has(u.nick.toLowerCase()) ? '<span title="Muteado" style="font-size:9px;">&#128263;</span>' : ''}
         ${blockedNicks.has(u.nick.toLowerCase()) ? '<span title="Bloqueado" style="font-size:9px;">&#128683;</span>' : ''}
         ${showAll ? `<span class="dc-usertag">${escapeHtml(u.room)}</span>` : ''}
       </div>
-    `).join('');
+    `;
+    }).join('');
     el.querySelectorAll('.dc-user').forEach(row => {
       row.onclick = () => { selectedNick = row.dataset.nick; renderUsers(); updateToolbarState(); };
       row.ondblclick = () => {
@@ -2167,19 +2171,18 @@
   //   'hideChatNick' - los mensajes que envia van sin nick. En la lista de
   //                    usuarios el nick se sigue mostrando normal.
   //   'full'         - no aparece en la lista de usuarios (ni icono ni
-  //                    nick) ni en el chat, y no se avisa su entrada/salida.
+  //                    nick) ni el nick en el chat, y no se avisa su
+  //                    entrada/salida. El ícono elegido SI se sigue viendo
+  //                    en los mensajes que envia (no en la lista, porque
+  //                    ahi no aparece en absoluto).
   // En cualquier caso, otros admins/moderadores siempre ven todo completo
   // (isStaffViewer()).
   function setAdminVisibilityMode(mode){
     if (mode === me.visibilityMode) return;
-    const wasFull = me.visibilityMode === 'full';
     me.visibilityMode = mode;
-    if (mode === 'full' && !wasFull) {
-      me._prevAvatar = me.avatar;
-      me.avatar = 'none';
-    } else if (wasFull && mode !== 'full') {
-      me.avatar = me._prevAvatar || 'default';
-    }
+    // El avatar elegido se mantiene tal cual en cualquier modo, incluido
+    // "full": no aparece en la lista de usuarios (no aparecemos ahi en
+    // absoluto) pero si en los mensajes del chat.
     // Nunca hacemos untrack(): seguimos presentes en el canal para que
     // otros admins/moderadores puedan vernos igual. Los flags del payload
     // de presencia son los que deciden si un usuario general nos ve o no.
@@ -2272,7 +2275,7 @@
         ${profileColorCardHtml('dc-textpick', 'Color del texto de tus mensajes', me.textColor, '#000000')}
       </div>
 
-      <div class="dc-field${me.visibilityMode==='full' ? ' dc-profilecard-moot' : ''}" style="position:relative; margin-top:16px;"><label>Tu avatar</label>
+      <div class="dc-field" style="position:relative; margin-top:16px;"><label>Tu avatar</label>
         <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
           <span id="dc-admin-avatar-preview" style="display:inline-flex; width:28px; height:28px; align-items:center; justify-content:center; background:#fff; box-shadow:inset 1px 1px 0 #808080, inset -1px -1px 0 #fff;"></span>
           <button class="dc-btn dc-smallbtn" id="dc-admin-avatar-default" type="button">Ícono clásico</button>
@@ -2283,7 +2286,7 @@
           <div class="dc-avatargrid" id="dc-admin-avatars"></div>
         </div>
         <input type="file" id="dc-admin-avatar-upload" accept="image/*">
-        ${me.visibilityMode==='full' ? '<small class="dc-moot-note">No se va a ver: con "Invisible total" tu ícono tampoco aparece en ningún lado.</small>' : ''}
+        ${me.visibilityMode==='full' ? '<small class="dc-info-note">Con "Invisible total" tu ícono se sigue viendo en los mensajes del chat, pero no en la lista de usuarios (ahí no aparecés).</small>' : ''}
       </div>
 
       <button class="dc-btn dc-default" id="dc-admin-profile-save" style="margin-top:16px;">Guardar</button>
