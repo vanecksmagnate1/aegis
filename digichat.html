@@ -622,6 +622,7 @@
   const FLOOD_PENALTY_MS = 2 * 60 * 1000;
 
   let presenceChannel = null;
+  let presenceHeartbeat = null;
   let messagesChannel = null;
   let pmChannel = null;
   let globalsChannel = null;
@@ -1224,6 +1225,7 @@
   async function doLogout(){
     const wasAdminRoom = (me.role === 'admin' && !me.invisible) ? me.room : null;
     const wasAdminLabel = me.nickInvisible ? 'Un administrador' : me.nick;
+    if (presenceHeartbeat) { clearInterval(presenceHeartbeat); presenceHeartbeat = null; }
     if (presenceChannel) await presenceChannel.untrack();
     if (messagesChannel) { sb.removeChannel(messagesChannel); messagesChannel = null; }
     if (pmChannel) { sb.removeChannel(pmChannel); pmChannel = null; }
@@ -2424,6 +2426,20 @@
         presenceChannel.track(presencePayload());
       }
     });
+    // Heartbeat: la presencia en tiempo real a veces pierde algun evento de
+    // sincronizacion por la red (mas comun con pestañas en segundo plano),
+    // dejando a algun usuario con la lista desactualizada. Retrackear cada
+    // cierto tiempo fuerza un 'sync' fresco para todos y se auto-corrige
+    // cualquier vista que haya quedado atascada (p.ej. alguien que ya
+    // activo modo invisible pero un usuario general lo seguia viendo).
+    if (presenceHeartbeat) clearInterval(presenceHeartbeat);
+    presenceHeartbeat = setInterval(() => {
+      if (!presenceChannel || !me.nick) return;
+      presenceChannel.track(presencePayload());
+      rebuildPresenceList();
+      renderUsers();
+      renderRoomsPanel();
+    }, 20000);
   }
 
   function handleBansChange(payload){
