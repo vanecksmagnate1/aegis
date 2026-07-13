@@ -2578,14 +2578,27 @@
     // cualquier vista que haya quedado atascada (p.ej. alguien que ya
     // activo modo invisible pero un usuario general lo seguia viendo).
     if (presenceHeartbeat) clearInterval(presenceHeartbeat);
-    presenceHeartbeat = setInterval(() => {
-      if (!presenceChannel || !me.nick) return;
-      presenceChannel.track(presencePayload());
-      rebuildPresenceList();
-      renderUsers();
-      renderRoomsPanel();
-    }, 20000);
+    presenceHeartbeat = setInterval(forcePresenceResync, 8000);
   }
+
+  // Fuerza un resync inmediato: re-trackea la propia presencia (dispara un
+  // 'sync' fresco para todos) y reconstruye/renderiza con lo que el canal
+  // tenga ahora mismo en local. Se usa en el heartbeat y tambien cuando la
+  // pestaña vuelve a primer plano, porque los navegadores frenan los
+  // websockets/timers de pestañas en segundo plano y eso es la causa mas
+  // comun de que la lista de usuarios quede "pegada" hasta recargar.
+  function forcePresenceResync(){
+    if (!presenceChannel || !me.nick) return;
+    presenceChannel.track(presencePayload());
+    rebuildPresenceList();
+    renderUsers();
+    renderRoomsPanel();
+    refreshAdminPanelIfOpen();
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) forcePresenceResync();
+  });
+  window.addEventListener('focus', forcePresenceResync);
 
   function handleBansChange(payload){
     if (payload.eventType === 'INSERT') {
