@@ -467,6 +467,7 @@
   }
   .dc-moot-note { display: block; color: #ffd2d2; font-size: 11px; margin-top: 6px; }
   .dc-info-note { display: block; color: #dfe8f7; font-size: 11px; margin-top: 6px; }
+  .dc-rank-badge { font-size: 16px; line-height: 1; }
   .dc-profilecard-moot { opacity: 0.55; }
 
   /* ===== selector unico de visibilidad del nick (4 opciones excluyentes) ===== */
@@ -615,7 +616,7 @@
   }
   window.addEventListener('resize', rescaleDigichat);
 
-  let me = { nick: "", color: GENERAL_COLOR, textColor: null, avatar: "default", room: LOCKED_ROOM, role: "general", visibilityMode: "normal" };
+  let me = { nick: "", color: GENERAL_COLOR, textColor: null, avatar: "default", room: LOCKED_ROOM, role: "general", visibilityMode: "normal", rank: "none" };
   let adminToken = null;
   let moderatorNicks = new Set();
   let bannedNicks = new Set();
@@ -984,7 +985,7 @@
     // bajo la misma sesión (p.ej. al cambiar de nick rápido varias veces
     // seguidas); no podemos confiar en el orden del array que devuelve
     // Supabase porque no siempre refleja cuál se trackeó al final.
-    return { clientId: CLIENT_ID, nick: me.nick, color: me.color, textColor: me.textColor, avatar: me.avatar, role: me.role, room: me.room, nickHiddenInList: isNickHiddenInList(), invisible: isFullInvisible(), updatedAt: Date.now() };
+    return { clientId: CLIENT_ID, nick: me.nick, color: me.color, textColor: me.textColor, avatar: me.avatar, role: me.role, room: me.room, rank: me.rank || 'none', nickHiddenInList: isNickHiddenInList(), invisible: isFullInvisible(), updatedAt: Date.now() };
   }
 
   function retrackPresence(){
@@ -996,6 +997,26 @@
 
   function isStaffViewer(){
     return me.role === 'admin' || me.role === 'moderator';
+  }
+
+  // "Rank de Nick": insignia opcional junto al nick en la lista de usuarios
+  // (admin y moderador). Solo se ve cuando el nick esta visible (mismo
+  // criterio que la corona/estrella que reemplaza).
+  const RANKS = [
+    { id: 'none', label: 'Ninguno', icon: '' },
+    { id: 'crown', label: 'Corona', icon: '👑' },
+    { id: 'star', label: 'Estrella', icon: '⭐' },
+    { id: 'diamond', label: 'Diamante', icon: '💎' },
+    { id: 'shield', label: 'Escudo', icon: '🛡️' },
+    { id: 'bolt', label: 'Rayo', icon: '⚡' },
+    { id: 'fire', label: 'Llama', icon: '🔥' },
+    { id: 'sparkle', label: 'Destello', icon: '✨' },
+    { id: 'trophy', label: 'Trofeo', icon: '🏆' },
+  ];
+  const RANK_ICONS = Object.fromEntries(RANKS.map(r => [r.id, r.icon]));
+  function rankIconHtml(rank){
+    const icon = RANK_ICONS[rank];
+    return icon ? `<span class="dc-rank-badge" title="Rank">${icon}</span>` : '';
   }
 
   // Las 4 opciones de visibilidad del admin son mutuamente excluyentes
@@ -1256,7 +1277,7 @@
     document.getElementById('dc-adminrow').style.display = 'none';
     document.querySelectorAll('.dc-overlay.active').forEach(o => o.classList.remove('active'));
     if (wasAdminRoom) callAdminAction('notice', { room: wasAdminRoom, text: `${wasAdminLabel} ha salido de la sala.` });
-    me = { nick: "", color: GENERAL_COLOR, textColor: null, avatar: 'default', room: LOCKED_ROOM, role: "general", visibilityMode: "normal" };
+    me = { nick: "", color: GENERAL_COLOR, textColor: null, avatar: 'default', room: LOCKED_ROOM, role: "general", visibilityMode: "normal", rank: "none" };
     adminToken = null;
     selectedNick = null;
     filterQ = "";
@@ -1329,8 +1350,7 @@
       <div class="dc-user ${selectedNick===u.nick?'selected':''}" data-nick="${escapeHtml(u.nick)}">
         ${userIconHtml(u)}
         ${showNick ? colorNickHtml(u.nick + (u.isMe?' (tú)':''), u.color) : ''}
-        ${showNick && u.role==='moderator' ? '<span title="Moderador" style="font-size:14px;">&#9733;</span>' : ''}
-        ${showNick && u.role==='admin' ? '<span title="Admin" style="font-size:16px;">&#9819;</span>' : ''}
+        ${showNick ? rankIconHtml(u.rank) : ''}
         ${mutedNicks.has(u.nick.toLowerCase()) ? '<span title="Muteado" style="font-size:9px;">&#128263;</span>' : ''}
         ${blockedNicks.has(u.nick.toLowerCase()) ? '<span title="Bloqueado" style="font-size:9px;">&#128683;</span>' : ''}
         ${showAll ? `<span class="dc-usertag">${escapeHtml(u.room)}</span>` : ''}
@@ -1937,10 +1957,25 @@
     const body = document.getElementById('dc-settings-body');
     if (settingsTab === "profile"){
       const showAvatarPicker = me.role !== 'admin';
+      const showRankPicker = me.role === 'moderator';
       body.innerHTML = `
         <h4>Profile</h4>
         <div class="dc-field"><label>Nickname</label><input type="text" id="dc-set-nick" maxlength="${MAX_NICK_LEN}" value="${escapeHtml(me.nick)}"></div>
         ${showAvatarPicker ? `<div class="dc-field" style="position:relative;"><label>Tu ícono</label><button type="button" class="dc-btn dc-smallbtn" id="dc-set-avatar-toggle">Elegir ícono &#9662;</button><div class="dc-avatardrop" id="dc-set-avatardrop"><div class="dc-avatargrid" id="dc-set-avatars"></div></div></div>` : ''}
+        ${showRankPicker ? `
+        <div class="dc-field">
+          <label>Rank de nick</label>
+          <select id="dc-set-rank">
+            ${RANKS.map(r => `<option value="${r.id}" ${((me.rank||'none')===r.id)?'selected':''}>${r.icon ? r.icon+' ' : ''}${escapeHtml(r.label)}</option>`).join('')}
+          </select>
+          <p style="color:#333; font-size:10px; margin-top:4px;">Insignia junto a tu nick en la lista de usuarios (solo cuando el nick está visible).</p>
+        </div>
+        <div class="dc-field">
+          <label>Vista previa</label>
+          <div class="dc-userlist dc-sunken" style="max-width:220px; min-height:auto;">
+            <div class="dc-user" id="dc-set-preview-row"></div>
+          </div>
+        </div>` : ''}
         <p style="color:#333;">Tu color se asigna según tu rol: negro (usuario), azul (moderador) o el que elijas si eres administrador.</p>
       `;
       if (showAvatarPicker) {
@@ -1948,9 +1983,29 @@
           me.avatar = val;
           retrackPresence();
           renderUsers();
+          if (showRankPicker) updateSetProfilePreview();
           document.getElementById('dc-set-avatardrop').classList.remove('active');
         }, avatarSetForRole(me.role));
         wireAvatarDropdown('dc-set-avatar-toggle', 'dc-set-avatardrop');
+      }
+      if (showRankPicker) {
+        function updateSetProfilePreview(){
+          const row = document.getElementById('dc-set-preview-row');
+          if (!row) return;
+          const nickInput = document.getElementById('dc-set-nick');
+          const previewNick = (nickInput && nickInput.value.trim()) || me.nick;
+          const rankSel = document.getElementById('dc-set-rank');
+          const previewUser = { nick: previewNick, color: me.color, avatar: me.avatar, rank: rankSel ? rankSel.value : 'none' };
+          row.innerHTML = `${userIconHtml(previewUser)}${colorNickHtml(previewUser.nick, previewUser.color)}${rankIconHtml(previewUser.rank)}`;
+        }
+        document.getElementById('dc-set-nick').oninput = updateSetProfilePreview;
+        document.getElementById('dc-set-rank').onchange = (e) => {
+          me.rank = e.target.value;
+          retrackPresence();
+          renderUsers();
+          updateSetProfilePreview();
+        };
+        updateSetProfilePreview();
       }
     } else if (settingsTab === "options"){
       body.innerHTML = `
@@ -2289,14 +2344,56 @@
         ${me.visibilityMode==='full' ? '<small class="dc-info-note">Con "Invisible total" tu ícono se sigue viendo en los mensajes del chat, pero no en la lista de usuarios (ahí no aparecés).</small>' : ''}
       </div>
 
+      <div class="dc-field" style="margin-top:16px;">
+        <label>Rank de nick</label>
+        <select id="dc-admin-rank">
+          ${RANKS.map(r => `<option value="${r.id}" ${((me.rank||'none')===r.id)?'selected':''}>${r.icon ? r.icon+' ' : ''}${escapeHtml(r.label)}</option>`).join('')}
+        </select>
+        <small class="dc-info-note">Insignia junto a tu nick en la lista de usuarios (solo cuando el nick está visible). Disponible para admin y moderador.</small>
+      </div>
+
+      <div class="dc-field" style="margin-top:16px;">
+        <label>Vista previa (así se ve en la lista de usuarios)</label>
+        <div class="dc-userlist dc-sunken" style="max-width:260px; min-height:auto;">
+          <div class="dc-user" id="dc-admin-preview-row"></div>
+        </div>
+      </div>
+
       <button class="dc-btn dc-default" id="dc-admin-profile-save" style="margin-top:16px;">Guardar</button>
     `;
     let nickPickedHex = decomposeColorValue(me.color, '#e9457a').hex;
     let textPickedHex = decomposeColorValue(me.textColor, '#000000').hex;
+
+    // Vista previa en vivo: refleja EXACTAMENTE como se va a ver la fila en
+    // la lista de usuarios real (mismas funciones de render), usando los
+    // valores todavia sin guardar (nick/color) y los ya-aplicados en vivo
+    // (avatar/rank).
+    function updateProfilePreview(){
+      const row = document.getElementById('dc-admin-preview-row');
+      if (!row) return;
+      const nickInput = document.getElementById('dc-admin-nick');
+      const previewNick = (nickInput && nickInput.value.trim()) || me.nick || ADMIN_NICK;
+      const nickStyleSel = document.getElementById('dc-nickpick-style');
+      const nickStyle = nickStyleSel ? nickStyleSel.value : 'static';
+      let previewColor;
+      if (nickStyle === 'rainbow') previewColor = RAINBOW;
+      else if (nickStyle === 'gradient') previewColor = `grad:${nickPickedHex},${shiftHueHex(nickPickedHex, 40)}`;
+      else previewColor = nickPickedHex;
+      const rankSel = document.getElementById('dc-admin-rank');
+      const previewRank = rankSel ? rankSel.value : 'none';
+      const previewUser = { nick: previewNick, color: previewColor, avatar: me.avatar, rank: previewRank };
+      row.innerHTML = `
+        ${userIconHtml(previewUser)}
+        ${colorNickHtml(previewUser.nick, previewUser.color)}
+        ${rankIconHtml(previewUser.rank)}
+      `;
+    }
+
     initColorPicker('dc-nickpick', nickPickedHex, (hex) => {
       nickPickedHex = hex;
       document.getElementById('dc-nickpick-swatch').style.background = hex;
       document.getElementById('dc-nickpick-hexlabel').textContent = hex;
+      updateProfilePreview();
     });
     initColorPicker('dc-textpick', textPickedHex, (hex) => {
       textPickedHex = hex;
@@ -2309,6 +2406,7 @@
       refreshAdminAvatarPreview();
       retrackPresence();
       renderUsers();
+      updateProfilePreview();
       document.getElementById('dc-admin-avatardrop').classList.remove('active');
     }, EXTENDED_AVATARS);
     wireAvatarDropdown('dc-admin-avatar-toggle', 'dc-admin-avatardrop');
@@ -2318,17 +2416,27 @@
         renderAdminProfile(body); // re-renderiza para reflejar que color/avatar dejan de importar en "full"
       };
     });
+    document.getElementById('dc-admin-nick').oninput = updateProfilePreview;
+    document.getElementById('dc-nickpick-style').onchange = updateProfilePreview;
+    document.getElementById('dc-admin-rank').onchange = (e) => {
+      me.rank = e.target.value;
+      retrackPresence();
+      renderUsers();
+      updateProfilePreview();
+    };
     document.getElementById('dc-admin-avatar-default').onclick = () => {
       me.avatar = 'default';
       refreshAdminAvatarPreview();
       retrackPresence();
       renderUsers();
+      updateProfilePreview();
     };
     document.getElementById('dc-admin-avatar-none').onclick = () => {
       me.avatar = 'none';
       refreshAdminAvatarPreview();
       retrackPresence();
       renderUsers();
+      updateProfilePreview();
     };
     document.getElementById('dc-admin-avatar-upload').onchange = (e) => {
       const file = e.target.files && e.target.files[0];
@@ -2350,11 +2458,13 @@
           refreshAdminAvatarPreview();
           retrackPresence();
           renderUsers();
+          updateProfilePreview();
         };
         img.src = ev.target.result;
       };
       reader.readAsDataURL(file);
     };
+    updateProfilePreview();
     document.getElementById('dc-admin-profile-save').onclick = async () => {
       const nickInput = document.getElementById('dc-admin-nick');
       const newNick = nickInput.value.trim();
