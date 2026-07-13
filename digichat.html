@@ -461,10 +461,24 @@
   .dc-colorpreview span.hex { color: #eef2fb; font-size: 13px; font-family: monospace; }
   .dc-stylepick { margin-top: 10px; }
   .dc-stylepick label { display: block; color: #eef2fb; font-size: 12px; margin-bottom: 4px; font-weight: normal; }
-  .dc-stylepick select, #dc-admin-visibility {
+  .dc-stylepick select {
     width: 100%; padding: 6px 8px; background: #fff; border: 1px solid #1c2c5c;
     border-radius: 2px; font-family: inherit; font-size: 13px;
   }
+  .dc-moot-note { display: block; color: #ffd2d2; font-size: 11px; margin-top: 6px; }
+  .dc-profilecard-moot { opacity: 0.55; }
+
+  /* ===== selector unico de visibilidad del nick (4 opciones excluyentes) ===== */
+  .dc-vismode { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+  .dc-vismode-opt {
+    display: flex; align-items: flex-start; gap: 8px; cursor: pointer;
+    background: #7f95cf; border: 1px solid #5567aa; border-radius: 4px; padding: 8px 10px;
+  }
+  .dc-vismode-opt:has(input:checked) { background: #8fa8dd; border-color: #eef2fb; }
+  .dc-vismode-opt input[type=radio] { margin-top: 3px; flex-shrink: 0; }
+  .dc-vismode-opt span { display: flex; flex-direction: column; gap: 2px; }
+  .dc-vismode-opt b { color: #fff; font-size: 13px; }
+  .dc-vismode-opt small { color: #dfe8f7; font-size: 11px; line-height: 1.35; }
   .dc-checklist label { display: flex; align-items: center; gap: 6px; margin-bottom: 7px; }
   .dc-table { width: 100%; border-collapse: collapse; font-size: 15px; background: #fff;
     border: 1px solid #2c3f8f; }
@@ -600,7 +614,7 @@
   }
   window.addEventListener('resize', rescaleDigichat);
 
-  let me = { nick: "", color: GENERAL_COLOR, textColor: null, avatar: "default", room: LOCKED_ROOM, role: "general", invisible: false, nickInvisible: false };
+  let me = { nick: "", color: GENERAL_COLOR, textColor: null, avatar: "default", room: LOCKED_ROOM, role: "general", visibilityMode: "normal" };
   let adminToken = null;
   let moderatorNicks = new Set();
   let bannedNicks = new Set();
@@ -969,7 +983,7 @@
     // bajo la misma sesión (p.ej. al cambiar de nick rápido varias veces
     // seguidas); no podemos confiar en el orden del array que devuelve
     // Supabase porque no siempre refleja cuál se trackeó al final.
-    return { clientId: CLIENT_ID, nick: me.nick, color: me.color, textColor: me.textColor, avatar: me.avatar, role: me.role, room: me.room, nickHidden: !!me.nickInvisible, invisible: !!me.invisible, updatedAt: Date.now() };
+    return { clientId: CLIENT_ID, nick: me.nick, color: me.color, textColor: me.textColor, avatar: me.avatar, role: me.role, room: me.room, nickHiddenInList: isNickHiddenInList(), invisible: isFullInvisible(), updatedAt: Date.now() };
   }
 
   function retrackPresence(){
@@ -982,6 +996,13 @@
   function isStaffViewer(){
     return me.role === 'admin' || me.role === 'moderator';
   }
+
+  // Las 4 opciones de visibilidad del admin son mutuamente excluyentes
+  // (un solo radio-select), asi que nunca puede haber ambiguedad sobre
+  // cual esta activa: siempre es exactamente me.visibilityMode.
+  function isFullInvisible(){ return me.visibilityMode === 'full'; }
+  function isNickHiddenInList(){ return me.visibilityMode === 'hideListNick' || me.visibilityMode === 'full'; }
+  function isNickHiddenInChat(){ return me.visibilityMode === 'hideChatNick' || me.visibilityMode === 'full'; }
 
   async function callAdminAction(action, payload){
     try {
@@ -1004,8 +1025,8 @@
   // entrada/salida normal (que es efímero y solo lo ven quienes ya están
   // conectados en ese momento), esto queda en el historial de la sala.
   async function announceAdmin(room, action){
-    if (me.role !== 'admin' || me.invisible || !room) return;
-    const label = me.nickInvisible ? 'Un administrador' : me.nick;
+    if (me.role !== 'admin' || isFullInvisible() || !room) return;
+    const label = isNickHiddenInChat() ? 'Un administrador' : me.nick;
     const text = action === 'enter' ? `${label} ha entrado a la sala.`
       : action === 'leave' ? `${label} ha salido de la sala.`
       : action;
@@ -1037,7 +1058,7 @@
       me.textColor = null;
       me.avatar = loginAvatar;
       me.room = LOCKED_ROOM;
-      me.invisible = false;
+      me.visibilityMode = 'normal';
       err.textContent = "";
       enterRoom();
     };
@@ -1101,7 +1122,7 @@
     me.role = "admin";
     me.color = RAINBOW;
     me.textColor = null;
-    me.invisible = invisible;
+    me.visibilityMode = invisible ? 'full' : 'normal';
     me.avatar = 'none';
     me.room = LOCKED_ROOM;
     document.getElementById('dc-loginauth-overlay').classList.remove('active');
@@ -1164,7 +1185,7 @@
         else if (parsed.type === 'notice') out.push({ sys:true, text: parsed.text });
         else if (parsed.type === 'kickRoom') out.push({ sys:true, text: `El administrador expulsó a todos los usuarios generales de la sala${parsed.reason ? ': "'+parsed.reason+'"' : ''}.` });
       } else {
-        out.push({ nick: row.nick, color: row.color, textColor: row.text_color, avatar: row.avatar, text: row.body, nickHidden: !!row.nick_hidden });
+        out.push({ nick: row.nick, color: row.color, textColor: row.text_color, avatar: row.avatar, text: row.body, nickHiddenInChat: !!row.nick_hidden });
       }
     });
     return out;
@@ -1212,7 +1233,7 @@
         addLogEntry(row.room, { sys:true, text: `El administrador expulsó a todos los usuarios generales de la sala${parsed.reason ? ': "'+parsed.reason+'"' : ''}.` });
       }
     } else {
-      addLogEntry(row.room, { nick: row.nick, color: row.color, textColor: row.text_color, avatar: row.avatar, text: row.body, nickHidden: !!row.nick_hidden });
+      addLogEntry(row.room, { nick: row.nick, color: row.color, textColor: row.text_color, avatar: row.avatar, text: row.body, nickHiddenInChat: !!row.nick_hidden });
     }
     if (row.room === me.room) renderLog();
   }
@@ -1223,8 +1244,8 @@
   }
 
   async function doLogout(){
-    const wasAdminRoom = (me.role === 'admin' && !me.invisible) ? me.room : null;
-    const wasAdminLabel = me.nickInvisible ? 'Un administrador' : me.nick;
+    const wasAdminRoom = (me.role === 'admin' && !isFullInvisible()) ? me.room : null;
+    const wasAdminLabel = isNickHiddenInChat() ? 'Un administrador' : me.nick;
     if (presenceHeartbeat) { clearInterval(presenceHeartbeat); presenceHeartbeat = null; }
     if (presenceChannel) await presenceChannel.untrack();
     if (messagesChannel) { sb.removeChannel(messagesChannel); messagesChannel = null; }
@@ -1234,7 +1255,7 @@
     document.getElementById('dc-adminrow').style.display = 'none';
     document.querySelectorAll('.dc-overlay.active').forEach(o => o.classList.remove('active'));
     if (wasAdminRoom) callAdminAction('notice', { room: wasAdminRoom, text: `${wasAdminLabel} ha salido de la sala.` });
-    me = { nick: "", color: GENERAL_COLOR, textColor: null, avatar: 'default', room: LOCKED_ROOM, role: "general", invisible: false, nickInvisible: false };
+    me = { nick: "", color: GENERAL_COLOR, textColor: null, avatar: 'default', room: LOCKED_ROOM, role: "general", visibilityMode: "normal" };
     adminToken = null;
     selectedNick = null;
     filterQ = "";
@@ -1273,7 +1294,7 @@
         if (e.nick) return `<div class="msg sys${jlClass}">${userIconHtml(e)}<span class="msgtext"><span class="nick">${escapeHtml(e.nick)}</span><br>(${escapeHtml(e.text)})</span></div>`;
         return `<div class="msg sys${jlClass}"><span class="msgtext">(${escapeHtml(e.text)})</span></div>`;
       }
-      const showNick = !e.nickHidden || isStaffViewer() || e.nick === me.nick;
+      const showNick = !e.nickHiddenInChat || isStaffViewer() || e.nick === me.nick;
       return `<div class="msg">${userIconHtml(e)}<span class="msgtext">${showNick ? colorNickHtml(e.nick, e.color) + '<br>' : ''}${textSpanHtml(e.text, e.textColor)}</span></div>`;
     }).join('');
     log.querySelectorAll('.msg:not(.sys) .nick[data-nick]').forEach(span => {
@@ -1304,7 +1325,7 @@
     el.innerHTML = list.map(u => `
       <div class="dc-user ${selectedNick===u.nick?'selected':''}" data-nick="${escapeHtml(u.nick)}">
         ${userIconHtml(u)}
-        ${(u.nickHidden && !u.isMe && !staffViewer) ? '' : colorNickHtml(u.nick + (u.isMe?' (tú)':''), u.color)}
+        ${(u.nickHiddenInList && !u.isMe && !staffViewer) ? '' : colorNickHtml(u.nick + (u.isMe?' (tú)':''), u.color)}
         ${u.role==='moderator' ? '<span title="Moderador" style="font-size:9px;">&#9733;</span>' : ''}
         ${u.role==='admin' ? '<span title="Admin" style="font-size:9px;">&#9819;</span>' : ''}
         ${mutedNicks.has(u.nick.toLowerCase()) ? '<span title="Muteado" style="font-size:9px;">&#128263;</span>' : ''}
@@ -1525,7 +1546,7 @@
     input.value = "";
     const { error } = await sb.from('chat_messages').insert({
       room: me.room, nick: me.nick, color: me.color, text_color: me.textColor, avatar: me.avatar, role: me.role, kind: 'chat', body: text,
-      nick_hidden: !!(me.nickInvisible || me.invisible)
+      nick_hidden: isNickHiddenInChat()
     });
     if (error) localSystem(`No se pudo enviar el mensaje (${error.message}).`);
   }
@@ -2136,32 +2157,35 @@
     });
   }
 
-  function setAdminInvisible(invisible){
-    if (invisible === me.invisible) return;
-    me.invisible = invisible;
-    if (invisible) {
+  // Las 4 opciones de visibilidad son mutuamente excluyentes (un solo
+  // radio-select en Mi Perfil), asi que elegir una nueva siempre reemplaza
+  // a la anterior por completo - nunca puede haber ambiguedad sobre cual
+  // esta activa.
+  //   'normal'       - todo visible, como cualquier usuario.
+  //   'hideListNick' - en la lista de usuarios aparece solo el icono, sin
+  //                    nick. En el chat el nick se sigue mostrando normal.
+  //   'hideChatNick' - los mensajes que envia van sin nick. En la lista de
+  //                    usuarios el nick se sigue mostrando normal.
+  //   'full'         - no aparece en la lista de usuarios (ni icono ni
+  //                    nick) ni en el chat, y no se avisa su entrada/salida.
+  // En cualquier caso, otros admins/moderadores siempre ven todo completo
+  // (isStaffViewer()).
+  function setAdminVisibilityMode(mode){
+    if (mode === me.visibilityMode) return;
+    const wasFull = me.visibilityMode === 'full';
+    me.visibilityMode = mode;
+    if (mode === 'full' && !wasFull) {
       me._prevAvatar = me.avatar;
       me.avatar = 'none';
-    } else {
+    } else if (wasFull && mode !== 'full') {
       me.avatar = me._prevAvatar || 'default';
     }
     // Nunca hacemos untrack(): seguimos presentes en el canal para que
-    // otros admins/moderadores puedan vernos igual. El flag "invisible" en
-    // el payload es lo que decide si un usuario general nos ve o no.
+    // otros admins/moderadores puedan vernos igual. Los flags del payload
+    // de presencia son los que deciden si un usuario general nos ve o no.
     retrackPresence();
     renderUsers();
     renderRoomsPanel();
-  }
-
-  // "Nick invisible": a diferencia de "modo invisible" (setAdminInvisible),
-  // acá el admin sigue presente (aparece en la lista con su ícono, se sigue
-  // avisando su entrada/salida) pero su nick no se muestra en la lista de
-  // usuarios ni en los mensajes que envía.
-  function setNickInvisible(hidden){
-    if (hidden === me.nickInvisible) return;
-    me.nickInvisible = hidden;
-    retrackPresence();
-    renderUsers();
   }
 
   function refreshAdminAvatarPreview(){
@@ -2184,10 +2208,10 @@
     return { style: 'static', hex: fallbackHex };
   }
 
-  function profileColorCardHtml(key, title, current, fallbackHex){
+  function profileColorCardHtml(key, title, current, fallbackHex, moot){
     const d = decomposeColorValue(current, fallbackHex);
     return `
-      <div class="dc-profilecard">
+      <div class="dc-profilecard${moot ? ' dc-profilecard-moot' : ''}">
         <h5>${title}</h5>
         <div class="dc-svpick-row">
           <div class="dc-svpick-wrap">
@@ -2209,6 +2233,7 @@
             <option value="gradient" ${d.style==='gradient'?'selected':''}>Degradado</option>
             <option value="rainbow" ${d.style==='rainbow'?'selected':''}>Multicolor (arcoíris animado)</option>
           </select>
+          ${moot ? '<small class="dc-moot-note">No se va a ver: con "Invisible total" tu nick no aparece en ningún lado.</small>' : ''}
         </div>
       </div>
     `;
@@ -2218,18 +2243,36 @@
     body.innerHTML = `
       <h4>Mi Perfil (Admin)</h4>
       <div class="dc-field"><label>Nick que se muestra en el chat</label><input type="text" id="dc-admin-nick" maxlength="${MAX_NICK_LEN}" value="${escapeHtml(me.nick)}"></div>
-      <label style="display:flex; align-items:center; gap:6px; margin:-6px 0 2px; font-weight:normal; color:#fff; cursor:pointer; width:fit-content;">
-        <input type="checkbox" id="dc-admin-nick-invisible" ${me.nickInvisible?'checked':''}>
-        <span style="font-weight:bold; letter-spacing:0.3px; text-transform:uppercase; font-size:12px;">Nick invisible</span>
-      </label>
-      <p style="color:#dfe8f7; font-size:12px; margin:0 0 16px;">Sigues visible en la lista de usuarios (con tu ícono) y avisando tu entrada/salida, pero tu nick no se muestra ahí ni en los mensajes que envíes — salvo para otros admins/moderadores, que siempre lo ven.</p>
+
+      <div class="dc-field" style="margin-top:2px;">
+        <label>Visibilidad de tu nick</label>
+        <div class="dc-vismode">
+          <label class="dc-vismode-opt">
+            <input type="radio" name="dc-admin-vismode" value="normal" ${me.visibilityMode==='normal'?'checked':''}>
+            <span><b>Nick visible</b><small>Se te ve normal: nick, ícono y avisos de entrada/salida.</small></span>
+          </label>
+          <label class="dc-vismode-opt">
+            <input type="radio" name="dc-admin-vismode" value="hideListNick" ${me.visibilityMode==='hideListNick'?'checked':''}>
+            <span><b>Ocultar nick en lista de usuarios</b><small>En la lista aparecés solo con tu ícono, sin nombre. En el chat tu nick se sigue mostrando normal.</small></span>
+          </label>
+          <label class="dc-vismode-opt">
+            <input type="radio" name="dc-admin-vismode" value="hideChatNick" ${me.visibilityMode==='hideChatNick'?'checked':''}>
+            <span><b>Ocultar nick en chat escrito</b><small>Tus mensajes se muestran sin nombre. En la lista de usuarios tu nick se sigue mostrando normal.</small></span>
+          </label>
+          <label class="dc-vismode-opt">
+            <input type="radio" name="dc-admin-vismode" value="full" ${me.visibilityMode==='full'?'checked':''}>
+            <span><b>Invisible total</b><small>No aparecés en la lista de usuarios (ni ícono ni nick) ni en el chat. No se avisa tu entrada o salida.</small></span>
+          </label>
+        </div>
+        <p style="color:#dfe8f7; font-size:11px; margin:8px 0 0;">En cualquiera de estas opciones, otros admins/moderadores siempre te ven completo (nick, ícono y presencia real).</p>
+      </div>
 
       <div class="dc-profilerow">
-        ${profileColorCardHtml('dc-nickpick', 'Color de tu nick', me.color, '#e9457a')}
+        ${profileColorCardHtml('dc-nickpick', 'Color de tu nick', me.color, '#e9457a', me.visibilityMode==='full')}
         ${profileColorCardHtml('dc-textpick', 'Color del texto de tus mensajes', me.textColor, '#000000')}
       </div>
 
-      <div class="dc-field" style="position:relative; margin-top:16px;"><label>Tu avatar</label>
+      <div class="dc-field${me.visibilityMode==='full' ? ' dc-profilecard-moot' : ''}" style="position:relative; margin-top:16px;"><label>Tu avatar</label>
         <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
           <span id="dc-admin-avatar-preview" style="display:inline-flex; width:28px; height:28px; align-items:center; justify-content:center; background:#fff; box-shadow:inset 1px 1px 0 #808080, inset -1px -1px 0 #fff;"></span>
           <button class="dc-btn dc-smallbtn" id="dc-admin-avatar-default" type="button">Ícono clásico</button>
@@ -2240,14 +2283,7 @@
           <div class="dc-avatargrid" id="dc-admin-avatars"></div>
         </div>
         <input type="file" id="dc-admin-avatar-upload" accept="image/*">
-      </div>
-
-      <div class="dc-field" style="margin-top:16px;"><label>Visibilidad en el chat</label>
-        <select id="dc-admin-visibility">
-          <option value="visible" ${!me.invisible?'selected':''}>Visible — apareces en la lista de usuarios</option>
-          <option value="invisible" ${me.invisible?'selected':''}>Invisible — no apareces en la lista ni se avisa tu entrada o salida (otros admins/moderadores igual te ven)</option>
-        </select>
-        <p id="dc-admin-invisible-status" style="font-weight:bold; color:${me.invisible?'#7a0000':'#1a7a24'}; margin-top:6px;">${me.invisible?'Estás invisible ahora mismo.':'Estás visible ahora mismo.'}</p>
+        ${me.visibilityMode==='full' ? '<small class="dc-moot-note">No se va a ver: con "Invisible total" tu ícono tampoco aparece en ningún lado.</small>' : ''}
       </div>
 
       <button class="dc-btn dc-default" id="dc-admin-profile-save" style="margin-top:16px;">Guardar</button>
@@ -2273,16 +2309,12 @@
       document.getElementById('dc-admin-avatardrop').classList.remove('active');
     }, EXTENDED_AVATARS);
     wireAvatarDropdown('dc-admin-avatar-toggle', 'dc-admin-avatardrop');
-    document.getElementById('dc-admin-nick-invisible').onchange = (e) => {
-      setNickInvisible(e.target.checked);
-    };
-    document.getElementById('dc-admin-visibility').onchange = (e) => {
-      setAdminInvisible(e.target.value === 'invisible');
-      refreshAdminAvatarPreview();
-      const status = document.getElementById('dc-admin-invisible-status');
-      status.textContent = me.invisible ? 'Estás invisible ahora mismo.' : 'Estás visible ahora mismo.';
-      status.style.color = me.invisible ? '#7a0000' : '#1a7a24';
-    };
+    document.querySelectorAll('input[name="dc-admin-vismode"]').forEach(radio => {
+      radio.onchange = (e) => {
+        setAdminVisibilityMode(e.target.value);
+        renderAdminProfile(body); // re-renderiza para reflejar que color/avatar dejan de importar en "full"
+      };
+    });
     document.getElementById('dc-admin-avatar-default').onclick = () => {
       me.avatar = 'default';
       refreshAdminAvatarPreview();
