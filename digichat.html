@@ -2538,6 +2538,16 @@
     presenceList = [...byNick.values()];
   }
 
+  // Cada track() (incluso re-trackear la MISMA sesion, p.ej. al cambiar un
+  // color) puede generar un 'leave' + 'join' de corta duracion para esa
+  // sesion en vez de una actualizacion "en el lugar" - es un comportamiento
+  // conocido de Phoenix/Supabase Presence. Sin este debounce, cualquier
+  // cosa que re-trackee seguido (el heartbeat, cambios de perfil) se ve
+  // como si ese usuario "entrara y saliera" todo el tiempo. Esperamos un
+  // instante antes de dar una salida por real; si en ese lapso llega el
+  // 'join' de la misma sesion, se cancela y no se muestra ningun aviso.
+  const pendingLeaveTimers = new Map();
+
   function setupPresence(){
     presenceChannel = sb.channel('chat-aegis-presence', { config: { presence: { key: CLIENT_ID } } });
     presenceChannel.on('presence', { event:'sync' }, () => {
@@ -2548,51 +2558,67 @@
     });
     presenceChannel.on('presence', { event:'join' }, ({ newPresences }) => {
       newPresences.forEach(p => {
+        if (pendingLeaveTimers.has(p.clientId)) {
+          // Era solo un re-track (leave+join casi simultaneo de la misma
+          // sesion): cancelamos el aviso de salida pendiente, no es una
+          // entrada nueva real.
+          clearTimeout(pendingLeaveTimers.get(p.clientId));
+          pendingLeaveTimers.delete(p.clientId);
+          return;
+        }
         // el admin nunca deja rastro de entrada/salida por presencia (ni
         // siquiera al activar/desactivar modo invisible): el aviso normal
         // ya lo maneja announceAdmin, y en modo invisible no debe haber
         // ningun aviso, ni siquiera este efimero.
         if (p.clientId !== CLIENT_ID && p.room === me.room && me.nick && p.role !== 'admin') {
           addLogEntry(p.room, { sys:true, nick:p.nick, avatar:p.avatar, text:`This user has entered ${p.room}.`, joinleave:true });
+          renderLog();
         }
       });
-      if (me.nick) renderLog();
     });
     presenceChannel.on('presence', { event:'leave' }, ({ leftPresences }) => {
       leftPresences.forEach(p => {
-        if (p.clientId !== CLIENT_ID && p.room === me.room && me.nick && p.role !== 'admin') {
-          addLogEntry(p.room, { sys:true, nick:p.nick, avatar:p.avatar, text:`This user has left ${p.room}.`, joinleave:true });
-        }
+        const timer = setTimeout(() => {
+          pendingLeaveTimers.delete(p.clientId);
+          if (p.clientId !== CLIENT_ID && p.room === me.room && me.nick && p.role !== 'admin') {
+            addLogEntry(p.room, { sys:true, nick:p.nick, avatar:p.avatar, text:`This user has left ${p.room}.`, joinleave:true });
+            renderLog();
+          }
+        }, 2000);
+        pendingLeaveTimers.set(p.clientId, timer);
       });
-      if (me.nick) renderLog();
     });
     presenceChannel.subscribe((status) => {
       if (status === 'SUBSCRIBED' && me.nick) {
         presenceChannel.track(presencePayload());
       }
     });
-    // Heartbeat: la presencia en tiempo real a veces pierde algun evento de
-    // sincronizacion por la red (mas comun con pestañas en segundo plano),
-    // dejando a algun usuario con la lista desactualizada. Retrackear cada
-    // cierto tiempo fuerza un 'sync' fresco para todos y se auto-corrige
-    // cualquier vista que haya quedado atascada (p.ej. alguien que ya
-    // activo modo invisible pero un usuario general lo seguia viendo).
+    // Heartbeat "seguro": SOLO reconstruye y re-renderiza con lo que el
+    // cliente ya tiene en local (presenceState()), sin volver a trackear.
+    // No genera trafico ni el efecto secundario de leave/join en otros -
+    // sirve para el caso en que el render se salteo pero el estado local
+    // ya estaba bien. Puede correr seguido sin costo.
     if (presenceHeartbeat) clearInterval(presenceHeartbeat);
-    presenceHeartbeat = setInterval(forcePresenceResync, 8000);
+    presenceHeartbeat = setInterval(refreshLocalPresenceView, 5000);
   }
 
-  // Fuerza un resync inmediato: re-trackea la propia presencia (dispara un
-  // 'sync' fresco para todos) y reconstruye/renderiza con lo que el canal
-  // tenga ahora mismo en local. Se usa en el heartbeat y tambien cuando la
-  // pestaña vuelve a primer plano, porque los navegadores frenan los
-  // websockets/timers de pestañas en segundo plano y eso es la causa mas
-  // comun de que la lista de usuarios quede "pegada" hasta recargar.
-  function forcePresenceResync(){
-    if (!presenceChannel || !me.nick) return;
-    presenceChannel.track(presencePayload());
+  function refreshLocalPresenceView(){
+    if (!presenceChannel) return;
     rebuildPresenceList();
     renderUsers();
     renderRoomsPanel();
+  }
+
+  // Re-trackea la propia presencia (dispara un 'sync' fresco para todos,
+  // con riesgo minimo del leave/join corto que mitiga el debounce de
+  // arriba) ademas de refrescar la vista local. Se usa solo en momentos
+  // puntuales donde de verdad puede haber pasado algo mientras no
+  // mirabamos: cuando la pestaña vuelve a primer plano, porque los
+  // navegadores frenan los websockets/timers de pestañas en segundo plano.
+  function forcePresenceResync(){
+    if (!presenceChannel || !me.nick) return;
+    presenceChannel.track(presencePayload());
+    refreshLocalPresenceView();
     refreshAdminPanelIfOpen();
   }
   document.addEventListener('visibilitychange', () => {
