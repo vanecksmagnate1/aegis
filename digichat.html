@@ -2380,7 +2380,11 @@
     });
     presenceChannel.on('presence', { event:'join' }, ({ newPresences }) => {
       newPresences.forEach(p => {
-        if (p.clientId !== CLIENT_ID && p.room === me.room && me.nick) {
+        // el admin nunca deja rastro de entrada/salida por presencia (ni
+        // siquiera al activar/desactivar modo invisible): el aviso normal
+        // ya lo maneja announceAdmin, y en modo invisible no debe haber
+        // ningun aviso, ni siquiera este efimero.
+        if (p.clientId !== CLIENT_ID && p.room === me.room && me.nick && p.role !== 'admin') {
           addLogEntry(p.room, { sys:true, nick:p.nick, avatar:p.avatar, text:`This user has entered ${p.room}.`, joinleave:true });
         }
       });
@@ -2388,7 +2392,7 @@
     });
     presenceChannel.on('presence', { event:'leave' }, ({ leftPresences }) => {
       leftPresences.forEach(p => {
-        if (p.clientId !== CLIENT_ID && p.room === me.room && me.nick) {
+        if (p.clientId !== CLIENT_ID && p.room === me.room && me.nick && p.role !== 'admin') {
           addLogEntry(p.room, { sys:true, nick:p.nick, avatar:p.avatar, text:`This user has left ${p.room}.`, joinleave:true });
         }
       });
