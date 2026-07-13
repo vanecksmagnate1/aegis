@@ -155,6 +155,13 @@ export default async function handler(req, res) {
         });
         break;
       }
+      case 'notice': {
+        const room = String(payload?.room || '').trim();
+        const text = String(payload?.text || '').trim();
+        if (!room || !text) throw new Error('missing_fields');
+        await notice(room, text);
+        break;
+      }
       case 'broadcast': {
         const text = String(payload?.body || '').trim();
         if (!text) throw new Error('missing_body');
