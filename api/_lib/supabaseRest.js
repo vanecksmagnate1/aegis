@@ -41,8 +41,8 @@ export async function sbSelect(table, query) {
   return res.json();
 }
 
-export async function sbCount(table) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=name`, {
+export async function sbCount(table, selectCol) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=${selectCol || 'name'}`, {
     headers: headers({ Prefer: 'count=exact' }),
   });
   if (!res.ok) throw new Error(`sbCount ${table} failed: ${res.status} ${await res.text()}`);

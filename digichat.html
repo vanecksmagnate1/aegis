@@ -184,7 +184,9 @@
     border: 1px solid #8493b8; border-radius: 4px;
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -2px 0 rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.2);
     -webkit-user-drag: none; user-select: none; pointer-events: none;
+    transition: background-image 0.3s ease;
   }
+  .dc-banner.dc-banner-clickable { pointer-events: auto; cursor: pointer; }
 
   /* botones bisel XP azul */
   .dc-btn {
@@ -246,6 +248,7 @@
   .dc-log .msg:not(.sys) .nick:hover { text-decoration: underline; }
   .dc-log .sys { color: #000; }
   .dc-emoji-inline { font-size: 1.7em; line-height: 1; vertical-align: -0.3em; display: inline-block; }
+  img.dc-emoji-inline { width: 1.6em; height: 1.6em; object-fit: cover; border-radius: 2px; vertical-align: -0.4em; }
   .dc-log .msg.sys.dc-joinleave { font-size: 12px; padding-top: 2px; padding-bottom: 2px; }
   .dc-log .msg.sys.dc-joinleave .nick { color: #999; font-weight: normal; font-size: 12px; }
   .dc-log .msg.sys.dc-joinleave .msgtext { color: #999; font-size: 12px; }
@@ -687,6 +690,17 @@
   let bannedNicks = new Set();
   let mutedNicks = new Set();
   let savedAdminProfile = null;
+  let BANNERS = []; // [{id, imageData, linkUrl, sortOrder}]
+  let BANNER_ROTATION_MINUTES = 5;
+  let bannerRotationIndex = 0;
+  let bannerRotationTimer = null;
+  let CUSTOM_EMOTICONS = []; // [{id, shortcode, imageData}]
+  let CUSTOM_EMOTICON_MAP = new Map(); // shortcode -> imageData
+  let CUSTOM_EMOTICON_RE = null;
+  let HELPER_MESSAGES = []; // [{id, body}]
+  const HELPER_NICK_COLOR = '#1958D6';
+  let HELPER_CONFIG = { icon: 'default', nick: 'Ayudante', textColor: null, intervalMinutes: 30, active: false };
+  let helperCheckTimer = null;
   let blockedNicks = new Set();
   let roomLogs = {};
   let presenceList = [];
@@ -843,7 +857,7 @@
           </div>
         </div>
 
-        <div class="dc-banner" style="background-image:url('${THEME_ICONS.banner}')" oncontextmenu="return false"></div>
+        <div class="dc-banner" id="dc-banner" style="background-image:url('${THEME_ICONS.banner}')" oncontextmenu="return false"></div>
 
         <div class="dc-helpbar">
           <button class="dc-helpbtn" id="dc-help"><b>HELP!</b><span class="dc-helparrow">&#8594;</span></button>
@@ -1076,15 +1090,50 @@
 
   function wrapEmojiHtml(rawTextIn){
     const rawText = replaceEmoticonShortcodes(rawTextIn);
+    // Si hay emoticones personalizados (subidos por el admin), se agregan
+    // como alternativas más al mismo escaneo, así compiten con los emoji
+    // unicode por orden de aparición en el texto (no en dos pasadas
+    // separadas, para no romper los índices).
+    const re = CUSTOM_EMOTICON_RE
+      ? new RegExp(EMOJI_RE.source + '|' + CUSTOM_EMOTICON_RE.source, 'gu')
+      : EMOJI_RE;
     let out = '';
     let last = 0;
-    for (const m of rawText.matchAll(EMOJI_RE)) {
+    for (const m of rawText.matchAll(re)) {
       out += linkifyText(escapeHtml(rawText.slice(last, m.index)));
-      out += `<span class="dc-emoji-inline">${escapeHtml(m[0])}</span>`;
-      last = m.index + m[0].length;
+      const matched = m[0];
+      if (CUSTOM_EMOTICON_MAP.has(matched)) {
+        out += `<img class="dc-emoji-inline" src="${CUSTOM_EMOTICON_MAP.get(matched)}" alt="${escapeHtml(matched)}">`;
+      } else {
+        out += `<span class="dc-emoji-inline">${escapeHtml(matched)}</span>`;
+      }
+      last = m.index + matched.length;
     }
     out += linkifyText(escapeHtml(rawText.slice(last)));
     return out;
+  }
+
+  // Arma el contenido de un selector de emoticones (los 72 fijos + los
+  // personalizados subidos por el admin) y conecta el click de cada uno
+  // para que inserte en `inputId` (el emoji tal cual, o el shortcode para
+  // los personalizados, que se resuelve a <img> recién al renderizarse).
+  function wireOneEmoticonPicker(popId, inputId){
+    const pop = document.getElementById(popId);
+    if (!pop) return;
+    const fixed = EMOTICONS.map(e => `<span data-emo="${escapeHtml(e)}">${e}</span>`).join('');
+    const custom = CUSTOM_EMOTICONS.map(em => `<span data-emo="${escapeHtml(em.shortcode)}"><img src="${em.imageData}" style="width:20px; height:20px; object-fit:cover; border-radius:2px;" alt=""></span>`).join('');
+    pop.innerHTML = fixed + custom;
+    pop.querySelectorAll('span').forEach(s => s.onclick = () => {
+      const input = document.getElementById(inputId);
+      input.value += s.dataset.emo;
+      input.focus();
+      pop.classList.remove('active');
+    });
+  }
+
+  function wireEmoticonPickers(){
+    wireOneEmoticonPicker('dc-emopop', 'dc-msg');
+    wireOneEmoticonPicker('dc-msgcenter-emopop', 'dc-msgcenter-input');
   }
 
   function textSpanHtml(text, textColor, textFont){
@@ -1736,17 +1785,10 @@
     document.getElementById('dc-logout').onclick = async () => { await doLogout(); };
 
     // emoticones
-    const pop = document.getElementById('dc-emopop');
-    const emoticonSet = EMOTICONS;
-    pop.innerHTML = emoticonSet.map(e => `<span data-emo="${escapeHtml(e)}">${e}</span>`).join('');
-    pop.querySelectorAll('span').forEach(s => s.onclick = () => {
-      const input = document.getElementById('dc-msg');
-      input.value += s.dataset.emo;
-      input.focus();
-      pop.classList.remove('active');
-    });
-    document.getElementById('dc-emobtn').onclick = (e) => { e.stopPropagation(); pop.classList.toggle('active'); };
+    wireEmoticonPickers();
+    document.getElementById('dc-emobtn').onclick = (e) => { e.stopPropagation(); document.getElementById('dc-emopop').classList.toggle('active'); };
     document.addEventListener('click', (e) => {
+      const pop = document.getElementById('dc-emopop');
       if (!pop.contains(e.target) && e.target.id !== 'dc-emobtn') pop.classList.remove('active');
     });
 
@@ -1917,12 +1959,7 @@
     input.onkeydown = (e) => { if (e.key === 'Enter') sendMsgCenterMessage(); };
     const pop = document.getElementById('dc-msgcenter-emopop');
     const emoBtn = document.getElementById('dc-msgcenter-emobtn');
-    pop.innerHTML = EMOTICONS.map(e => `<span data-emo="${escapeHtml(e)}">${e}</span>`).join('');
-    pop.querySelectorAll('span').forEach(s => s.onclick = () => {
-      input.value += s.dataset.emo;
-      input.focus();
-      pop.classList.remove('active');
-    });
+    wireOneEmoticonPicker('dc-msgcenter-emopop', 'dc-msgcenter-input');
     emoBtn.onclick = (e) => { e.stopPropagation(); pop.classList.toggle('active'); };
     document.addEventListener('click', (e) => {
       if (!pop.contains(e.target) && e.target !== emoBtn) pop.classList.remove('active');
@@ -2485,6 +2522,10 @@
     {id:"bans", label:"Bans"},
     {id:"perfil", label:"Mi Perfil"},
     {id:"broadcast", label:"Broadcast"},
+    {id:"banners", label:"Banners"},
+    {id:"emoticones", label:"Emoticones"},
+    {id:"chathelper", label:"ChatHelper"},
+    {id:"themes", label:"Themes"},
   ];
 
   function wireAdminDialog(){
@@ -2530,6 +2571,10 @@
     if (adminTab === "bans") return renderAdminBans(body);
     if (adminTab === "perfil") return renderAdminProfile(body);
     if (adminTab === "broadcast") return renderAdminBroadcast(body);
+    if (adminTab === "banners") return renderAdminBanners(body);
+    if (adminTab === "emoticones") return renderAdminEmoticons(body);
+    if (adminTab === "chathelper") return renderAdminChatHelper(body);
+    if (adminTab === "themes") return renderAdminThemes(body);
   }
 
   function renderAdminRooms(body){
@@ -3037,6 +3082,246 @@
     };
   }
 
+  // Redimensiona un archivo de imagen a targetW x targetH (recorte tipo
+  // "cover", igual criterio que el resize de avatares) y devuelve un data
+  // URL PNG vía callback. Reutilizado por Banners y Emoticones.
+  function resizeImageFileToDataUrl(file, targetW, targetH, callback){
+    if (!file || !file.type.startsWith('image/')) { alert('Selecciona un archivo de imagen.'); return; }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = targetW; canvas.height = targetH;
+        const ctx = canvas.getContext('2d');
+        const scale = Math.max(targetW / img.width, targetH / img.height);
+        const sw = targetW / scale, sh = targetH / scale;
+        const sx = (img.width - sw) / 2, sy = (img.height - sh) / 2;
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, targetW, targetH);
+        callback(canvas.toDataURL('image/png'));
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  let pendingBannerDataUrl = null;
+  function renderAdminBanners(body){
+    body.innerHTML = `
+      <h4>Banners</h4>
+      <p>Se muestran arriba del chat (donde dice AEGIS) y rotan entre sí. El sistema redimensiona la imagen que subís al tamaño del banner automáticamente.</p>
+      <div class="dc-field">
+        <label>Minutos entre banners (si hay más de uno)</label>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <input type="number" id="dc-banner-rotation" min="1" max="120" value="${BANNER_ROTATION_MINUTES}" style="width:80px;">
+          <button class="dc-btn dc-smallbtn" id="dc-banner-rotation-save">Guardar</button>
+        </div>
+      </div>
+      <div id="dc-banner-list" style="margin-top:10px;"></div>
+      <div class="dc-field" style="margin-top:16px;">
+        <label>Nuevo banner</label>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <input type="file" id="dc-banner-upload" accept="image/*">
+          <span id="dc-banner-preview" style="width:80px; height:20px; background-size:cover; background-position:center; border:1px solid #1c2c5c; border-radius:2px;"></span>
+        </div>
+        <input type="text" id="dc-banner-link" placeholder="https://... (opcional: a dónde lleva al hacer click)" style="width:100%; margin-top:6px;">
+        <button class="dc-btn dc-default" id="dc-banner-add" style="margin-top:8px;">Agregar banner</button>
+        <p class="dc-error" id="dc-banner-error"></p>
+      </div>
+    `;
+    const list = document.getElementById('dc-banner-list');
+    list.innerHTML = BANNERS.length
+      ? BANNERS.map(b => `
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px; background:#7f95cf; padding:6px 8px; border-radius:3px;">
+            <span style="display:inline-block; width:90px; height:20px; background-image:url('${b.imageData}'); background-size:cover; background-position:center; border:1px solid #1c2c5c; border-radius:2px; flex-shrink:0;"></span>
+            <span style="flex:1; font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${b.linkUrl ? escapeHtml(b.linkUrl) : '(sin link)'}</span>
+            <button class="dc-btn dc-smallbtn dc-danger" data-del-banner="${b.id}">Borrar</button>
+          </div>
+        `).join('')
+      : '<p style="color:#333;">No hay banners subidos todavía (se muestra el banner por defecto).</p>';
+    list.querySelectorAll('[data-del-banner]').forEach(btn => {
+      btn.onclick = () => callAdminAction('deleteBanner', { id: Number(btn.dataset.delBanner) });
+    });
+    pendingBannerDataUrl = null;
+    document.getElementById('dc-banner-upload').onchange = (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      resizeImageFileToDataUrl(file, 1012, 92, (dataUrl) => {
+        pendingBannerDataUrl = dataUrl;
+        document.getElementById('dc-banner-preview').style.backgroundImage = `url('${dataUrl}')`;
+      });
+    };
+    document.getElementById('dc-banner-rotation-save').onclick = async () => {
+      const minutes = Number(document.getElementById('dc-banner-rotation').value) || 5;
+      await callAdminAction('setBannerRotationMinutes', { minutes });
+    };
+    document.getElementById('dc-banner-add').onclick = async () => {
+      const err = document.getElementById('dc-banner-error');
+      err.textContent = '';
+      if (!pendingBannerDataUrl) { err.textContent = 'Elegí una imagen primero.'; return; }
+      const linkUrl = document.getElementById('dc-banner-link').value.trim();
+      const ok = await callAdminAction('addBanner', { imageData: pendingBannerDataUrl, linkUrl });
+      if (ok) { pendingBannerDataUrl = null; renderAdminBanners(body); }
+    };
+  }
+
+  let pendingEmoticonDataUrl = null;
+  function renderAdminEmoticons(body){
+    body.innerHTML = `
+      <h4>Emoticones</h4>
+      <p>Agregá imágenes propias que se suman a los emoticones que ya tienen todos los usuarios en el selector del chat.</p>
+      <div id="dc-emoticon-list" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px;"></div>
+      <div class="dc-field">
+        <label>Nuevo emoticono</label>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <input type="file" id="dc-emoticon-upload" accept="image/*">
+          <span id="dc-emoticon-preview" style="width:32px; height:32px; background-size:cover; background-position:center; border:1px solid #1c2c5c; border-radius:2px;"></span>
+          <button class="dc-btn dc-default" id="dc-emoticon-add">Agregar</button>
+        </div>
+        <p class="dc-error" id="dc-emoticon-error"></p>
+      </div>
+    `;
+    const list = document.getElementById('dc-emoticon-list');
+    list.innerHTML = CUSTOM_EMOTICONS.length
+      ? CUSTOM_EMOTICONS.map(em => `
+          <div style="position:relative;">
+            <span style="display:inline-block; width:36px; height:36px; background-image:url('${em.imageData}'); background-size:cover; background-position:center; border:1px solid #1c2c5c; border-radius:3px;"></span>
+            <span data-del-emoticon="${em.id}" title="Borrar" style="position:absolute; top:-6px; right:-6px; background:#c00000; color:#fff; border-radius:50%; width:16px; height:16px; font-size:10px; line-height:16px; text-align:center; cursor:pointer;">&#10005;</span>
+          </div>
+        `).join('')
+      : '<p style="color:#333;">Todavía no agregaste ninguno.</p>';
+    list.querySelectorAll('[data-del-emoticon]').forEach(x => {
+      x.onclick = () => callAdminAction('deleteEmoticon', { id: Number(x.dataset.delEmoticon) });
+    });
+    pendingEmoticonDataUrl = null;
+    document.getElementById('dc-emoticon-upload').onchange = (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      resizeImageFileToDataUrl(file, 32, 32, (dataUrl) => {
+        pendingEmoticonDataUrl = dataUrl;
+        document.getElementById('dc-emoticon-preview').style.backgroundImage = `url('${dataUrl}')`;
+      });
+    };
+    document.getElementById('dc-emoticon-add').onclick = async () => {
+      const err = document.getElementById('dc-emoticon-error');
+      err.textContent = '';
+      if (!pendingEmoticonDataUrl) { err.textContent = 'Elegí una imagen primero.'; return; }
+      const ok = await callAdminAction('addEmoticon', { imageData: pendingEmoticonDataUrl });
+      if (ok) { pendingEmoticonDataUrl = null; renderAdminEmoticons(body); }
+    };
+  }
+
+  async function renderAdminChatHelper(body){
+    const { data } = await sb.from('chat_helper_config').select('*').eq('id', true);
+    const cfg = data && data[0];
+    if (cfg) {
+      HELPER_CONFIG = {
+        icon: cfg.icon || 'default',
+        nick: cfg.nick || 'Ayudante',
+        textColor: cfg.text_color || null,
+        intervalMinutes: cfg.interval_minutes || 30,
+        active: !!cfg.active,
+      };
+    }
+    body.innerHTML = `
+      <h4>ChatHelper</h4>
+      <p>Un asistente automático que publica mensajes en Sala General cada cierto tiempo.</p>
+      <div class="dc-profilerow">
+        <div class="dc-profilecard">
+          <h5>Identidad</h5>
+          <div class="dc-field"><label>Nick</label><input type="text" id="dc-helper-nick" maxlength="24" value="${escapeHtml(HELPER_CONFIG.nick)}"></div>
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+            <span id="dc-helper-avatar-preview" style="display:inline-flex; width:26px; height:26px; align-items:center; justify-content:center; background:#fff; border-radius:3px;"></span>
+            <button type="button" class="dc-btn dc-smallbtn" id="dc-helper-avatar-toggle">Elegir ícono &#9662;</button>
+          </div>
+          <div class="dc-avatardrop" id="dc-helper-avatardrop"><div class="dc-avatargrid" id="dc-helper-avatars"></div></div>
+        </div>
+        <div class="dc-profilecard">
+          <h5>Color del texto</h5>
+          <div class="dc-colorpick-row">
+            <input type="color" class="dc-colorpick-native" id="dc-helper-color-native" value="${decomposeColorValue(HELPER_CONFIG.textColor, '#000000').hex}">
+          </div>
+          <label style="display:block; margin-top:10px;">Cada cuántos minutos</label>
+          <input type="number" id="dc-helper-interval" min="1" max="1440" value="${HELPER_CONFIG.intervalMinutes}" style="width:100px;">
+          <label style="display:flex; align-items:center; gap:6px; margin-top:10px; font-weight:normal; color:#fff;">
+            <input type="checkbox" id="dc-helper-active" ${HELPER_CONFIG.active?'checked':''}> Activo
+          </label>
+        </div>
+      </div>
+      <button class="dc-btn dc-default" id="dc-helper-save-config" style="margin-top:12px;">Guardar configuración</button>
+
+      <div class="dc-field" style="margin-top:18px;">
+        <label>Mensajes (se elige uno al azar en cada disparo)</label>
+        <div id="dc-helper-msglist"></div>
+        <div style="position:relative; margin-top:8px;">
+          <textarea id="dc-helper-newmsg" class="dc-sunken" style="width:100%; min-height:60px; padding:5px;" placeholder="Escribí el mensaje (podés usar emoticones)"></textarea>
+          <button type="button" class="dc-btn dc-emobtn" id="dc-helper-emobtn" style="position:absolute; right:4px; bottom:4px;"><span class="emo-face"></span></button>
+          <div class="dc-emopop" id="dc-helper-emopop"></div>
+        </div>
+        <button class="dc-btn dc-default" id="dc-helper-addmsg" style="margin-top:6px;">Agregar mensaje</button>
+      </div>
+    `;
+    const msgList = document.getElementById('dc-helper-msglist');
+    msgList.innerHTML = HELPER_MESSAGES.length
+      ? HELPER_MESSAGES.map(m => `
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px; background:#7f95cf; padding:6px 8px; border-radius:3px;">
+            <span style="flex:1; font-size:13px;">${wrapEmojiHtml(m.body)}</span>
+            <button class="dc-btn dc-smallbtn dc-danger" data-del-helpermsg="${m.id}">Borrar</button>
+          </div>
+        `).join('')
+      : '<p style="color:#333;">Todavía no hay mensajes cargados.</p>';
+    msgList.querySelectorAll('[data-del-helpermsg]').forEach(btn => {
+      btn.onclick = () => callAdminAction('deleteHelperMessage', { id: Number(btn.dataset.delHelpermsg) });
+    });
+
+    let helperAvatar = HELPER_CONFIG.icon;
+    function refreshHelperAvatarPreview(){
+      const el = document.getElementById('dc-helper-avatar-preview');
+      el.innerHTML = userIconHtml({ avatar: helperAvatar });
+    }
+    refreshHelperAvatarPreview();
+    buildAvatarGrid('dc-helper-avatars', helperAvatar, (val) => {
+      helperAvatar = val;
+      refreshHelperAvatarPreview();
+      document.getElementById('dc-helper-avatardrop').classList.remove('active');
+    }, EXTENDED_AVATARS);
+    wireAvatarDropdown('dc-helper-avatar-toggle', 'dc-helper-avatardrop');
+
+    document.getElementById('dc-helper-save-config').onclick = async () => {
+      await callAdminAction('saveHelperConfig', {
+        nick: document.getElementById('dc-helper-nick').value.trim() || 'Ayudante',
+        icon: helperAvatar,
+        textColor: document.getElementById('dc-helper-color-native').value,
+        intervalMinutes: Number(document.getElementById('dc-helper-interval').value) || 30,
+        active: document.getElementById('dc-helper-active').checked,
+      });
+      localSystem('Configuración de ChatHelper guardada.');
+    };
+
+    const pop = document.getElementById('dc-helper-emopop');
+    const newMsg = document.getElementById('dc-helper-newmsg');
+    pop.innerHTML = EMOTICONS.map(e => `<span data-emo="${escapeHtml(e)}">${e}</span>`).join('');
+    pop.querySelectorAll('span').forEach(s => s.onclick = () => {
+      newMsg.value += s.dataset.emo;
+      newMsg.focus();
+      pop.classList.remove('active');
+    });
+    document.getElementById('dc-helper-emobtn').onclick = (e) => { e.stopPropagation(); pop.classList.toggle('active'); };
+    document.getElementById('dc-helper-addmsg').onclick = async () => {
+      const text = newMsg.value.trim();
+      if (!text) return;
+      const ok = await callAdminAction('addHelperMessage', { body: text });
+      if (ok) { newMsg.value = ''; renderAdminChatHelper(body); }
+    };
+  }
+
+  function renderAdminThemes(body){
+    body.innerHTML = `
+      <h4>Themes</h4>
+      <p style="color:#333;">Próximamente vas a poder crear y aplicar distintos temas visuales (skins) para todo el chat, que se ven igual para todos los usuarios apenas se activan.</p>
+    `;
+  }
+
   /* ---------- REALTIME GLOBAL: presencia, bans, mutes, mods, salas, broadcasts ---------- */
   function rebuildPresenceList(){
     if (!presenceChannel) { presenceList = []; return; }
@@ -3227,26 +3512,150 @@
       .on('postgres_changes', { event:'*', schema:'public', table:'chat_moderators' }, handleModsChange)
       .on('postgres_changes', { event:'*', schema:'public', table:'chat_rooms' }, () => refreshRooms())
       .on('postgres_changes', { event:'INSERT', schema:'public', table:'chat_broadcasts' }, (payload) => showBroadcast(payload.new.body))
+      .on('postgres_changes', { event:'*', schema:'public', table:'chat_banners' }, () => refreshBanners())
+      .on('postgres_changes', { event:'*', schema:'public', table:'chat_banner_settings' }, () => refreshBannerSettings())
+      .on('postgres_changes', { event:'*', schema:'public', table:'chat_custom_emoticons' }, () => refreshEmoticons())
+      .on('postgres_changes', { event:'*', schema:'public', table:'chat_helper_messages' }, () => refreshHelperMessages())
       .subscribe();
+  }
+
+  async function refreshBanners(){
+    const { data } = await sb.from('chat_banners').select('id,image_data,link_url,sort_order').order('sort_order', { ascending: true });
+    applyBannerRows(data);
+  }
+  async function refreshBannerSettings(){
+    const { data } = await sb.from('chat_banner_settings').select('rotation_minutes').eq('id', true);
+    applyBannerSettings(data && data[0]);
+  }
+  async function refreshEmoticons(){
+    const { data } = await sb.from('chat_custom_emoticons').select('id,shortcode,image_data').order('id', { ascending: true });
+    applyEmoticonRows(data);
+  }
+  async function refreshHelperMessages(){
+    const { data } = await sb.from('chat_helper_messages').select('id,body,sort_order').order('sort_order', { ascending: true });
+    applyHelperMessageRows(data);
+  }
+
+  function applyBannerRows(rows){
+    BANNERS = (rows||[]).map(r => ({ id: r.id, imageData: r.image_data, linkUrl: r.link_url, sortOrder: r.sort_order }));
+    if (bannerRotationIndex >= BANNERS.length) bannerRotationIndex = 0;
+    renderActiveBanner();
+    setupBannerRotationTimer();
+    refreshAdminPanelIfOpen();
+  }
+
+  function applyBannerSettings(row){
+    BANNER_ROTATION_MINUTES = (row && row.rotation_minutes) || 5;
+    setupBannerRotationTimer();
+    refreshAdminPanelIfOpen();
+  }
+
+  function applyEmoticonRows(rows){
+    CUSTOM_EMOTICONS = (rows||[]).map(r => ({ id: r.id, shortcode: r.shortcode, imageData: r.image_data }));
+    CUSTOM_EMOTICON_MAP = new Map(CUSTOM_EMOTICONS.map(e => [e.shortcode, e.imageData]));
+    CUSTOM_EMOTICON_RE = CUSTOM_EMOTICONS.length
+      ? new RegExp(CUSTOM_EMOTICONS.map(e => e.shortcode.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'g')
+      : null;
+    wireEmoticonPickers();
+    refreshAdminPanelIfOpen();
+  }
+
+  function applyHelperMessageRows(rows){
+    HELPER_MESSAGES = (rows||[]).map(r => ({ id: r.id, body: r.body, sortOrder: r.sort_order }));
+    refreshAdminPanelIfOpen();
+  }
+
+  /* ---------- Banners: carrusel en el header del chat ---------- */
+  function renderActiveBanner(){
+    const el = document.getElementById('dc-banner');
+    if (!el) return;
+    if (!BANNERS.length) {
+      el.style.backgroundImage = `url('${THEME_ICONS.banner}')`;
+      el.classList.remove('dc-banner-clickable');
+      el.onclick = null;
+      return;
+    }
+    const current = BANNERS[bannerRotationIndex % BANNERS.length];
+    el.style.backgroundImage = `url('${current.imageData}')`;
+    if (current.linkUrl) {
+      el.classList.add('dc-banner-clickable');
+      el.onclick = () => window.open(current.linkUrl, '_blank', 'noopener,noreferrer');
+    } else {
+      el.classList.remove('dc-banner-clickable');
+      el.onclick = null;
+    }
+  }
+
+  function setupBannerRotationTimer(){
+    if (bannerRotationTimer) clearInterval(bannerRotationTimer);
+    if (BANNERS.length < 2) return;
+    bannerRotationTimer = setInterval(() => {
+      bannerRotationIndex = (bannerRotationIndex + 1) % BANNERS.length;
+      renderActiveBanner();
+    }, Math.max(1, BANNER_ROTATION_MINUTES) * 60000);
+  }
+
+  /* ---------- ChatHelper: cualquier cliente conectado puede disparar el
+     próximo mensaje (chat_helper_try_claim es atómica del lado del server,
+     así que aunque haya muchos clientes chequeando a la vez, solo uno
+     "gana" y lo postea de verdad — ver la función en el SQL). No requiere
+     que el admin esté conectado. ---------- */
+  async function checkChatHelperDue(){
+    if (!HELPER_MESSAGES.length) return;
+    try {
+      const { data, error } = await sb.rpc('chat_helper_try_claim');
+      if (error) return;
+      const result = Array.isArray(data) ? data[0] : data;
+      if (!result || !result.claimed) return;
+      const msg = HELPER_MESSAGES[Math.floor(Math.random() * HELPER_MESSAGES.length)];
+      await sb.from('chat_messages').insert({
+        room: LOCKED_ROOM,
+        nick: result.nick || 'Ayudante',
+        color: HELPER_NICK_COLOR,
+        text_color: result.text_color || null,
+        avatar: result.icon || 'default',
+        role: 'general',
+        kind: 'chat',
+        body: msg.body,
+      });
+    } catch (e) { /* noop: no pasa nada si un chequeo falla, se reintenta en el próximo */ }
+  }
+
+  function setupHelperCheckTimer(){
+    if (helperCheckTimer) clearInterval(helperCheckTimer);
+    helperCheckTimer = setInterval(checkChatHelperDue, 60000);
+    checkChatHelperDue();
   }
 
   async function loadInitialData(){
     let roomsQuery = sb.from('chat_rooms').select(ROOM_SELECT_COLS);
     ROOM_ORDER.forEach(o => { roomsQuery = roomsQuery.order(o.column, { ascending: o.ascending }); });
-    const [{ data: rooms }, { data: bans }, { data: mutes }, { data: mods }, { data: adminProfileRows }] = await Promise.all([
+    const [
+      { data: rooms }, { data: bans }, { data: mutes }, { data: mods }, { data: adminProfileRows },
+      { data: banners }, { data: bannerSettingsRows }, { data: emoticons }, { data: helperMessages },
+    ] = await Promise.all([
       roomsQuery,
       sb.from('chat_bans').select('nick_lower'),
       sb.from('chat_mutes').select('nick_lower'),
       sb.from('chat_moderators').select('nick_lower'),
       sb.from('chat_admin_profile').select('*').eq('nick_lower', ADMIN_NICK.toLowerCase()),
+      sb.from('chat_banners').select('id,image_data,link_url,sort_order').order('sort_order', { ascending: true }),
+      sb.from('chat_banner_settings').select('rotation_minutes').eq('id', true),
+      sb.from('chat_custom_emoticons').select('id,shortcode,image_data').order('id', { ascending: true }),
+      sb.from('chat_helper_messages').select('id,body,sort_order').order('sort_order', { ascending: true }),
     ]);
     applyRoomRows(rooms);
     bannedNicks = new Set((bans||[]).map(b=>b.nick_lower));
     mutedNicks = new Set((mutes||[]).map(m=>m.nick_lower));
     moderatorNicks = new Set((mods||[]).map(m=>m.nick_lower));
     savedAdminProfile = (adminProfileRows && adminProfileRows[0]) || null;
+    applyBannerRows(banners);
+    applyBannerSettings(bannerSettingsRows && bannerSettingsRows[0]);
+    applyEmoticonRows(emoticons);
+    applyHelperMessageRows(helperMessages);
     renderRoomsPanel();
     renderUsers();
+    setupHelperCheckTimer();
   }
 
   // Si cierran la pestaña/navegador sin darle a Logout, avisamos de todas

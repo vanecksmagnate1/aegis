@@ -1,7 +1,11 @@
+import crypto from 'crypto';
 import { verifyAdminToken } from './_lib/adminToken.js';
 import { sbInsert, sbDelete, sbUpdate, sbSelect, sbCount } from './_lib/supabaseRest.js';
 
 const LOCKED_ROOM = 'Sala General';
+const MAX_BANNERS = 10;
+const MAX_EMOTICONS = 60;
+const MAX_HELPER_MESSAGES = 20;
 
 async function notice(room, text) {
   await sbInsert('chat_messages', {
@@ -201,6 +205,65 @@ export default async function handler(req, res) {
         const text = String(payload?.body || '').trim();
         if (!text) throw new Error('missing_body');
         await sbInsert('chat_broadcasts', { body: text });
+        break;
+      }
+      case 'addBanner': {
+        const imageData = String(payload?.imageData || '');
+        const linkUrl = String(payload?.linkUrl || '').trim();
+        if (!imageData.startsWith('data:image/')) throw new Error('invalid_image');
+        const count = await sbCount('chat_banners', 'id');
+        if (count >= MAX_BANNERS) throw new Error('too_many_banners');
+        await sbInsert('chat_banners', { image_data: imageData, link_url: linkUrl || null, sort_order: count });
+        break;
+      }
+      case 'deleteBanner': {
+        const id = Number(payload?.id);
+        if (!id) throw new Error('missing_id');
+        await sbDelete('chat_banners', 'id', id);
+        break;
+      }
+      case 'setBannerRotationMinutes': {
+        const minutes = Math.max(1, Math.min(120, Number(payload?.minutes) || 5));
+        await sbUpdate('chat_banner_settings', 'id', 'true', { rotation_minutes: minutes });
+        break;
+      }
+      case 'addEmoticon': {
+        const imageData = String(payload?.imageData || '');
+        if (!imageData.startsWith('data:image/')) throw new Error('invalid_image');
+        const count = await sbCount('chat_custom_emoticons', 'id');
+        if (count >= MAX_EMOTICONS) throw new Error('too_many_emoticons');
+        const shortcode = `:e${crypto.randomBytes(4).toString('hex')}:`;
+        await sbInsert('chat_custom_emoticons', { shortcode, image_data: imageData });
+        break;
+      }
+      case 'deleteEmoticon': {
+        const id = Number(payload?.id);
+        if (!id) throw new Error('missing_id');
+        await sbDelete('chat_custom_emoticons', 'id', id);
+        break;
+      }
+      case 'saveHelperConfig': {
+        await sbUpdate('chat_helper_config', 'id', 'true', {
+          icon: String(payload?.icon || 'default'),
+          nick: String(payload?.nick || 'Ayudante').trim().slice(0, 24) || 'Ayudante',
+          text_color: payload?.textColor || null,
+          interval_minutes: Math.max(1, Math.min(1440, Number(payload?.intervalMinutes) || 30)),
+          active: !!payload?.active,
+        });
+        break;
+      }
+      case 'addHelperMessage': {
+        const bodyText = String(payload?.body || '').trim();
+        if (!bodyText) throw new Error('missing_body');
+        const count = await sbCount('chat_helper_messages', 'id');
+        if (count >= MAX_HELPER_MESSAGES) throw new Error('too_many_messages');
+        await sbInsert('chat_helper_messages', { body: bodyText, sort_order: count });
+        break;
+      }
+      case 'deleteHelperMessage': {
+        const id = Number(payload?.id);
+        if (!id) throw new Error('missing_id');
+        await sbDelete('chat_helper_messages', 'id', id);
         break;
       }
       default:
