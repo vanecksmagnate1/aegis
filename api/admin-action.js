@@ -7,6 +7,8 @@ const MAX_BANNERS = 10;
 const MAX_EMOTICONS = 60;
 const MAX_HELPER_MESSAGES = 20;
 const HELPER_NICK_COLOR = '#1958D6';
+const MAX_WORD_FILTERS = 200;
+const MAX_HIDDEN_DEFAULTS = 300;
 
 async function notice(room, text) {
   await sbInsert('chat_messages', {
@@ -37,13 +39,19 @@ export default async function handler(req, res) {
         const nick = String(payload?.nick || '').trim();
         if (!nick) throw new Error('missing_nick');
         await sbInsert('chat_bans', { nick_lower: nick.toLowerCase(), nick, banned_by: 'Admin' });
+        // Al banear se borra todo el historial de mensajes de esa persona
+        // (no solo se la expulsa) para que no quede registro público de lo
+        // que escribió. wipe:true le avisa a los clientes conectados que
+        // además de anunciar la expulsión, tienen que sacar esos mensajes
+        // de su vista actual (ver handleIncomingMessage en el cliente).
+        await sbDelete('chat_messages', 'nick', nick);
         await sbInsert('chat_messages', {
           room: payload?.room || LOCKED_ROOM,
           nick: 'Sistema',
           color: '#000000',
           role: 'admin',
           kind: 'system',
-          body: JSON.stringify({ type: 'kick', nick, reason: payload?.reason || '' }),
+          body: JSON.stringify({ type: 'kick', nick, reason: payload?.reason || '', wipe: true }),
         });
         break;
       }
@@ -319,6 +327,38 @@ export default async function handler(req, res) {
           body: msg.body,
         });
         await sbUpdate('chat_helper_config', 'id', 'true', { last_sent_at: new Date().toISOString() });
+        break;
+      }
+      case 'addWordFilter': {
+        const word = String(payload?.word || '').trim();
+        const replacement = String(payload?.replacement || '').trim();
+        if (!word || !replacement) throw new Error('missing_fields');
+        const count = await sbCount('chat_word_filters', 'id');
+        if (count >= MAX_WORD_FILTERS) throw new Error('too_many_filters');
+        await sbInsert('chat_word_filters', { word, replacement });
+        break;
+      }
+      case 'editWordFilter': {
+        const id = Number(payload?.id);
+        if (!id) throw new Error('missing_id');
+        const patch = {};
+        if (typeof payload?.word === 'string' && payload.word.trim()) patch.word = payload.word.trim();
+        if (typeof payload?.replacement === 'string' && payload.replacement.trim()) patch.replacement = payload.replacement.trim();
+        if (!Object.keys(patch).length) throw new Error('nothing_to_update');
+        await sbUpdate('chat_word_filters', 'id', id, patch);
+        break;
+      }
+      case 'deleteWordFilter': {
+        const id = Number(payload?.id);
+        if (!id) throw new Error('missing_id');
+        await sbDelete('chat_word_filters', 'id', id);
+        break;
+      }
+      case 'setHiddenDefaultEmoticons': {
+        const hidden = Array.isArray(payload?.hidden)
+          ? payload.hidden.filter((e) => typeof e === 'string' && e.length && e.length <= 8).slice(0, MAX_HIDDEN_DEFAULTS)
+          : [];
+        await sbUpdate('chat_emoticon_settings', 'id', 'true', { hidden_defaults: hidden });
         break;
       }
       default:

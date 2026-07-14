@@ -597,7 +597,11 @@
     "😁","😆","😅","🤣","😊","😇","🙃","😌","😘","😗","😋","😛","😜","🤪","🤨",
     "🧐","🤓","😏","😒","😞","😔","😟","😕","🙁","😣","😖","😫","😩","🥺",
     "😤","😠","🤬","😳","😨","😰","🥵","🥶","🤤","😪","😵","🤯",
-    "🔥","💯","👀","👏","🤝","💪","✌️","🤞","😶","🤐","😑","😐","🙄","😯","😦"
+    "🔥","💯","👀","👏","🤝","💪","✌️","🤞","😶","🤐","😑","😐","🙄","😯","😦",
+    // estilo MSN Messenger de la época retro
+    "🤘","🌹","☕","💡","🍺","🎂","🐷","💩","🎁","💐","🍹","🎸","👻","💋",
+    // temática de películas populares
+    "🎬","🍿","🎥","🦖","🧛","🧟","🧙","🦸","🦹","🕷️","🦇","💍","🗡️","🛸","👑","🏰","🎭","🚀"
   ];
   const EMOTICONS_EXTENDED = EMOTICONS;
 
@@ -700,6 +704,10 @@
   let HELPER_MESSAGES = []; // [{id, body}]
   const HELPER_NICK_COLOR = '#1958D6';
   let HELPER_CONFIG = { icon: 'default', nick: 'Ayudante', textColor: null, intervalMinutes: 30, active: false };
+  let FILTER_WORDS = []; // [{id, word, replacement}]
+  let FILTER_WORD_MAP = new Map(); // word en minúscula -> reemplazo
+  let FILTER_WORD_RE = null;
+  let HIDDEN_DEFAULT_EMOTICONS = new Set(); // emoji fijos ocultados por el admin
   let helperCheckTimer = null;
   let blockedNicks = new Set();
   let roomLogs = {};
@@ -1048,6 +1056,17 @@
     if (roomLogs[room].length > 300) roomLogs[room].shift();
   }
 
+  // Saca del historial ya cargado (todas las salas) los mensajes de un
+  // nick baneado, para quienes ya los tenían en pantalla — los entries de
+  // sistema (sin `nick`) no se tocan.
+  function purgeNickFromLogs(nick){
+    const key = nick.toLowerCase();
+    Object.keys(roomLogs).forEach(room => {
+      roomLogs[room] = roomLogs[room].filter(e => !(e.nick && e.nick.toLowerCase() === key));
+    });
+    renderLog();
+  }
+
   function findUserObject(nick){
     if (nick === me.nick) return { ...me, isMe:true };
     return presenceList.find(p => p.nick === nick) || null;
@@ -1088,8 +1107,19 @@
 
   const EMOJI_RE = new RegExp('\\p{Extended_Pictographic}\\uFE0F?(\\u200D\\p{Extended_Pictographic}\\uFE0F?)*', 'gu');
 
+  // Reemplaza palabras filtradas por el admin (insensible a mayúsculas,
+  // con límites de palabra unicode-aware) por lo que haya configurado en
+  // la pestaña Filtros. Se aplica al RENDERIZAR (no al guardar), así:
+  // (a) corre retroactivo sobre mensajes ya existentes en cuanto se carga
+  // un filtro nuevo, y (b) no depende de que el cliente que escribe
+  // "colabore" con el filtro — lo aplican todos los que lo leen.
+  function applyWordFilters(text){
+    if (!FILTER_WORD_RE) return text;
+    return text.replace(FILTER_WORD_RE, (m) => FILTER_WORD_MAP.get(m.toLowerCase()) ?? m);
+  }
+
   function wrapEmojiHtml(rawTextIn){
-    const rawText = replaceEmoticonShortcodes(rawTextIn);
+    const rawText = applyWordFilters(replaceEmoticonShortcodes(rawTextIn));
     // Si hay emoticones personalizados (subidos por el admin), se agregan
     // como alternativas más al mismo escaneo, así compiten con los emoji
     // unicode por orden de aparición en el texto (no en dos pasadas
@@ -1120,7 +1150,7 @@
   function wireOneEmoticonPicker(popId, inputId){
     const pop = document.getElementById(popId);
     if (!pop) return;
-    const fixed = EMOTICONS.map(e => `<span data-emo="${escapeHtml(e)}">${e}</span>`).join('');
+    const fixed = EMOTICONS.filter(e => !HIDDEN_DEFAULT_EMOTICONS.has(e)).map(e => `<span data-emo="${escapeHtml(e)}">${e}</span>`).join('');
     const custom = CUSTOM_EMOTICONS.map(em => `<span data-emo="${escapeHtml(em.shortcode)}"><img src="${em.imageData}" style="width:20px; height:20px; object-fit:cover; border-radius:2px;" alt=""></span>`).join('');
     pop.innerHTML = fixed + custom;
     pop.querySelectorAll('span').forEach(s => s.onclick = () => {
@@ -1428,6 +1458,10 @@
       if (parsed.type === 'kick') {
         if (parsed.nick && me.nick && parsed.nick.toLowerCase() === me.nick.toLowerCase()) { forceLogout(parsed.reason); return; }
         addLogEntry(row.room, { sys:true, text: `${parsed.nick} fue expulsado${parsed.reason ? ': "'+parsed.reason+'"' : ''}.` });
+        // Ban (no un simple kick): el servidor ya borró sus mensajes de la
+        // base; acá se sacan también de la vista de quienes ya los tenían
+        // cargados en pantalla, en todas las salas.
+        if (parsed.wipe && parsed.nick) purgeNickFromLogs(parsed.nick);
       } else if (parsed.type === 'move') {
         if (parsed.nick && me.nick && parsed.nick.toLowerCase() === me.nick.toLowerCase()) { switchRoom(parsed.targetRoom); return; }
         addLogEntry(row.room, { sys:true, text: `${parsed.nick} fue movido a ${parsed.targetRoom}.` });
@@ -2386,7 +2420,7 @@
     overlay.innerHTML = `
       <div class="dc-globalbroadcast-box">
         <div class="dc-globalbroadcast-title">AEGIS CHAT - BROADCAST</div>
-        <div class="dc-globalbroadcast-body">${escapeHtml(text).toUpperCase()}</div>
+        <div class="dc-globalbroadcast-body">${escapeHtml(applyWordFilters(text)).toUpperCase()}</div>
         <button type="button">OK</button>
       </div>
     `;
@@ -2525,6 +2559,7 @@
     {id:"banners", label:"Banners"},
     {id:"emoticones", label:"Emoticones"},
     {id:"chathelper", label:"ChatHelper"},
+    {id:"filtros", label:"Filtros"},
     {id:"themes", label:"Themes"},
   ];
 
@@ -2574,6 +2609,7 @@
     if (adminTab === "banners") return renderAdminBanners(body);
     if (adminTab === "emoticones") return renderAdminEmoticons(body);
     if (adminTab === "chathelper") return renderAdminChatHelper(body);
+    if (adminTab === "filtros") return renderAdminFiltros(body);
     if (adminTab === "themes") return renderAdminThemes(body);
   }
 
@@ -3229,6 +3265,17 @@
   function renderAdminEmoticons(body){
     body.innerHTML = `
       <h4>Emoticones</h4>
+
+      <h5 style="color:#fff; margin:0 0 4px;">Predeterminados (${EMOTICONS.length})</h5>
+      <p>Los que ya están disponibles para todos en el selector del chat. Podés ocultar cualquiera (individualmente o todos de una vez) sin borrar los mensajes que ya se enviaron con ellos — solo dejan de ofrecerse para escribir mensajes nuevos.</p>
+      <div style="display:flex; gap:8px; margin-bottom:8px;">
+        <button class="dc-btn dc-smallbtn" id="dc-defaultemo-hideall">Ocultar todos</button>
+        <button class="dc-btn dc-smallbtn" id="dc-defaultemo-showall">Mostrar todos</button>
+        <button class="dc-btn dc-default" id="dc-defaultemo-save">Guardar</button>
+      </div>
+      <div id="dc-defaultemo-grid" style="display:flex; flex-wrap:wrap; gap:4px; max-height:220px; overflow-y:auto; background:#7f95cf; padding:8px; border-radius:4px;"></div>
+
+      <h5 style="color:#fff; margin:18px 0 4px;">Personalizados</h5>
       <p>Agregá imágenes propias que se suman a los emoticones que ya tienen todos los usuarios en el selector del chat.</p>
       <table class="dc-table">
         <thead><tr><th>ID</th><th>Vista previa</th><th>Código</th><th></th></tr></thead>
@@ -3244,6 +3291,38 @@
         <p class="dc-error" id="dc-emoticon-error"></p>
       </div>
     `;
+
+    // Grid de predeterminados: estado local (pendingHidden) hasta apretar
+    // Guardar, para no mandar un request por cada click.
+    const pendingHidden = new Set(HIDDEN_DEFAULT_EMOTICONS);
+    const grid = document.getElementById('dc-defaultemo-grid');
+    function renderDefaultEmoGrid(){
+      grid.innerHTML = EMOTICONS.map(e => {
+        const hidden = pendingHidden.has(e);
+        return `<span data-default-emo="${escapeHtml(e)}" title="${hidden?'Oculto':'Visible'}" style="display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; font-size:18px; border-radius:3px; cursor:pointer; background:${hidden?'rgba(0,0,0,0.35)':'#fff'}; opacity:${hidden?'0.4':'1'};">${e}</span>`;
+      }).join('');
+      grid.querySelectorAll('[data-default-emo]').forEach(el => {
+        el.onclick = () => {
+          const e = el.dataset.defaultEmo;
+          if (pendingHidden.has(e)) pendingHidden.delete(e); else pendingHidden.add(e);
+          renderDefaultEmoGrid();
+        };
+      });
+    }
+    renderDefaultEmoGrid();
+    document.getElementById('dc-defaultemo-hideall').onclick = () => {
+      EMOTICONS.forEach(e => pendingHidden.add(e));
+      renderDefaultEmoGrid();
+    };
+    document.getElementById('dc-defaultemo-showall').onclick = () => {
+      pendingHidden.clear();
+      renderDefaultEmoGrid();
+    };
+    document.getElementById('dc-defaultemo-save').onclick = async () => {
+      const ok = await callAdminAction('setHiddenDefaultEmoticons', { hidden: Array.from(pendingHidden) });
+      if (ok) localSystem('Se actualizaron los emoticones predeterminados visibles.');
+    };
+
     const rowsEl = document.getElementById('dc-emoticon-rows');
     rowsEl.innerHTML = CUSTOM_EMOTICONS.length
       ? CUSTOM_EMOTICONS.map((em, i) => `
@@ -3413,6 +3492,78 @@
         ? await callAdminAction('editHelperMessage', { id: editingHelperMsgId, body: text })
         : await callAdminAction('addHelperMessage', { body: text });
       if (ok) { resetHelperMsgForm(); renderAdminChatHelper(body); }
+    };
+  }
+
+  let editingWordFilterId = null;
+  function renderAdminFiltros(body){
+    body.innerHTML = `
+      <h4>Filtros</h4>
+      <p>Cada palabra cargada acá se reemplaza automáticamente por el texto que definas, en cualquier mensaje del chat (sin importar mayúsculas), para evitar groserías u otras palabras no deseadas escritas en público.</p>
+      <table class="dc-table">
+        <thead><tr><th>ID</th><th>Palabra</th><th>Reemplazo</th><th colspan="2"></th></tr></thead>
+        <tbody id="dc-filter-rows"></tbody>
+      </table>
+      <div class="dc-field" style="margin-top:16px;">
+        <label id="dc-filter-form-label">Nuevo filtro</label>
+        <div class="dc-inlineform">
+          <input type="text" id="dc-filter-word" placeholder="Palabra a filtrar">
+          <input type="text" id="dc-filter-replacement" placeholder="Reemplazar por...">
+        </div>
+        <div style="display:flex; gap:8px; margin-top:8px;">
+          <button class="dc-btn dc-default" id="dc-filter-add">Agregar filtro</button>
+          <button class="dc-btn dc-smallbtn" id="dc-filter-cancel-edit" style="display:none;">Cancelar</button>
+        </div>
+        <p class="dc-error" id="dc-filter-error"></p>
+      </div>
+    `;
+    editingWordFilterId = null;
+    const rowsEl = document.getElementById('dc-filter-rows');
+    rowsEl.innerHTML = FILTER_WORDS.length
+      ? FILTER_WORDS.map((f, i) => `
+          <tr>
+            <td>${1000+i}</td>
+            <td>${escapeHtml(f.word)}</td>
+            <td>${escapeHtml(f.replacement)}</td>
+            <td><button class="dc-btn dc-smallbtn" data-edit-filter="${f.id}">Editar</button></td>
+            <td><button class="dc-btn dc-smallbtn dc-danger" data-del-filter="${f.id}">Borrar</button></td>
+          </tr>
+        `).join('')
+      : '<tr><td colspan="5" style="color:#555;">Todavía no cargaste ningún filtro.</td></tr>';
+    rowsEl.querySelectorAll('[data-del-filter]').forEach(btn => {
+      btn.onclick = () => callAdminAction('deleteWordFilter', { id: Number(btn.dataset.delFilter) });
+    });
+    rowsEl.querySelectorAll('[data-edit-filter]').forEach(btn => {
+      btn.onclick = () => {
+        const f = FILTER_WORDS.find(x => x.id === Number(btn.dataset.editFilter));
+        if (!f) return;
+        editingWordFilterId = f.id;
+        document.getElementById('dc-filter-word').value = f.word;
+        document.getElementById('dc-filter-replacement').value = f.replacement;
+        document.getElementById('dc-filter-form-label').textContent = 'Editar filtro';
+        document.getElementById('dc-filter-add').textContent = 'Guardar cambios';
+        document.getElementById('dc-filter-cancel-edit').style.display = '';
+      };
+    });
+    function resetFilterForm(){
+      editingWordFilterId = null;
+      document.getElementById('dc-filter-word').value = '';
+      document.getElementById('dc-filter-replacement').value = '';
+      document.getElementById('dc-filter-form-label').textContent = 'Nuevo filtro';
+      document.getElementById('dc-filter-add').textContent = 'Agregar filtro';
+      document.getElementById('dc-filter-cancel-edit').style.display = 'none';
+    }
+    document.getElementById('dc-filter-cancel-edit').onclick = resetFilterForm;
+    document.getElementById('dc-filter-add').onclick = async () => {
+      const err = document.getElementById('dc-filter-error');
+      err.textContent = '';
+      const word = document.getElementById('dc-filter-word').value.trim();
+      const replacement = document.getElementById('dc-filter-replacement').value.trim();
+      if (!word || !replacement) { err.textContent = 'Completá las dos partes: la palabra y por qué reemplazarla.'; return; }
+      const ok = editingWordFilterId
+        ? await callAdminAction('editWordFilter', { id: editingWordFilterId, word, replacement })
+        : await callAdminAction('addWordFilter', { word, replacement });
+      if (ok) { resetFilterForm(); renderAdminFiltros(body); }
     };
   }
 
@@ -3617,7 +3768,19 @@
       .on('postgres_changes', { event:'*', schema:'public', table:'chat_banner_settings' }, () => refreshBannerSettings())
       .on('postgres_changes', { event:'*', schema:'public', table:'chat_custom_emoticons' }, () => refreshEmoticons())
       .on('postgres_changes', { event:'*', schema:'public', table:'chat_helper_messages' }, () => refreshHelperMessages())
+      .on('postgres_changes', { event:'*', schema:'public', table:'chat_word_filters' }, () => refreshWordFilters())
+      .on('postgres_changes', { event:'*', schema:'public', table:'chat_emoticon_settings' }, () => refreshEmoticonSettings())
       .subscribe();
+  }
+
+  async function refreshWordFilters(){
+    const { data } = await sb.from('chat_word_filters').select('id,word,replacement').order('id', { ascending: true });
+    applyFilterRows(data);
+  }
+
+  async function refreshEmoticonSettings(){
+    const { data } = await sb.from('chat_emoticon_settings').select('hidden_defaults').eq('id', true);
+    applyEmoticonSettingsRow(data && data[0]);
   }
 
   async function refreshBanners(){
@@ -3663,6 +3826,22 @@
 
   function applyHelperMessageRows(rows){
     HELPER_MESSAGES = (rows||[]).map(r => ({ id: r.id, body: r.body, sortOrder: r.sort_order }));
+    refreshAdminPanelIfOpen();
+  }
+
+  function applyFilterRows(rows){
+    FILTER_WORDS = (rows||[]).map(r => ({ id: r.id, word: r.word, replacement: r.replacement }));
+    FILTER_WORD_MAP = new Map(FILTER_WORDS.map(f => [f.word.toLowerCase(), f.replacement]));
+    FILTER_WORD_RE = FILTER_WORDS.length
+      ? new RegExp(`(?<![\\p{L}\\p{N}_])(${FILTER_WORDS.map(f => f.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})(?![\\p{L}\\p{N}_])`, 'giu')
+      : null;
+    renderLog();
+    refreshAdminPanelIfOpen();
+  }
+
+  function applyEmoticonSettingsRow(row){
+    HIDDEN_DEFAULT_EMOTICONS = new Set(Array.isArray(row?.hidden_defaults) ? row.hidden_defaults : []);
+    wireEmoticonPickers();
     refreshAdminPanelIfOpen();
   }
 
@@ -3734,6 +3913,7 @@
     const [
       { data: rooms }, { data: bans }, { data: mutes }, { data: mods }, { data: adminProfileRows },
       { data: banners }, { data: bannerSettingsRows }, { data: emoticons }, { data: helperMessages },
+      { data: wordFilters }, { data: emoticonSettingsRows },
     ] = await Promise.all([
       roomsQuery,
       sb.from('chat_bans').select('nick_lower'),
@@ -3744,6 +3924,8 @@
       sb.from('chat_banner_settings').select('rotation_minutes').eq('id', true),
       sb.from('chat_custom_emoticons').select('id,shortcode,image_data').order('id', { ascending: true }),
       sb.from('chat_helper_messages').select('id,body,sort_order').order('sort_order', { ascending: true }),
+      sb.from('chat_word_filters').select('id,word,replacement').order('id', { ascending: true }),
+      sb.from('chat_emoticon_settings').select('hidden_defaults').eq('id', true),
     ]);
     applyRoomRows(rooms);
     bannedNicks = new Set((bans||[]).map(b=>b.nick_lower));
@@ -3754,6 +3936,8 @@
     applyBannerSettings(bannerSettingsRows && bannerSettingsRows[0]);
     applyEmoticonRows(emoticons);
     applyHelperMessageRows(helperMessages);
+    applyFilterRows(wordFilters);
+    applyEmoticonSettingsRow(emoticonSettingsRows && emoticonSettingsRows[0]);
     renderRoomsPanel();
     renderUsers();
     setupHelperCheckTimer();
