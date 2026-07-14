@@ -142,6 +142,9 @@ export default async function handler(req, res) {
       }
       case 'saveAdminProfile': {
         const nick = String(payload?.nick || 'Van Eck').trim();
+        const customAvatars = Array.isArray(payload?.customAvatars)
+          ? payload.customAvatars.filter((a) => typeof a === 'string' && a.startsWith('data:image/')).slice(0, 20)
+          : [];
         await sbInsert('chat_admin_profile', {
           nick_lower: 'van eck',
           nick,
@@ -151,6 +154,7 @@ export default async function handler(req, res) {
           avatar: String(payload?.avatar || 'default'),
           rank: String(payload?.rank || 'none'),
           visibility_mode: String(payload?.visibilityMode || 'normal'),
+          custom_avatars: customAvatars,
         });
         break;
       }

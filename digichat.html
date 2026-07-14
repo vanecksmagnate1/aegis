@@ -122,9 +122,9 @@
   }
   .dc-titlebar .dc-logo { display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap; flex: 1 1 auto; }
   .dc-titlechip {
-    display: flex; align-items: center; gap: 6px; background: #fff; border-radius: 3px;
-    padding: 4px 10px; margin-right: 10px; font-size: 13px; color: #1c2c5c;
-    box-shadow: inset 0 0 0 1px #16305c; flex-shrink: 0; white-space: nowrap;
+    display: flex; align-items: center; gap: 6px; background: transparent;
+    padding: 4px 6px; margin-right: 10px; font-size: 13px; color: #fff;
+    flex-shrink: 0; white-space: nowrap;
   }
   .dc-titlechip .nick { font-weight: bold; }
   .dc-titlechip:empty { display: none; }
@@ -676,7 +676,7 @@
   }
   window.addEventListener('resize', rescaleDigichat);
 
-  let me = { nick: "", color: GENERAL_COLOR, textColor: null, textFont: null, avatar: "default", room: LOCKED_ROOM, role: "general", visibilityMode: "normal", rank: "none" };
+  let me = { nick: "", color: GENERAL_COLOR, textColor: null, textFont: null, avatar: "default", room: LOCKED_ROOM, role: "general", visibilityMode: "normal", rank: "none", customAvatars: [] };
   let adminToken = null;
   let moderatorNicks = new Set();
   let bannedNicks = new Set();
@@ -1234,6 +1234,7 @@
     me.visibilityMode = invisible ? 'full' : (savedAdminProfile?.visibility_mode || 'normal');
     me.avatar = savedAdminProfile?.avatar || DEFAULT_ADMIN_AVATAR;
     me.rank = savedAdminProfile?.rank || 'none';
+    me.customAvatars = Array.isArray(savedAdminProfile?.custom_avatars) ? savedAdminProfile.custom_avatars : [];
     me.room = LOCKED_ROOM;
     document.getElementById('dc-loginauth-overlay').classList.remove('active');
     btn.disabled = false;
@@ -1356,7 +1357,7 @@
         }
       }
     } else {
-      addLogEntry(row.room, { nick: row.nick, color: row.color, textColor: row.text_color, avatar: row.avatar, text: row.body, nickHiddenInChat: !!row.nick_hidden });
+      addLogEntry(row.room, { nick: row.nick, color: row.color, textColor: row.text_color, textFont: row.text_font, avatar: row.avatar, text: row.body, nickHiddenInChat: !!row.nick_hidden });
     }
     if (row.room === me.room) renderLog();
   }
@@ -1378,7 +1379,7 @@
     document.getElementById('dc-adminrow').style.display = 'none';
     document.querySelectorAll('.dc-overlay.active').forEach(o => o.classList.remove('active'));
     if (wasAdminRoom) callAdminAction('notice', { room: wasAdminRoom, text: `${wasAdminLabel} ha salido de la sala.` });
-    me = { nick: "", color: GENERAL_COLOR, textColor: null, textFont: null, avatar: 'default', room: LOCKED_ROOM, role: "general", visibilityMode: "normal", rank: "none" };
+    me = { nick: "", color: GENERAL_COLOR, textColor: null, textFont: null, avatar: 'default', room: LOCKED_ROOM, role: "general", visibilityMode: "normal", rank: "none", customAvatars: [] };
     adminToken = null;
     selectedNick = null;
     blockedNicks = new Set();
@@ -2137,7 +2138,13 @@
     list.forEach(a => {
       const el = document.createElement('div');
       el.className = 'dc-avatarpick' + (current===a?' selected':'');
-      el.textContent = a;
+      if (typeof a === 'string' && a.indexOf('data:image') === 0) {
+        el.style.backgroundImage = `url('${a}')`;
+        el.style.backgroundSize = 'cover';
+        el.style.backgroundPosition = 'center';
+      } else {
+        el.textContent = a;
+      }
       el.onclick = () => {
         grid.querySelectorAll('.dc-avatarpick').forEach(x=>x.classList.remove('selected'));
         el.classList.add('selected');
@@ -2345,10 +2352,14 @@
   // CUALQUIER pestaña (no solo Mi Perfil), para saber siempre con qué nick
   // estás operando. Se refresca acá y en updateProfilePreview() mientras
   // editás Mi Perfil (sin guardar todavía).
-  function updateAdminTitleChip(){
+  // user: opcional, el objeto en vivo (sin guardar todavía) que arma
+  // updateProfilePreview() en Mi Perfil — si no se pasa, usa `me` (lo
+  // último aplicado), que es lo correcto para cualquier otra pestaña.
+  function updateAdminTitleChip(user){
     const chip = document.getElementById('dc-admin-titlechip');
     if (!chip || me.role !== 'admin') return;
-    chip.innerHTML = `${userIconHtml(me)}<span class="nick">${escapeHtml(me.nick || ADMIN_NICK)}</span>`;
+    const u = user || me;
+    chip.innerHTML = `${userIconHtml(u)}${colorNickHtml(u.nick || ADMIN_NICK, u.color)}${rankIconHtml(u.rank)}`;
   }
 
   function renderAdminBody(){
@@ -2707,7 +2718,6 @@
     // render), usando los valores todavia sin guardar (nick/color/fuente) y
     // los ya-aplicados en vivo (avatar/rank).
     function updateProfilePreview(){
-      updateAdminTitleChip();
       const row = document.getElementById('dc-admin-preview-row');
       const msgRow = document.getElementById('dc-admin-preview-msg');
       if (!row) return;
@@ -2722,6 +2732,7 @@
       const rankSel = document.getElementById('dc-admin-rank');
       const previewRank = rankSel ? rankSel.value : 'none';
       const previewUser = { nick: previewNick, color: previewColor, avatar: me.avatar, rank: previewRank };
+      updateAdminTitleChip(previewUser);
       row.innerHTML = `
         ${userIconHtml(previewUser)}
         ${colorNickHtml(previewUser.nick, previewUser.color)}
@@ -2751,14 +2762,21 @@
     document.getElementById('dc-textpick-style').onchange = updateProfilePreview;
     document.getElementById('dc-admin-font').onchange = updateProfilePreview;
     refreshAdminAvatarPreview();
-    buildAvatarGrid('dc-admin-avatars', me.avatar, (val) => {
+    function onPickAvatar(val){
       me.avatar = val;
       refreshAdminAvatarPreview();
       retrackPresence();
       renderUsers();
       updateProfilePreview();
       document.getElementById('dc-admin-avatardrop').classList.remove('active');
-    }, EXTENDED_AVATARS);
+    }
+    // Los avatares que el admin subió en algún momento quedan primeros en la
+    // grilla (me.customAvatars, persistido en chat_admin_profile), para
+    // poder volver a elegirlos sin tener que resubir el archivo.
+    function rebuildAdminAvatarGrid(){
+      buildAvatarGrid('dc-admin-avatars', me.avatar, onPickAvatar, [...me.customAvatars, ...EXTENDED_AVATARS]);
+    }
+    rebuildAdminAvatarGrid();
     wireAvatarDropdown('dc-admin-avatar-toggle', 'dc-admin-avatardrop');
     document.querySelectorAll('input[name="dc-admin-vismode"]').forEach(radio => {
       radio.onchange = (e) => {
@@ -2804,8 +2822,11 @@
           const sw = SIZE / scale, sh = SIZE / scale;
           const sx = (img.width - sw) / 2, sy = (img.height - sh) / 2;
           ctx.drawImage(img, sx, sy, sw, sh, 0, 0, SIZE, SIZE);
-          me.avatar = canvas.toDataURL('image/png');
+          const dataUrl = canvas.toDataURL('image/png');
+          me.avatar = dataUrl;
+          if (!me.customAvatars.includes(dataUrl)) me.customAvatars = [dataUrl, ...me.customAvatars];
           refreshAdminAvatarPreview();
+          rebuildAdminAvatarGrid();
           retrackPresence();
           renderUsers();
           updateProfilePreview();
@@ -2842,6 +2863,7 @@
       await callAdminAction('saveAdminProfile', {
         nick: me.nick, color: me.color, textColor: me.textColor, textFont: me.textFont,
         avatar: me.avatar, rank: me.rank, visibilityMode: me.visibilityMode,
+        customAvatars: me.customAvatars,
       });
       localSystem("Perfil de administrador actualizado.");
     };
