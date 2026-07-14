@@ -755,6 +755,24 @@
     { id: 'default', label: 'Default', desc: 'El look clasico XP azul de siempre. Es el respaldo: siempre podes volver a este.' },
     { id: 'royale-obsidian', label: 'Royale Obsidian', desc: 'Negro gloss con bisel metalico y acento azul electrico, estilo Windows XP Royale Noir.' },
   ];
+  // Piel visual PERSONAL: override solo-local (localStorage), nunca se manda
+  // al servidor ni se ve reflejado para otros usuarios. '' = sin override,
+  // seguir la piel global que eligió el admin (ACTIVE_THEME). Si hay
+  // override, gana siempre sobre el global, incluso cuando llega una
+  // actualizacion en vivo del theme del sitio via Realtime.
+  let LOCAL_THEME_OVERRIDE = localStorage.getItem('dc_local_theme') || '';
+  // Aplicarlo ya (sin esperar la carga desde Supabase) evita el flash del
+  // theme global por defecto en usuarios que ya eligieron un override local.
+  if (LOCAL_THEME_OVERRIDE) applyThemeToDom(LOCAL_THEME_OVERRIDE);
+  function effectiveTheme(){
+    return LOCAL_THEME_OVERRIDE || ACTIVE_THEME;
+  }
+  function setLocalThemeOverride(themeId){
+    LOCAL_THEME_OVERRIDE = themeId || '';
+    if (LOCAL_THEME_OVERRIDE) localStorage.setItem('dc_local_theme', LOCAL_THEME_OVERRIDE);
+    else localStorage.removeItem('dc_local_theme');
+    applyThemeToDom(effectiveTheme());
+  }
   let bannerRotationIndex = 0;
   let bannerRotationTimer = null;
   let CUSTOM_EMOTICONS = []; // [{id, shortcode, imageData}]
@@ -2573,6 +2591,10 @@
         updateSetProfilePreview();
       }
     } else if (settingsTab === "options"){
+      const localThemeChoices = [
+        { id: '', label: 'Usar el del sitio', desc: `Seguí la piel que eligió el admin para todo el chat (ahora: ${escapeHtml(AVAILABLE_THEMES.find(t=>t.id===ACTIVE_THEME)?.label || 'Default')}).` },
+        ...AVAILABLE_THEMES,
+      ];
       body.innerHTML = `
         <h4>Options</h4>
         <div class="dc-checklist">
@@ -2580,7 +2602,25 @@
           <label><input type="checkbox" checked> Mostrar avisos de entrada/salida</label>
           <label><input type="checkbox" checked> Habilitar emoticones</label>
         </div>
+        <h4 style="margin-top:16px;">Tema visual (solo para vos)</h4>
+        <p style="color:#333;">Cambia cómo ves VOS las ventanas del chat. No se aplica a nadie más y no necesita conexión: se guarda solo en este navegador.</p>
+        <div class="dc-vismode" id="dc-localtheme-list"></div>
       `;
+      const list = document.getElementById('dc-localtheme-list');
+      list.innerHTML = localThemeChoices.map(t => `
+        <div class="dc-vismode-opt" style="cursor:default;">
+          <span style="flex:1;"><b>${escapeHtml(t.label)}</b><small>${escapeHtml(t.desc)}</small></span>
+          ${t.id === LOCAL_THEME_OVERRIDE
+            ? `<span class="dc-admincard-tag" style="flex-shrink:0; align-self:center;">Activo</span>`
+            : `<button class="dc-btn dc-smallbtn" style="flex-shrink:0; align-self:center;" data-local-theme-id="${escapeHtml(t.id)}">Aplicar</button>`}
+        </div>
+      `).join('');
+      list.querySelectorAll('button[data-local-theme-id]').forEach(btn => {
+        btn.onclick = () => {
+          setLocalThemeOverride(btn.dataset.localThemeId);
+          renderSettingsBody();
+        };
+      });
     } else if (settingsTab === "sounds"){
       body.innerHTML = `
         <h4>Sounds</h4>
@@ -3904,8 +3944,9 @@
   function applyThemeSettingsRow(row){
     const theme = (row && row.active_theme) || 'default';
     ACTIVE_THEME = AVAILABLE_THEMES.some(t => t.id === theme) ? theme : 'default';
-    applyThemeToDom(ACTIVE_THEME);
+    applyThemeToDom(effectiveTheme());
     refreshAdminPanelIfOpen();
+    if (document.getElementById('dc-settings-overlay')?.classList.contains('active') && settingsTab === 'options') renderSettingsBody();
   }
   async function refreshThemeSettings(){
     const { data } = await sb.from('chat_theme_settings').select('active_theme').eq('id', true);
