@@ -120,7 +120,14 @@
     padding: 0 8px; box-sizing: border-box;
     display: flex; align-items: center; justify-content: space-between;
   }
-  .dc-titlebar .dc-logo { display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap; }
+  .dc-titlebar .dc-logo { display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap; flex: 1 1 auto; }
+  .dc-titlechip {
+    display: flex; align-items: center; gap: 6px; background: #fff; border-radius: 3px;
+    padding: 4px 10px; margin-right: 10px; font-size: 13px; color: #1c2c5c;
+    box-shadow: inset 0 0 0 1px #16305c; flex-shrink: 0; white-space: nowrap;
+  }
+  .dc-titlechip .nick { font-weight: bold; }
+  .dc-titlechip:empty { display: none; }
   .dc-titlebar .dc-tbicon {
     width: 26px; height: 26px; flex-shrink: 0; object-fit: contain; display: block;
   }
@@ -437,8 +444,18 @@
   .dc-swatch.selected { outline: 2px solid #fff; outline-offset: 1px; }
 
   /* ===== panel Mi Perfil admin: dos columnas, picker de color nativo ===== */
-  .dc-profilesplit { display: grid; grid-template-columns: 1fr 1.15fr; gap: 14px; margin-top: 10px; align-items: start; }
-  .dc-profilecol-left, .dc-profilecol-right { display: flex; flex-direction: column; gap: 12px; }
+  /* #dc-admin-body pasa a ser flex-column (ver renderAdminProfile) mientras
+     esta pestaña está activa: el <h4> queda fijo arriba y .dc-profilesplit
+     ocupa el resto de la altura. Cada columna scrollea de forma
+     independiente, así la derecha (vista previa + colores) queda quieta
+     arriba aunque la izquierda (nick/visibilidad/avatar/rank) sea más larga. */
+  .dc-profilesplit { display: flex; gap: 14px; flex: 1; min-height: 0; margin-top: 10px; }
+  .dc-profilecol-left, .dc-profilecol-right {
+    display: flex; flex-direction: column; gap: 12px;
+    overflow-y: auto; min-height: 0; padding-right: 4px;
+  }
+  .dc-profilecol-left { flex: 1; }
+  .dc-profilecol-right { flex: 1.15; }
   .dc-profilecard { background: #8fa8dd; border-radius: 6px; padding: 10px 12px; }
   .dc-profilecard h5 { margin: 0 0 8px; color: #fff; font-size: 13px; }
   .dc-colorpick-row { display: flex; align-items: center; gap: 10px; }
@@ -459,7 +476,8 @@
   .dc-rank-badge { font-size: 16px; line-height: 1; }
   .dc-profilecard-moot { opacity: 0.55; }
   @media (max-width: 640px) {
-    .dc-profilesplit { grid-template-columns: 1fr; }
+    .dc-profilesplit { flex-direction: column; }
+    .dc-profilecol-left, .dc-profilecol-right { overflow-y: visible; }
   }
 
   /* ===== selector unico de visibilidad del nick (4 opciones excluyentes) ===== */
@@ -868,11 +886,13 @@
           <div class="dc-dialog">
             <div class="dc-titlebar">
               <div class="dc-logo"><span class="dc-tbicon"></span><span>CHAT AEGIS Site Options</span></div>
+              <div class="dc-titlechip" id="dc-admin-titlechip"></div>
               <span class="dc-closex" data-close="admin">&#10005;</span>
             </div>
             <div class="dc-dialog-tabs" id="dc-admin-tabs"></div>
             <div class="dc-dialog-body" id="dc-admin-body"></div>
             <div class="dc-dialog-footer">
+              <button class="dc-btn dc-default" id="dc-admin-profile-save" style="display:none;">Aplicar</button>
               <button class="dc-btn dc-default" data-close="admin">Cerrar</button>
             </div>
           </div>
@@ -2321,9 +2341,28 @@
     if (document.getElementById('dc-admin-overlay')?.classList.contains('active')) renderAdminBody();
   }
 
+  // Chip con tu nick/ícono actual en la topbar del diálogo de admin: se ve en
+  // CUALQUIER pestaña (no solo Mi Perfil), para saber siempre con qué nick
+  // estás operando. Se refresca acá y en updateProfilePreview() mientras
+  // editás Mi Perfil (sin guardar todavía).
+  function updateAdminTitleChip(){
+    const chip = document.getElementById('dc-admin-titlechip');
+    if (!chip || me.role !== 'admin') return;
+    chip.innerHTML = `${userIconHtml(me)}<span class="nick">${escapeHtml(me.nick || ADMIN_NICK)}</span>`;
+  }
+
   function renderAdminBody(){
     const body = document.getElementById('dc-admin-body');
     if (!body) return;
+    updateAdminTitleChip();
+    const applyBtn = document.getElementById('dc-admin-profile-save');
+    if (applyBtn) applyBtn.style.display = adminTab === 'perfil' ? '' : 'none';
+    if (adminTab !== 'perfil') {
+      // deshace el flex-column especial que arma renderAdminProfile()
+      body.style.display = '';
+      body.style.flexDirection = '';
+      body.style.overflowY = '';
+    }
     if (adminTab === "rooms") return renderAdminRooms(body);
     if (adminTab === "usuarios") return renderAdminUsers(body);
     if (adminTab === "bots") return renderAdminBots(body);
@@ -2580,6 +2619,12 @@
   }
 
   function renderAdminProfile(body){
+    // El body pasa a ser flex-column (el <h4> queda fijo, .dc-profilesplit
+    // ocupa el resto) para que cada columna pueda scrollear de forma
+    // independiente en vez de scrollear todo el body como bloque único.
+    body.style.display = 'flex';
+    body.style.flexDirection = 'column';
+    body.style.overflowY = 'hidden';
     body.innerHTML = `
       <h4>Mi Perfil (Admin)</h4>
       <div class="dc-profilesplit">
@@ -2630,8 +2675,6 @@
             </select>
             <small class="dc-info-note">Insignia junto a tu nick en la lista de usuarios (solo cuando el nick está visible).</small>
           </div>
-
-          <button class="dc-btn dc-default" id="dc-admin-profile-save" style="margin-top:14px; width:100%;">Guardar</button>
         </div>
 
         <div class="dc-profilecol-right">
@@ -2664,6 +2707,7 @@
     // render), usando los valores todavia sin guardar (nick/color/fuente) y
     // los ya-aplicados en vivo (avatar/rank).
     function updateProfilePreview(){
+      updateAdminTitleChip();
       const row = document.getElementById('dc-admin-preview-row');
       const msgRow = document.getElementById('dc-admin-preview-msg');
       if (!row) return;
