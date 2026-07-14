@@ -123,6 +123,23 @@ export default async function handler(req, res) {
         });
         break;
       }
+      case 'forceProfile': {
+        const nick = String(payload?.nick || '').trim();
+        const room = String(payload?.room || LOCKED_ROOM);
+        if (!nick) throw new Error('missing_nick');
+        const newNick = String(payload?.newNick || '').trim();
+        const avatar = String(payload?.avatar || 'default');
+        const color = String(payload?.color || '');
+        await sbInsert('chat_messages', {
+          room,
+          nick: 'Sistema',
+          color: '#000000',
+          role: 'admin',
+          kind: 'system',
+          body: JSON.stringify({ type: 'forceProfile', nick, newNick, avatar, color }),
+        });
+        break;
+      }
       case 'kickRoomAll': {
         const room = String(payload?.room || '').trim();
         const nicks = Array.isArray(payload?.nicks)
