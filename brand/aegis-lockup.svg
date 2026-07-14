@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 96">
+  <g transform="translate(8,8) scale(0.606)">
+    <path d="M60 8 L106 24 V64 C106 102 80 122 60 128 C40 122 14 102 14 64 V24 Z" fill="#f4efe3" stroke="#1a1b1d" stroke-width="4"/>
+    <g stroke="#b8802f" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="30,50 30,70 50,70 50,90"/>
+      <polyline points="90,50 90,66 70,66 70,96"/>
+      <polyline points="60,34 60,50"/>
+    </g>
+    <circle cx="30" cy="50" r="4" fill="#b8802f"/>
+    <circle cx="50" cy="90" r="4" fill="#b8802f"/>
+    <circle cx="90" cy="50" r="4" fill="#b8802f"/>
+    <circle cx="70" cy="96" r="4" fill="#b8802f"/>
+    <circle cx="60" cy="34" r="4" fill="#b8802f"/>
+  </g>
+  <text x="98" y="60" font-family="Georgia, 'Times New Roman', Times, serif" font-weight="700" font-size="40" fill="#1a1b1d">AEGIS</text>
+</svg>
