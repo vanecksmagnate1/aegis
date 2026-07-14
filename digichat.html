@@ -634,6 +634,11 @@
 
   const LOCKED_ROOM = "Sala General";
   let ROOMS = [LOCKED_ROOM];
+  // name -> { isPrivate, createdBy, expiresAt } — metadata extra de las
+  // salas privadas creadas por usuarios (candado, borrado propio). Vive
+  // aparte de ROOMS (array de strings) para no tocar los muchos lugares
+  // que ya tratan ROOMS como lista de nombres planos.
+  let ROOM_META = {};
 
   const BOT_NAMES = ["Pekeña_Lokura","DarkAngel_29","MoRe_ChiLe","xX_Seba_Xx","Lunatik","Valee.:","PunkRockero","AnaMaria87","el_Colo","Nashe__"];
   const BOT_LINES = [
@@ -792,7 +797,10 @@
                   <div class="dc-userlist dc-sunken" id="dc-userlist"></div>
                 </div>
                 <div id="dc-tabpanel-rooms" style="display:none; flex-direction:column; flex:1; min-height:0;">
-                  <div class="dc-listhead" style="margin-top:4px;"><span>Room</span><span style="font-size:8px;">&#9660;</span></div>
+                  <div class="dc-listhead" style="margin-top:4px; justify-content:space-between;">
+                    <span>Room</span>
+                    <button type="button" class="dc-btn dc-smallbtn" id="dc-ico-createroom" title="Crear sala privada" style="padding:2px 8px; font-size:11px;">+ Crear Sala</button>
+                  </div>
                   <div class="dc-userlist dc-sunken" id="dc-roomlist"></div>
                 </div>
                 <div class="dc-btncol">
@@ -942,11 +950,49 @@
             </div>
           </div>
         </div>
+
+        <div class="dc-overlay" id="dc-createroom-overlay">
+          <div class="dc-dialog">
+            <div class="dc-titlebar">
+              <div class="dc-logo"><span class="dc-tbicon"></span><span>Crear Sala</span></div>
+              <span class="dc-closex" data-close="createroom">&#10005;</span>
+            </div>
+            <div class="dc-dialog-body">
+              <div class="dc-field"><label>Nombre de la sala</label><input type="text" id="dc-createroom-name" maxlength="24"></div>
+              <div class="dc-field"><label>Contraseña (obligatoria)</label><input type="password" id="dc-createroom-pass" maxlength="60"></div>
+              <p style="font-size:12px; color:#333;">La sala queda disponible por <b>4 horas</b> desde que la creás; después se cierra sola y quien esté adentro vuelve a la Sala General. Solo puede entrar quien tenga la contraseña, y solo vos podés borrarla antes de tiempo.</p>
+              <p class="dc-error" id="dc-createroom-error"></p>
+            </div>
+            <div class="dc-dialog-footer">
+              <button class="dc-btn" data-close="createroom">Cancelar</button>
+              <button class="dc-btn dc-default" id="dc-createroom-confirm">Crear</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="dc-overlay" id="dc-joinroom-overlay">
+          <div class="dc-dialog">
+            <div class="dc-titlebar">
+              <div class="dc-logo"><span class="dc-tbicon"></span><span>Sala privada</span></div>
+              <span class="dc-closex" data-close="joinroom">&#10005;</span>
+            </div>
+            <div class="dc-dialog-body">
+              <p>La sala <b id="dc-joinroom-name"></b> es privada. Ingresá la contraseña para entrar:</p>
+              <div class="dc-field"><input type="password" id="dc-joinroom-pass" maxlength="60"></div>
+              <p class="dc-error" id="dc-joinroom-error"></p>
+            </div>
+            <div class="dc-dialog-footer">
+              <button class="dc-btn" data-close="joinroom">Cancelar</button>
+              <button class="dc-btn dc-default" id="dc-joinroom-confirm">Entrar</button>
+            </div>
+          </div>
+        </div>
       </div>
     `;
     wireLogin();
     wireOverlayClosers();
     wireFloatButton();
+    wireRoomDialogs();
   }
 
   function wireFloatButton(){
@@ -1417,6 +1463,101 @@
     await announceAdmin(target, 'enter');
   }
 
+  // Si la sala es privada y no sos quien la creó, primero hay que validar
+  // la contraseña contra el servidor (api/room-join) antes de switchRoom().
+  // El propio creador entra directo, sin volver a tipear su contraseña.
+  let pendingJoinRoom = null;
+  function requestSwitchRoom(target){
+    if (target === me.room || !ROOMS.includes(target)) return;
+    const meta = ROOM_META[target];
+    const isOwner = !!(meta && meta.createdBy && me.nick && meta.createdBy.toLowerCase() === me.nick.toLowerCase());
+    if (meta && meta.isPrivate && !isOwner) {
+      pendingJoinRoom = target;
+      document.getElementById('dc-joinroom-name').textContent = target;
+      document.getElementById('dc-joinroom-pass').value = '';
+      document.getElementById('dc-joinroom-error').textContent = '';
+      document.getElementById('dc-joinroom-overlay').classList.add('active');
+      return;
+    }
+    switchRoom(target);
+  }
+
+  async function deleteOwnRoom(name){
+    if (!confirm(`¿Borrar la sala "${name}"? No se puede deshacer.`)) return;
+    try {
+      const res = await fetch('/api/room-delete-own', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, nick: me.nick }),
+      });
+      const data = await res.json();
+      if (!data.ok) alert(data.error || 'No se pudo borrar la sala.');
+      // Si salió bien, la lista se actualiza sola vía la suscripción
+      // realtime a chat_rooms (refreshRooms), igual que cuando el admin
+      // borra una sala desde su panel.
+    } catch (e) {
+      alert('No se pudo conectar con el servidor.');
+    }
+  }
+
+  function wireRoomDialogs(){
+    document.getElementById('dc-ico-createroom').onclick = () => {
+      document.getElementById('dc-createroom-name').value = '';
+      document.getElementById('dc-createroom-pass').value = '';
+      document.getElementById('dc-createroom-error').textContent = '';
+      document.getElementById('dc-createroom-overlay').classList.add('active');
+    };
+    document.getElementById('dc-createroom-confirm').onclick = async () => {
+      const name = document.getElementById('dc-createroom-name').value.trim();
+      const password = document.getElementById('dc-createroom-pass').value;
+      const err = document.getElementById('dc-createroom-error');
+      err.textContent = '';
+      if (!name) { err.textContent = 'Ponle un nombre a la sala.'; return; }
+      if (!password || password.length < 4) { err.textContent = 'La contraseña debe tener al menos 4 caracteres.'; return; }
+      try {
+        const res = await fetch('/api/room-create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, password, nick: me.nick }),
+        });
+        const data = await res.json();
+        if (!data.ok) { err.textContent = data.error || 'No se pudo crear la sala.'; return; }
+        document.getElementById('dc-createroom-overlay').classList.remove('active');
+        // Actualización optimista: todavía no llegó el INSERT por Realtime,
+        // así que switchRoom() rechazaría la sala por no estar en ROOMS.
+        // refreshRooms() la reconcilia sola apenas llegue el evento.
+        if (!ROOMS.includes(name)) ROOMS.push(name);
+        ROOM_META[name] = { isPrivate: true, createdBy: me.nick, expiresAt: data.expiresAt };
+        await switchRoom(name);
+      } catch (e) {
+        err.textContent = 'No se pudo conectar con el servidor.';
+      }
+    };
+    document.getElementById('dc-joinroom-confirm').onclick = async () => {
+      const password = document.getElementById('dc-joinroom-pass').value;
+      const err = document.getElementById('dc-joinroom-error');
+      err.textContent = '';
+      if (!pendingJoinRoom) return;
+      try {
+        const res = await fetch('/api/room-join', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: pendingJoinRoom, password }),
+        });
+        const data = await res.json();
+        if (!data.ok) { err.textContent = 'Contraseña incorrecta.'; return; }
+        document.getElementById('dc-joinroom-overlay').classList.remove('active');
+        await switchRoom(pendingJoinRoom);
+        pendingJoinRoom = null;
+      } catch (e) {
+        err.textContent = 'No se pudo conectar con el servidor.';
+      }
+    };
+    document.getElementById('dc-joinroom-pass').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') document.getElementById('dc-joinroom-confirm').click();
+    });
+  }
+
   /* ---------- RENDER LOG / USERS / ROOMS ---------- */
   function renderLog(){
     const log = document.getElementById('dc-log');
@@ -1493,9 +1634,18 @@
   function renderRoomsPanel(){
     const el = document.getElementById('dc-roomlist');
     if (!el) return;
-    el.innerHTML = ROOMS.map(r => `<div class="dc-user" data-room="${escapeHtml(r)}" style="cursor:pointer;"><span class="dc-doorico"></span> ${escapeHtml(r)} (${visibleRoomPersonCount(r)})${r===me.room?' *':''}</div>`).join('');
+    el.innerHTML = ROOMS.map(r => {
+      const meta = ROOM_META[r];
+      const mine = !!(meta && meta.isPrivate && meta.createdBy && me.nick && meta.createdBy.toLowerCase() === me.nick.toLowerCase());
+      const lock = meta && meta.isPrivate ? '<span title="Sala privada" style="margin-left:4px;">&#128274;</span>' : '';
+      const del = mine ? `<span data-delete-room="${escapeHtml(r)}" title="Borrar tu sala" style="margin-left:6px; cursor:pointer;">&#128465;&#65039;</span>` : '';
+      return `<div class="dc-user" data-room="${escapeHtml(r)}" style="cursor:pointer;"><span class="dc-doorico"></span> ${escapeHtml(r)} (${visibleRoomPersonCount(r)})${r===me.room?' *':''}${lock}${del}</div>`;
+    }).join('');
     el.querySelectorAll('[data-room]').forEach(row => {
-      row.onclick = () => switchRoom(row.dataset.room);
+      row.onclick = () => requestSwitchRoom(row.dataset.room);
+    });
+    el.querySelectorAll('[data-delete-room]').forEach(icon => {
+      icon.onclick = (e) => { e.stopPropagation(); deleteOwnRoom(icon.dataset.deleteRoom); };
     });
   }
 
@@ -2417,8 +2567,10 @@
     if (!el) return;
     el.innerHTML = ROOMS.map((r,i) => {
       const locked = r === LOCKED_ROOM;
+      const meta = ROOM_META[r];
+      const privTag = meta && meta.isPrivate ? ` &#128274; privada de ${escapeHtml(meta.createdBy || '?')}` : '';
       const generalCount = presenceList.filter(p => p.room === r && p.role === 'general').length;
-      return `<tr><td>${1000+i}</td><td>${escapeHtml(r)}${locked?' (fija)':''}</td><td>${roomPersonCount(r)}</td>
+      return `<tr><td>${1000+i}</td><td>${escapeHtml(r)}${locked?' (fija)':''}${privTag}</td><td>${roomPersonCount(r)}</td>
         <td><button class="dc-btn dc-smallbtn" data-rename-room="${escapeHtml(r)}" ${locked?'disabled':''}>Renombrar</button></td>
         <td><button class="dc-btn dc-smallbtn dc-danger" data-remove-room="${escapeHtml(r)}" ${locked || ROOMS.length<=1?'disabled':''}>Borrar</button></td>
         <td><button class="dc-btn dc-smallbtn dc-danger" data-kickroom="${escapeHtml(r)}" ${generalCount===0?'disabled':''}>Kick sala</button></td></tr>`;
@@ -3044,10 +3196,25 @@
     refreshAdminPanelIfOpen();
   }
 
-  async function refreshRooms(){
-    const { data } = await sb.from('chat_rooms').select('name').order('sort_order', { ascending:true });
-    ROOMS = (data||[]).map(r=>r.name);
+  const ROOM_SELECT_COLS = 'name,is_private,created_by,expires_at';
+  const ROOM_ORDER = [{ column: 'is_private', ascending: true }, { column: 'sort_order', ascending: true }];
+
+  // Puebla ROOMS (array de strings, como siempre) y ROOM_META (candado/
+  // dueño/vencimiento) a partir de las mismas filas de chat_rooms.
+  function applyRoomRows(rows){
+    ROOMS = (rows||[]).map(r=>r.name);
     if (!ROOMS.length) ROOMS = [LOCKED_ROOM];
+    ROOM_META = {};
+    (rows||[]).forEach(r => {
+      ROOM_META[r.name] = { isPrivate: !!r.is_private, createdBy: r.created_by || null, expiresAt: r.expires_at || null };
+    });
+  }
+
+  async function refreshRooms(){
+    let q = sb.from('chat_rooms').select(ROOM_SELECT_COLS);
+    ROOM_ORDER.forEach(o => { q = q.order(o.column, { ascending: o.ascending }); });
+    const { data } = await q;
+    applyRoomRows(data);
     if (me.nick && !ROOMS.includes(me.room)) await switchRoom(LOCKED_ROOM);
     renderRoomsPanel();
     refreshAdminPanelIfOpen();
@@ -3064,15 +3231,16 @@
   }
 
   async function loadInitialData(){
+    let roomsQuery = sb.from('chat_rooms').select(ROOM_SELECT_COLS);
+    ROOM_ORDER.forEach(o => { roomsQuery = roomsQuery.order(o.column, { ascending: o.ascending }); });
     const [{ data: rooms }, { data: bans }, { data: mutes }, { data: mods }, { data: adminProfileRows }] = await Promise.all([
-      sb.from('chat_rooms').select('name').order('sort_order', { ascending:true }),
+      roomsQuery,
       sb.from('chat_bans').select('nick_lower'),
       sb.from('chat_mutes').select('nick_lower'),
       sb.from('chat_moderators').select('nick_lower'),
       sb.from('chat_admin_profile').select('*').eq('nick_lower', ADMIN_NICK.toLowerCase()),
     ]);
-    ROOMS = (rooms||[]).map(r=>r.name);
-    if (!ROOMS.length) ROOMS = [LOCKED_ROOM];
+    applyRoomRows(rooms);
     bannedNicks = new Set((bans||[]).map(b=>b.nick_lower));
     mutedNicks = new Set((mutes||[]).map(m=>m.nick_lower));
     moderatorNicks = new Set((mods||[]).map(m=>m.nick_lower));
