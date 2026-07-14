@@ -757,20 +757,38 @@
   ];
   // Piel visual PERSONAL: override solo-local (localStorage), nunca se manda
   // al servidor ni se ve reflejado para otros usuarios. '' = sin override,
-  // seguir la piel global que eligió el admin (ACTIVE_THEME). Si hay
-  // override, gana siempre sobre el global, incluso cuando llega una
-  // actualizacion en vivo del theme del sitio via Realtime.
+  // seguir la piel global (ACTIVE_THEME). Gana sobre el global SOLO si es
+  // mas reciente que el ultimo "aplicar a todos" del admin (THEME_FORCED_AT_MS,
+  // viene de chat_theme_settings.forced_at): asi, cuando el admin fuerza un
+  // cambio para todos, se descarta cualquier preferencia personal anterior,
+  // pero si el usuario elige de nuevo su propio tema DESPUES de eso, vuelve
+  // a ganar la preferencia personal.
   let LOCAL_THEME_OVERRIDE = localStorage.getItem('dc_local_theme') || '';
+  let THEME_FORCED_AT_MS = 0;
   // Aplicarlo ya (sin esperar la carga desde Supabase) evita el flash del
   // theme global por defecto en usuarios que ya eligieron un override local.
   if (LOCAL_THEME_OVERRIDE) applyThemeToDom(LOCAL_THEME_OVERRIDE);
   function effectiveTheme(){
-    return LOCAL_THEME_OVERRIDE || ACTIVE_THEME;
+    if (LOCAL_THEME_OVERRIDE) {
+      const since = Number(localStorage.getItem('dc_local_theme_since') || 0);
+      if (since > THEME_FORCED_AT_MS) return LOCAL_THEME_OVERRIDE;
+      // El admin forzo un cambio global despues de que se eligio esta
+      // preferencia personal: se descarta y se vuelve a seguir el sitio.
+      LOCAL_THEME_OVERRIDE = '';
+      localStorage.removeItem('dc_local_theme');
+      localStorage.removeItem('dc_local_theme_since');
+    }
+    return ACTIVE_THEME;
   }
   function setLocalThemeOverride(themeId){
     LOCAL_THEME_OVERRIDE = themeId || '';
-    if (LOCAL_THEME_OVERRIDE) localStorage.setItem('dc_local_theme', LOCAL_THEME_OVERRIDE);
-    else localStorage.removeItem('dc_local_theme');
+    if (LOCAL_THEME_OVERRIDE) {
+      localStorage.setItem('dc_local_theme', LOCAL_THEME_OVERRIDE);
+      localStorage.setItem('dc_local_theme_since', String(Date.now()));
+    } else {
+      localStorage.removeItem('dc_local_theme');
+      localStorage.removeItem('dc_local_theme_since');
+    }
     applyThemeToDom(effectiveTheme());
   }
   let bannerRotationIndex = 0;
@@ -3673,17 +3691,25 @@
   function renderAdminThemes(body){
     body.innerHTML = `
       <h4>Themes</h4>
-      <p>Cambia el aspecto de las ventanas del chat (marcos, barras de título, tabs, botones) y del privado y el broadcast, para TODOS los usuarios apenas se aplica. No cambia tamaños de ventana ni suma ni quita opciones de usuario o administrador: es solo estético.</p>
+      <p>Cambia el aspecto de las ventanas del chat (marcos, barras de título, tabs, botones) y del privado y el broadcast. No cambia tamaños de ventana ni suma ni quita opciones de usuario o administrador: es solo estético.</p>
+      <p><b>Aplicar a todos:</b> cambia la piel para TODOS los usuarios y reemplaza cualquier preferencia personal que ya hayan elegido en su propia pestaña Themes. <b>Solo para mí:</b> cambia la piel únicamente en este navegador (esta cuenta de administrador), sin afectar a nadie más, igual que puede hacerlo cualquier usuario.</p>
       <div class="dc-vismode" id="dc-themes-list"></div>
       <p class="dc-error" id="dc-themes-error"></p>
     `;
     const list = document.getElementById('dc-themes-list');
     list.innerHTML = AVAILABLE_THEMES.map(t => `
-      <div class="dc-vismode-opt" style="cursor:default;">
-        <span style="flex:1;"><b>${escapeHtml(t.label)}</b><small>${escapeHtml(t.desc)}</small></span>
-        ${t.id === ACTIVE_THEME
-          ? `<span class="dc-admincard-tag" style="flex-shrink:0; align-self:center;">Activo</span>`
-          : `<button class="dc-btn dc-smallbtn" style="flex-shrink:0; align-self:center;" data-theme-id="${escapeHtml(t.id)}">Aplicar</button>`}
+      <div class="dc-vismode-opt" style="cursor:default; flex-wrap:wrap;">
+        <span style="flex:1 1 220px;">
+          <b>${escapeHtml(t.label)}
+            ${t.id === ACTIVE_THEME ? `<span class="dc-admincard-tag" style="margin-left:6px;">Activo para todos</span>` : ''}
+            ${t.id === LOCAL_THEME_OVERRIDE ? `<span class="dc-admincard-tag" style="margin-left:6px;">Tu preferencia</span>` : ''}
+          </b>
+          <small>${escapeHtml(t.desc)}</small>
+        </span>
+        <span style="display:flex; gap:6px; flex-shrink:0; align-self:center;">
+          ${t.id === ACTIVE_THEME ? '' : `<button class="dc-btn dc-smallbtn" data-theme-id="${escapeHtml(t.id)}">Aplicar a todos</button>`}
+          ${t.id === LOCAL_THEME_OVERRIDE ? '' : `<button class="dc-btn dc-smallbtn" data-local-theme-id="${escapeHtml(t.id)}">Solo para mí</button>`}
+        </span>
       </div>
     `).join('');
     list.querySelectorAll('button[data-theme-id]').forEach(btn => {
@@ -3693,6 +3719,12 @@
         btn.disabled = true;
         const ok = await callAdminAction('setTheme', { theme: btn.dataset.themeId });
         if (!ok) { err.textContent = 'No se pudo aplicar el theme.'; btn.disabled = false; }
+      };
+    });
+    list.querySelectorAll('button[data-local-theme-id]').forEach(btn => {
+      btn.onclick = () => {
+        setLocalThemeOverride(btn.dataset.localThemeId);
+        renderAdminThemes(body);
       };
     });
   }
@@ -3948,12 +3980,13 @@
   function applyThemeSettingsRow(row){
     const theme = (row && row.active_theme) || 'default';
     ACTIVE_THEME = AVAILABLE_THEMES.some(t => t.id === theme) ? theme : 'default';
+    THEME_FORCED_AT_MS = (row && row.forced_at) ? new Date(row.forced_at).getTime() : 0;
     applyThemeToDom(effectiveTheme());
     refreshAdminPanelIfOpen();
     if (document.getElementById('dc-settings-overlay')?.classList.contains('active') && settingsTab === 'themes') renderSettingsBody();
   }
   async function refreshThemeSettings(){
-    const { data } = await sb.from('chat_theme_settings').select('active_theme').eq('id', true);
+    const { data } = await sb.from('chat_theme_settings').select('active_theme, forced_at').eq('id', true);
     applyThemeSettingsRow(data && data[0]);
   }
 
@@ -4069,7 +4102,7 @@
       sb.from('chat_helper_messages').select('id,body,sort_order').order('sort_order', { ascending: true }),
       sb.from('chat_word_filters').select('id,word,replacement').order('id', { ascending: true }),
       sb.from('chat_emoticon_settings').select('hidden_defaults').eq('id', true),
-      sb.from('chat_theme_settings').select('active_theme').eq('id', true),
+      sb.from('chat_theme_settings').select('active_theme, forced_at').eq('id', true),
     ]);
     applyRoomRows(rooms);
     bannedNicks = new Set((bans||[]).map(b=>b.nick_lower));

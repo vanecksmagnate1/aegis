@@ -365,7 +365,7 @@ export default async function handler(req, res) {
       case 'setTheme': {
         const theme = String(payload?.theme || '').trim();
         if (!AVAILABLE_THEMES.includes(theme)) throw new Error('invalid_theme');
-        await sbUpdate('chat_theme_settings', 'id', 'true', { active_theme: theme });
+        await sbUpdate('chat_theme_settings', 'id', 'true', { active_theme: theme, forced_at: new Date().toISOString() });
         break;
       }
       default:
