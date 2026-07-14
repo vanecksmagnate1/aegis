@@ -752,7 +752,7 @@
   // atributo data-theme. Ver AVAILABLE_THEMES para el listado del panel.
   let ACTIVE_THEME = 'default';
   const AVAILABLE_THEMES = [
-    { id: 'default', label: 'Default', desc: 'El look clasico XP azul de siempre. Es el respaldo: siempre podes volver a este.' },
+    { id: 'default', label: 'Default', desc: 'El look clasico XP azul de siempre. Es el respaldo: siempre se puede volver a este.' },
     { id: 'royale-obsidian', label: 'Royale Obsidian', desc: 'Negro gloss con bisel metalico y acento azul electrico, estilo Windows XP Royale Noir.' },
   ];
   // Piel visual PERSONAL: override solo-local (localStorage), nunca se manda
@@ -2509,6 +2509,7 @@
   const SETTINGS_TABS = [
     {id:"profile", label:"Profile"},
     {id:"options", label:"Options"},
+    {id:"themes", label:"Themes"},
     {id:"sounds", label:"Sounds"},
     {id:"info", label:"Info"},
     {id:"patch", label:"Patch"},
@@ -2591,10 +2592,6 @@
         updateSetProfilePreview();
       }
     } else if (settingsTab === "options"){
-      const localThemeChoices = [
-        { id: '', label: 'Usar el del sitio', desc: `Seguí la piel que eligió el admin para todo el chat (ahora: ${escapeHtml(AVAILABLE_THEMES.find(t=>t.id===ACTIVE_THEME)?.label || 'Default')}).` },
-        ...AVAILABLE_THEMES,
-      ];
       body.innerHTML = `
         <h4>Options</h4>
         <div class="dc-checklist">
@@ -2602,8 +2599,15 @@
           <label><input type="checkbox" checked> Mostrar avisos de entrada/salida</label>
           <label><input type="checkbox" checked> Habilitar emoticones</label>
         </div>
-        <h4 style="margin-top:16px;">Tema visual (solo para vos)</h4>
-        <p style="color:#333;">Cambia cómo ves VOS las ventanas del chat. No se aplica a nadie más y no necesita conexión: se guarda solo en este navegador.</p>
+      `;
+    } else if (settingsTab === "themes"){
+      const localThemeChoices = [
+        { id: '', label: 'Usar el del sitio', desc: `Sigue la apariencia que el administrador definió para todo el chat (actualmente: ${escapeHtml(AVAILABLE_THEMES.find(t=>t.id===ACTIVE_THEME)?.label || 'Default')}).` },
+        ...AVAILABLE_THEMES,
+      ];
+      body.innerHTML = `
+        <h4>Themes</h4>
+        <p style="color:#333;">Seleccione la apariencia de las ventanas del chat para esta cuenta. El cambio no afecta a los demás usuarios ni requiere conexión: se guarda únicamente en este navegador.</p>
         <div class="dc-vismode" id="dc-localtheme-list"></div>
       `;
       const list = document.getElementById('dc-localtheme-list');
@@ -3669,7 +3673,7 @@
   function renderAdminThemes(body){
     body.innerHTML = `
       <h4>Themes</h4>
-      <p>Cambia el aspecto de las ventanas del chat (marcos, barras de título, tabs, botones) y del privado y el broadcast, para TODOS los usuarios apenas lo aplicás. No cambia tamaños de ventana ni suma/saca opciones de usuario o admin: es solo estético.</p>
+      <p>Cambia el aspecto de las ventanas del chat (marcos, barras de título, tabs, botones) y del privado y el broadcast, para TODOS los usuarios apenas se aplica. No cambia tamaños de ventana ni suma ni quita opciones de usuario o administrador: es solo estético.</p>
       <div class="dc-vismode" id="dc-themes-list"></div>
       <p class="dc-error" id="dc-themes-error"></p>
     `;
@@ -3946,7 +3950,7 @@
     ACTIVE_THEME = AVAILABLE_THEMES.some(t => t.id === theme) ? theme : 'default';
     applyThemeToDom(effectiveTheme());
     refreshAdminPanelIfOpen();
-    if (document.getElementById('dc-settings-overlay')?.classList.contains('active') && settingsTab === 'options') renderSettingsBody();
+    if (document.getElementById('dc-settings-overlay')?.classList.contains('active') && settingsTab === 'themes') renderSettingsBody();
   }
   async function refreshThemeSettings(){
     const { data } = await sb.from('chat_theme_settings').select('active_theme').eq('id', true);
