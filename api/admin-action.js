@@ -140,6 +140,20 @@ export default async function handler(req, res) {
         });
         break;
       }
+      case 'saveAdminProfile': {
+        const nick = String(payload?.nick || 'Van Eck').trim();
+        await sbInsert('chat_admin_profile', {
+          nick_lower: 'van eck',
+          nick,
+          color: String(payload?.color || 'rainbow'),
+          text_color: payload?.textColor || null,
+          text_font: payload?.textFont || null,
+          avatar: String(payload?.avatar || 'default'),
+          rank: String(payload?.rank || 'none'),
+          visibility_mode: String(payload?.visibilityMode || 'normal'),
+        });
+        break;
+      }
       case 'kickRoomAll': {
         const room = String(payload?.room || '').trim();
         const nicks = Array.isArray(payload?.nicks)
