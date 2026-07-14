@@ -16,25 +16,25 @@
     font-family: Tahoma, "MS Sans Serif", Geneva, sans-serif;
   }
   .dc-globalbroadcast-box {
-    background: #45519f; width: min(90vw, 420px);
-    border: 2px solid #1c2c5c; border-radius: 6px; overflow: hidden;
+    background: var(--dc-c-frame-bg); width: min(90vw, 420px);
+    border: 2px solid var(--dc-c-frame-border-strong); border-radius: 6px; overflow: hidden;
     box-shadow: 0 15px 40px rgba(0,0,0,0.5);
   }
   .dc-globalbroadcast-title {
-    background: linear-gradient(135deg, #6f93cf 0%, #3f60a3 100%);
+    background: var(--dc-c-dialog-titlebar-bg);
     color: #fff; font-weight: bold; font-size: 16px; padding: 10px 14px;
     text-align: center;
   }
   .dc-globalbroadcast-body {
-    padding: 16px; font-size: 15px; font-weight: bold; color: #eef2fb; background: #7f95cf;
-    margin: 8px; border: 1px solid #16224e; text-align: center;
+    padding: 16px; font-size: 15px; font-weight: bold; color: var(--dc-c-panel-text); background: var(--dc-c-panel-bg);
+    margin: 8px; border: 1px solid var(--dc-c-frame-border); text-align: center;
     white-space: pre-wrap; word-wrap: break-word; min-height: 40px;
   }
   .dc-globalbroadcast-box > button {
     display: block; margin: 0 12px 12px auto; font-family: inherit; font-size: 14px; font-weight: bold;
-    background: linear-gradient(180deg, #f7f9fc, #cbd4e2);
-    border: 1px solid #5a6c8c; border-radius: 4px;
-    color: #16224e; padding: 7px 20px; cursor: pointer;
+    background: var(--dc-c-btn-bg);
+    border: 1px solid var(--dc-c-wbtn-border); border-radius: 4px;
+    color: var(--dc-c-btn-text); padding: 7px 20px; cursor: pointer;
   }
   .dc-globalbroadcast-box > button:hover { filter: brightness(1.04); }
   .dc-globalbroadcast-box > button:active { filter: brightness(0.94); }
@@ -43,6 +43,57 @@
 <body>
 <div id="dc-root"><div class="dc-stage"><div class="dc-scaler" id="dc-scaler"><div id="dc-app"></div></div></div></div>
 <style>
+  /* ===== Themes (piel visual): variables de color de CHROME de ventanas
+     (marcos, barras de titulo, tabs de dialogo, botones, popup de menu,
+     panel de broadcast). Deliberadamente NO cubre contenido (log de
+     mensajes, listas, tablas, inputs, pickers de emoji/avatar): esas
+     areas quedan iguales en cualquier theme para no arriesgar legibilidad.
+     El theme "default" son estos mismos valores (cero cambio visual);
+     Royale Obsidian los pisa mas abajo bajo html[data-theme=...]. */
+  :root {
+    --dc-c-frame-bg: #45519f;
+    --dc-c-frame-border: #16224e;
+    --dc-c-frame-border-strong: #1c2c5c;
+    --dc-c-titlebar-bg: linear-gradient(135deg, #d9e8fb 0%, #a9c6ea 35%, #6f93cf 70%, #3f60a3 100%);
+    --dc-c-titlebar-text: #16224e;
+    --dc-c-dialog-titlebar-bg: linear-gradient(135deg, #6f93cf 0%, #3f60a3 100%);
+    --dc-c-menubar-bg: linear-gradient(180deg, #6f93cf, #3f60a3);
+    --dc-c-wbtn-border: #5a6c8c;
+    --dc-c-wbtn-blue-bg: linear-gradient(180deg, #8FC1F7 0%, #4E8FE8 45%, #2563C9 100%);
+    --dc-c-popup-bg: #eef2f9;
+    --dc-c-popup-text: #16224e;
+    --dc-c-popup-hover-bg: #3f60a3;
+    --dc-c-btn-bg: linear-gradient(180deg, #f7f9fc, #cbd4e2);
+    --dc-c-btn-text: #16224e;
+    --dc-c-tab-bg: #6f80c0;
+    --dc-c-tab-text: #eef2fb;
+    --dc-c-tab-active-bg: #8b9ce0;
+    --dc-c-tab-active-text: #16224e;
+    --dc-c-panel-bg: #7f95cf;
+    --dc-c-panel-text: #eef2fb;
+  }
+  html[data-theme="royale-obsidian"] {
+    --dc-c-frame-bg: linear-gradient(180deg, #1c2029 0%, #0a0c10 100%);
+    --dc-c-frame-border: #3a4557;
+    --dc-c-frame-border-strong: #4a5568;
+    --dc-c-titlebar-bg: linear-gradient(180deg, #333f4f 0%, #12161c 55%, #05060a 100%);
+    --dc-c-titlebar-text: #eef2f7;
+    --dc-c-dialog-titlebar-bg: linear-gradient(135deg, #333f4f 0%, #12161c 100%);
+    --dc-c-menubar-bg: linear-gradient(180deg, #232935, #0d1015);
+    --dc-c-wbtn-border: #4a5568;
+    --dc-c-wbtn-blue-bg: linear-gradient(180deg, #6fb6ff 0%, #2f7fe0 45%, #155bb0 100%);
+    --dc-c-popup-bg: #12151b;
+    --dc-c-popup-text: #e8ecf3;
+    --dc-c-popup-hover-bg: #2f7fe0;
+    --dc-c-btn-bg: linear-gradient(180deg, #2b3542, #12161c);
+    --dc-c-btn-text: #eef2f7;
+    --dc-c-tab-bg: #1b2029;
+    --dc-c-tab-text: #9aa6ba;
+    --dc-c-tab-active-bg: #3aa0ff;
+    --dc-c-tab-active-text: #0a0c10;
+    --dc-c-panel-bg: #12151b;
+    --dc-c-panel-text: #dbe2ee;
+  }
   #dc-root, #dc-root * { box-sizing: border-box; }
   #dc-root input:focus, #dc-root textarea:focus, #dc-root button:focus, #dc-root select:focus { outline: none; }
   #dc-root {
@@ -107,16 +158,16 @@
 
   .dc-window {
     position: absolute; inset: 0;
-    background: #45519f;
-    border: 1px solid #16224e;
+    background: var(--dc-c-frame-bg);
+    border: 1px solid var(--dc-c-frame-border);
     border-radius: 4px;
     overflow: hidden;
     box-shadow: 0 10px 30px rgba(0,0,0,0.35);
   }
   .dc-titlebar {
     position: absolute; top: 0; left: 0; width: 1024px; height: 38px;
-    background: linear-gradient(135deg, #d9e8fb 0%, #a9c6ea 35%, #6f93cf 70%, #3f60a3 100%);
-    color: #16224e; font-weight: bold; font-size: 18px;
+    background: var(--dc-c-titlebar-bg);
+    color: var(--dc-c-titlebar-text); font-weight: bold; font-size: 18px;
     padding: 0 8px; box-sizing: border-box;
     display: flex; align-items: center; justify-content: space-between;
   }
@@ -137,11 +188,11 @@
     width: 28px; height: 24px; border-radius: 2px; margin: 0; padding: 0;
     font-size: 13px; color: #fff; font-weight: bold; font-family: Tahoma, sans-serif;
     text-shadow: 0 -1px 0 rgba(0,0,0,0.3);
-    border: 1px solid #5a6c8c;
+    border: 1px solid var(--dc-c-wbtn-border);
     text-decoration: none; cursor: pointer;
   }
   .dc-titlebar .dc-wbtn-min, .dc-titlebar .dc-wbtn-max {
-    background: linear-gradient(180deg, #8FC1F7 0%, #4E8FE8 45%, #2563C9 100%);
+    background: var(--dc-c-wbtn-blue-bg);
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
   }
   .dc-titlebar .dc-wbtn-close {
@@ -156,21 +207,21 @@
   .dc-titlebar .dc-wbtn-float.visible { display: inline-flex; }
   .dc-menubar {
     position: absolute; top: 38px; left: 0; width: 1024px; height: 34px;
-    background: linear-gradient(180deg, #6f93cf, #3f60a3);
+    background: var(--dc-c-menubar-bg);
     font-size: 15px; padding: 0 14px; color: #eef4fc;
     display: flex; align-items: center;
-    border-bottom: 1px solid #1c2c5c; box-sizing: border-box;
+    border-bottom: 1px solid var(--dc-c-frame-border-strong); box-sizing: border-box;
   }
   .dc-menubar .dc-menuitem { cursor: pointer; padding: 4px 8px; position: relative; display: inline-block; }
-  .dc-menubar .dc-menuitem:hover, .dc-menubar .dc-menuitem.open { background: #16224e; color: #fff; }
+  .dc-menubar .dc-menuitem:hover, .dc-menubar .dc-menuitem.open { background: var(--dc-c-frame-border); color: #fff; }
   .dc-menudrop {
     display: none; position: absolute; top: 100%; left: 0; z-index: 30;
-    background: #eef2f9; border: 1px solid #16224e; box-shadow: 2px 2px 6px rgba(0,0,0,0.4);
+    background: var(--dc-c-popup-bg); border: 1px solid var(--dc-c-frame-border); box-shadow: 2px 2px 6px rgba(0,0,0,0.4);
     min-width: 220px; padding: 2px 0; border-radius: 0 0 4px 4px;
   }
   .dc-menudrop.active { display: block; }
-  .dc-menudrop-item { padding: 8px 14px; font-size: 15px; color: #16224e; cursor: pointer; white-space: nowrap; }
-  .dc-menudrop-item:hover { background: #3f60a3; color: #fff; }
+  .dc-menudrop-item { padding: 8px 14px; font-size: 15px; color: var(--dc-c-popup-text); cursor: pointer; white-space: nowrap; }
+  .dc-menudrop-item:hover { background: var(--dc-c-popup-hover-bg); color: #fff; }
   .dc-menudrop-item.disabled { color: #aaa; cursor: default; }
   .dc-menudrop-item.disabled:hover { background: none; }
 
@@ -190,8 +241,8 @@
 
   /* botones bisel XP azul */
   .dc-btn {
-    background: linear-gradient(180deg, #f7f9fc, #cbd4e2);
-    border: 1px solid #5a6c8c; color: #16224e;
+    background: var(--dc-c-btn-bg);
+    border: 1px solid var(--dc-c-wbtn-border); color: var(--dc-c-btn-text);
     font-family: inherit; font-size: 15px; font-weight: bold;
     padding: 7px 14px; cursor: pointer;
     border-radius: 4px;
@@ -199,7 +250,7 @@
   .dc-btn:hover { filter: brightness(1.04); }
   .dc-btn:active { filter: brightness(0.94); }
   .dc-btn:disabled { color: #8493b8; text-shadow: none; cursor: default; filter: none; }
-  .dc-default { border: 2px solid #16224e; }
+  .dc-default { border: 2px solid var(--dc-c-frame-border); }
   .dc-smallbtn { padding: 5px 11px; font-size: 14px; }
   .dc-danger { color: #a30000; }
 
@@ -407,10 +458,10 @@
   }
   .dc-overlay.active { display: flex; }
   .dc-dialog {
-    background: #45519f; width: 460px; max-width: 100%;
+    background: var(--dc-c-frame-bg); width: 460px; max-width: 100%;
     padding: 0;
     max-height: 100%; overflow: hidden;
-    border: 2px solid #1c2c5c; border-radius: 6px;
+    border: 2px solid var(--dc-c-frame-border-strong); border-radius: 6px;
     box-shadow: 0 15px 40px rgba(0,0,0,0.5);
     display: flex; flex-direction: column;
   }
@@ -418,26 +469,26 @@
   #dc-admin-overlay .dc-dialog, #dc-settings-overlay .dc-dialog { width: 820px; height: 620px; }
   .dc-dialog .dc-titlebar {
     position: static; width: auto; height: auto;
-    background: linear-gradient(135deg, #6f93cf 0%, #3f60a3 100%);
+    background: var(--dc-c-dialog-titlebar-bg);
     padding: 10px 16px; color: #fff; font-size: 22px;
   }
   .dc-dialog .dc-titlebar .dc-tbicon { width: 24px; height: 24px; }
-  .dc-dialog-tabs { display: flex; flex-shrink: 0; background: #45519f; padding: 8px 8px 0; overflow-x: auto; gap: 3px; }
+  .dc-dialog-tabs { display: flex; flex-shrink: 0; background: var(--dc-c-frame-bg); padding: 8px 8px 0; overflow-x: auto; gap: 3px; }
   .dc-dialog-tab {
-    padding: 9px 18px; font-size: 15px; color: #eef2fb; cursor: pointer;
-    background: #6f80c0; white-space: nowrap;
+    padding: 9px 18px; font-size: 15px; color: var(--dc-c-tab-text); cursor: pointer;
+    background: var(--dc-c-tab-bg); white-space: nowrap;
     border-radius: 6px 6px 0 0;
   }
-  .dc-dialog-tab.active { font-weight: bold; background: #8b9ce0; color: #16224e; }
+  .dc-dialog-tab.active { font-weight: bold; background: var(--dc-c-tab-active-bg); color: var(--dc-c-tab-active-text); }
   .dc-dialog-body {
     padding: 16px; overflow-y: auto; flex: 1; min-height: 160px; font-size: 16px;
-    color: #eef2fb;
-    background: #7f95cf; margin: 0 8px 8px;
-    border: 1px solid #16224e;
+    color: var(--dc-c-panel-text);
+    background: var(--dc-c-panel-bg); margin: 0 8px 8px;
+    border: 1px solid var(--dc-c-frame-border);
   }
-  .dc-dialog-body h4 { margin: 0 0 10px; color: #eef2fb; font-size: 18px; }
+  .dc-dialog-body h4 { margin: 0 0 10px; color: var(--dc-c-panel-text); font-size: 18px; }
   .dc-dialog-body p { margin: 0 0 10px; }
-  .dc-dialog-body .dc-field label { color: #eef2fb; font-weight: normal; }
+  .dc-dialog-body .dc-field label { color: var(--dc-c-panel-text); font-weight: normal; }
   .dc-dialog-body .dc-field input, .dc-dialog-body .dc-field select, .dc-dialog-body .dc-field textarea {
     width: 100%; padding: 6px 8px;
     background: #fff; border: 1px solid #1c2c5c; border-radius: 2px; font-family: inherit; font-size: 15px;
@@ -487,7 +538,7 @@
   .dc-vismode { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
   .dc-vismode-opt {
     display: flex; align-items: flex-start; gap: 8px; cursor: pointer;
-    background: #7f95cf; border: 1px solid #5567aa; border-radius: 4px; padding: 8px 10px;
+    background: var(--dc-c-panel-bg); border: 1px solid #5567aa; border-radius: 4px; padding: 8px 10px;
   }
   .dc-vismode-opt:has(input:checked) { background: #8fa8dd; border-color: #eef2fb; }
   .dc-vismode-opt input[type=radio] { margin-top: 3px; flex-shrink: 0; }
@@ -504,7 +555,7 @@
   .dc-inlineform input {
     flex: 1; padding: 6px 8px; background: #fff; border: 1px solid #1c2c5c; border-radius: 2px; font-family: inherit; font-size: 15px;
   }
-  .dc-dialog-footer { display: flex; flex-shrink: 0; justify-content: flex-end; gap: 10px; padding: 12px; background: #45519f; }
+  .dc-dialog-footer { display: flex; flex-shrink: 0; justify-content: flex-end; gap: 10px; padding: 12px; background: var(--dc-c-frame-bg); }
   .dc-dialog-footer .dc-btn { padding: 9px 24px; font-size: 15px; }
   .dc-closex {
     cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
@@ -527,15 +578,15 @@
   #dc-pmwin-layer { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 45; }
   .dc-pmwin {
     position: absolute; width: 340px; height: 400px; display: none; flex-direction: column;
-    background: #45519f; border: 2px solid #1c2c5c; border-radius: 6px;
+    background: var(--dc-c-frame-bg); border: 2px solid var(--dc-c-frame-border-strong); border-radius: 6px;
     box-shadow: 0 10px 30px rgba(0,0,0,0.45); pointer-events: auto; overflow: hidden;
     box-sizing: border-box;
   }
   .dc-pmwin-title {
-    background: linear-gradient(135deg, #d9e8fb 0%, #a9c6ea 35%, #6f93cf 70%, #3f60a3 100%);
-    color: #16224e; font-weight: bold; font-size: 14px; padding: 7px 8px; cursor: move;
+    background: var(--dc-c-titlebar-bg);
+    color: var(--dc-c-titlebar-text); font-weight: bold; font-size: 14px; padding: 7px 8px; cursor: move;
     display: flex; align-items: center; justify-content: space-between; user-select: none;
-    border-bottom: 1px solid #1c2c5c; flex-shrink: 0;
+    border-bottom: 1px solid var(--dc-c-frame-border-strong); flex-shrink: 0;
   }
   .dc-pmwin-title-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .dc-pmwin-x {
@@ -696,6 +747,14 @@
   let savedAdminProfile = null;
   let BANNERS = []; // [{id, imageData, linkUrl, sortOrder}]
   let BANNER_ROTATION_MINUTES = 5;
+  // Piel visual activa (solo chrome de ventanas: marcos, titlebars, tabs,
+  // botones, popup de menu, broadcast). "default" = look clasico, sin
+  // atributo data-theme. Ver AVAILABLE_THEMES para el listado del panel.
+  let ACTIVE_THEME = 'default';
+  const AVAILABLE_THEMES = [
+    { id: 'default', label: 'Default', desc: 'El look clasico XP azul de siempre. Es el respaldo: siempre podes volver a este.' },
+    { id: 'royale-obsidian', label: 'Royale Obsidian', desc: 'Negro gloss con bisel metalico y acento azul electrico, estilo Windows XP Royale Noir.' },
+  ];
   let bannerRotationIndex = 0;
   let bannerRotationTimer = null;
   let CUSTOM_EMOTICONS = []; // [{id, shortcode, imageData}]
@@ -3570,8 +3629,28 @@
   function renderAdminThemes(body){
     body.innerHTML = `
       <h4>Themes</h4>
-      <p style="color:#333;">Próximamente vas a poder crear y aplicar distintos temas visuales (skins) para todo el chat, que se ven igual para todos los usuarios apenas se activan.</p>
+      <p>Cambia el aspecto de las ventanas del chat (marcos, barras de título, tabs, botones) y del privado y el broadcast, para TODOS los usuarios apenas lo aplicás. No cambia tamaños de ventana ni suma/saca opciones de usuario o admin: es solo estético.</p>
+      <div class="dc-vismode" id="dc-themes-list"></div>
+      <p class="dc-error" id="dc-themes-error"></p>
     `;
+    const list = document.getElementById('dc-themes-list');
+    list.innerHTML = AVAILABLE_THEMES.map(t => `
+      <div class="dc-vismode-opt" style="cursor:default;">
+        <span style="flex:1;"><b>${escapeHtml(t.label)}</b><small>${escapeHtml(t.desc)}</small></span>
+        ${t.id === ACTIVE_THEME
+          ? `<span class="dc-admincard-tag" style="flex-shrink:0; align-self:center;">Activo</span>`
+          : `<button class="dc-btn dc-smallbtn" style="flex-shrink:0; align-self:center;" data-theme-id="${escapeHtml(t.id)}">Aplicar</button>`}
+      </div>
+    `).join('');
+    list.querySelectorAll('button[data-theme-id]').forEach(btn => {
+      btn.onclick = async () => {
+        const err = document.getElementById('dc-themes-error');
+        err.textContent = '';
+        btn.disabled = true;
+        const ok = await callAdminAction('setTheme', { theme: btn.dataset.themeId });
+        if (!ok) { err.textContent = 'No se pudo aplicar el theme.'; btn.disabled = false; }
+      };
+    });
   }
 
   /* ---------- REALTIME GLOBAL: presencia, bans, mutes, mods, salas, broadcasts ---------- */
@@ -3770,6 +3849,7 @@
       .on('postgres_changes', { event:'*', schema:'public', table:'chat_helper_messages' }, () => refreshHelperMessages())
       .on('postgres_changes', { event:'*', schema:'public', table:'chat_word_filters' }, () => refreshWordFilters())
       .on('postgres_changes', { event:'*', schema:'public', table:'chat_emoticon_settings' }, () => refreshEmoticonSettings())
+      .on('postgres_changes', { event:'*', schema:'public', table:'chat_theme_settings' }, () => refreshThemeSettings())
       .subscribe();
   }
 
@@ -3812,6 +3892,24 @@
     BANNER_ROTATION_MINUTES = (row && row.rotation_minutes) || 5;
     setupBannerRotationTimer();
     refreshAdminPanelIfOpen();
+  }
+
+  // Aplica la piel visual al documento entero (html[data-theme=...]), para
+  // que tambien alcance al overlay de broadcast global que vive fuera de
+  // #dc-root. "default" no pone atributo: es el look de siempre, intacto.
+  function applyThemeToDom(theme){
+    if (theme && theme !== 'default') document.documentElement.setAttribute('data-theme', theme);
+    else document.documentElement.removeAttribute('data-theme');
+  }
+  function applyThemeSettingsRow(row){
+    const theme = (row && row.active_theme) || 'default';
+    ACTIVE_THEME = AVAILABLE_THEMES.some(t => t.id === theme) ? theme : 'default';
+    applyThemeToDom(ACTIVE_THEME);
+    refreshAdminPanelIfOpen();
+  }
+  async function refreshThemeSettings(){
+    const { data } = await sb.from('chat_theme_settings').select('active_theme').eq('id', true);
+    applyThemeSettingsRow(data && data[0]);
   }
 
   function applyEmoticonRows(rows){
@@ -3913,7 +4011,7 @@
     const [
       { data: rooms }, { data: bans }, { data: mutes }, { data: mods }, { data: adminProfileRows },
       { data: banners }, { data: bannerSettingsRows }, { data: emoticons }, { data: helperMessages },
-      { data: wordFilters }, { data: emoticonSettingsRows },
+      { data: wordFilters }, { data: emoticonSettingsRows }, { data: themeSettingsRows },
     ] = await Promise.all([
       roomsQuery,
       sb.from('chat_bans').select('nick_lower'),
@@ -3926,6 +4024,7 @@
       sb.from('chat_helper_messages').select('id,body,sort_order').order('sort_order', { ascending: true }),
       sb.from('chat_word_filters').select('id,word,replacement').order('id', { ascending: true }),
       sb.from('chat_emoticon_settings').select('hidden_defaults').eq('id', true),
+      sb.from('chat_theme_settings').select('active_theme').eq('id', true),
     ]);
     applyRoomRows(rooms);
     bannedNicks = new Set((bans||[]).map(b=>b.nick_lower));
@@ -3938,6 +4037,7 @@
     applyHelperMessageRows(helperMessages);
     applyFilterRows(wordFilters);
     applyEmoticonSettingsRow(emoticonSettingsRows && emoticonSettingsRows[0]);
+    applyThemeSettingsRow(themeSettingsRows && themeSettingsRows[0]);
     renderRoomsPanel();
     renderUsers();
     setupHelperCheckTimer();

@@ -9,6 +9,7 @@ const MAX_HELPER_MESSAGES = 20;
 const HELPER_NICK_COLOR = '#1958D6';
 const MAX_WORD_FILTERS = 200;
 const MAX_HIDDEN_DEFAULTS = 300;
+const AVAILABLE_THEMES = ['default', 'royale-obsidian'];
 
 async function notice(room, text) {
   await sbInsert('chat_messages', {
@@ -359,6 +360,12 @@ export default async function handler(req, res) {
           ? payload.hidden.filter((e) => typeof e === 'string' && e.length && e.length <= 8).slice(0, MAX_HIDDEN_DEFAULTS)
           : [];
         await sbUpdate('chat_emoticon_settings', 'id', 'true', { hidden_defaults: hidden });
+        break;
+      }
+      case 'setTheme': {
+        const theme = String(payload?.theme || '').trim();
+        if (!AVAILABLE_THEMES.includes(theme)) throw new Error('invalid_theme');
+        await sbUpdate('chat_theme_settings', 'id', 'true', { active_theme: theme });
         break;
       }
       default:
