@@ -509,9 +509,6 @@
   .dc-admincard-actions { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
   .dc-admincard-actions select { font-family: inherit; font-size: 14px; padding: 3px; }
 
-  /* ventana de mensaje privado (overlay de solo lectura, admin) */
-  #dc-pm-log { min-height: 160px; max-height: 220px; }
-
   /* ventana unica flotante "Centro de Mensajes" (arrastrable, alterna entre
      lista de conversaciones y una conversacion abierta) */
   #dc-pmwin-layer { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 45; }
@@ -669,14 +666,18 @@
   let roomLogs = {};
   let presenceList = [];
   let pmThreads = {};
-  let pmTarget = null;
-  let pmReadOnly = false;
-  // Centro de Mensajes: una unica ventana arrastrable (independiente del
-  // overlay de solo lectura de arriba, que sigue usandose solo para "Leer
-  // privados" del admin) que alterna entre la lista de conversaciones y
-  // una conversacion abierta, para no acumular ventanas.
-  let pmConversations = {}; // nick -> { unread: number } - todas las conversaciones que existen esta sesion
+  // Centro de Mensajes: una unica ventana arrastrable que alterna entre la
+  // lista de conversaciones y una conversacion abierta, para no acumular
+  // ventanas. Tiene dos modos que comparten la misma ventana:
+  // 'own' = las conversaciones propias (envio/recibo); 'adminRead' = el
+  // admin leyendo TODOS los privados de otro usuario ("Leer privados"),
+  // agrupados por con quien hablo cada uno - solo lectura, sin input.
+  let pmMode = 'own';
+  let pmConversations = {}; // nick -> { unread: number } - mis conversaciones propias
   let pmActiveNick = null; // null = mostrando la lista; si no, conversacion abierta con ese nick
+  let pmAdminReadNick = null; // usuario cuyos privados esta leyendo el admin
+  let pmAdminReadThreads = {}; // partner -> [entries] agrupados del usuario de arriba
+  let pmAdminReadPartner = null; // con quien de esos esta viendo la conversacion ahora
   let selectedNick = null;
   let settingsTab = "profile";
   let adminTab = "rooms";
@@ -800,7 +801,7 @@
                   </div>
                   <div id="dc-msgcenter-convo-view" style="display:none; flex:1; flex-direction:column; min-height:0;">
                     <div class="dc-pmwin-log dc-sunken" id="dc-msgcenter-log"></div>
-                    <div class="dc-pmwin-inputrow" style="position:relative;">
+                    <div class="dc-pmwin-inputrow" id="dc-msgcenter-inputrow" style="position:relative;">
                       <div class="dc-emopop" id="dc-msgcenter-emopop" style="bottom:32px;"></div>
                       <button class="dc-btn dc-smallbtn" id="dc-msgcenter-emobtn" type="button" title="Emoticones" data-no-drag>🙂</button>
                       <input type="text" id="dc-msgcenter-input" class="dc-sunken" style="flex:1; padding:4px 5px;" maxlength="200">
@@ -855,27 +856,6 @@
             <div class="dc-dialog-footer">
               <button class="dc-btn" data-close="settings">Cancel</button>
               <button class="dc-btn dc-default" id="dc-settings-save">OK</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- PM OVERLAY -->
-        <div class="dc-overlay" id="dc-pm-overlay">
-          <div class="dc-dialog">
-            <div class="dc-titlebar">
-              <div class="dc-logo"><span class="dc-tbicon"></span><span id="dc-pm-title">Privado</span></div>
-              <span class="dc-closex" data-close="pm">&#10005;</span>
-            </div>
-            <div class="dc-dialog-body">
-              <div class="dc-sunken" id="dc-pm-log" style="overflow-y:auto; padding:6px; margin-bottom:6px;"></div>
-              <div style="position:relative;" id="dc-pm-inputrow">
-                <div class="dc-emopop" id="dc-pm-emopop" style="bottom:32px;"></div>
-                <div style="display:flex; gap:5px;">
-                  <button class="dc-btn dc-smallbtn" id="dc-pm-emobtn" type="button" title="Emoticones">🙂</button>
-                  <input type="text" id="dc-pm-input" class="dc-sunken" style="flex:1; padding:4px 5px;" maxlength="200">
-                  <button class="dc-btn dc-default" id="dc-pm-send">Enviar</button>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -1371,8 +1351,12 @@
     roomLogs = {};
     lastSeenMessageId = {};
     seenMessageIds = {};
+    pmMode = 'own';
     pmConversations = {};
     pmActiveNick = null;
+    pmAdminReadNick = null;
+    pmAdminReadThreads = {};
+    pmAdminReadPartner = null;
     pmThreads = {};
     document.getElementById('dc-msgcenter-win').style.display = 'none';
     renderMsgCenterBadge();
@@ -1679,88 +1663,6 @@
     pmThreads[nick] = merged.map(row => ({ from: row.from_nick === me.nick ? 'me' : row.from_nick, text: row.body, color: row.color }));
   }
 
-  async function loadFullPmHistory(nick){
-    const [{ data: sent }, { data: recv }] = await Promise.all([
-      sb.from('chat_pms').select('*').eq('from_nick', nick).order('created_at', { ascending:true }).limit(300),
-      sb.from('chat_pms').select('*').eq('to_nick', nick).order('created_at', { ascending:true }).limit(300),
-    ]);
-    const merged = [...(sent||[]), ...(recv||[])].sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
-    pmThreads[nick] = merged.map(row => ({ from: row.from_nick, to: row.to_nick, text: row.body, color: row.color }));
-  }
-
-  function wirePmEmoticons(){
-    const pop = document.getElementById('dc-pm-emopop');
-    const emoticonSet = EMOTICONS;
-    pop.innerHTML = emoticonSet.map(e => `<span data-emo="${escapeHtml(e)}">${e}</span>`).join('');
-    pop.querySelectorAll('span').forEach(s => s.onclick = () => {
-      const input = document.getElementById('dc-pm-input');
-      input.value += s.dataset.emo;
-      input.focus();
-      pop.classList.remove('active');
-    });
-    const btn = document.getElementById('dc-pm-emobtn');
-    btn.onclick = (e) => { e.stopPropagation(); pop.classList.toggle('active'); };
-    document.addEventListener('click', (e) => {
-      if (!pop.contains(e.target) && e.target !== btn) pop.classList.remove('active');
-    });
-  }
-
-  function openPM(nick, readOnly){
-    pmTarget = nick;
-    pmReadOnly = !!readOnly;
-    pmThreads[nick] = pmThreads[nick] || [];
-    document.getElementById('dc-pm-title').textContent = readOnly ? `Privados de ${nick} (solo lectura)` : `Privado con ${nick}`;
-    const inputRow = document.getElementById('dc-pm-inputrow');
-    inputRow.style.display = readOnly ? 'none' : 'block';
-    document.getElementById('dc-pm-overlay').classList.add('active');
-    renderPM();
-    if (readOnly) {
-      loadFullPmHistory(nick).then(renderPM);
-    } else {
-      loadPmHistory(nick).then(renderPM);
-      const input = document.getElementById('dc-pm-input');
-      input.value = '';
-      document.getElementById('dc-pm-send').onclick = sendPM;
-      input.onkeydown = (e) => { if (e.key === 'Enter') sendPM(); };
-      wirePmEmoticons();
-    }
-  }
-
-  function renderPM(){
-    const log = document.getElementById('dc-pm-log');
-    const isBlocked = pmTarget && blockedNicks.has(pmTarget.toLowerCase());
-    let entries = pmThreads[pmTarget] || [];
-    if (!pmReadOnly) entries = entries.filter(e => e.from === 'me' || !isBlocked);
-    const otherUser = pmTarget ? findUserObject(pmTarget) : null;
-    log.innerHTML = entries.length
-      ? entries.map(e => {
-          if (pmReadOnly) {
-            const u = findUserObject(e.from);
-            return `<div class="msg">${userIconHtml(u)}<span class="msgtext">${colorNickHtml(`${e.from} → ${e.to}`, e.color || '#000000')}<br>${wrapEmojiHtml(e.text)}</span></div>`;
-          }
-          const isMe = e.from === 'me';
-          const displayNick = isMe ? me.nick : pmTarget;
-          const u = isMe ? me : (otherUser || {});
-          const nickColor = e.color || (isMe ? me.color : '#000000');
-          return `<div class="msg">${userIconHtml(u)}<span class="msgtext">${colorNickHtml(displayNick, nickColor)}<br>${wrapEmojiHtml(e.text)}</span></div>`;
-        }).join('')
-      : `<div class="msg sys"><span class="msgtext">(Sin mensajes aún, escribe algo)</span></div>`;
-    log.scrollTop = log.scrollHeight;
-  }
-
-  async function sendPM(){
-    const input = document.getElementById('dc-pm-input');
-    const text = input.value.trim();
-    if (!text || !pmTarget) return;
-    input.value = '';
-    const targetNick = pmTarget;
-    const { error } = await sb.from('chat_pms').insert({ from_nick: me.nick, to_nick: targetNick, color: me.color, body: text });
-    if (error) { localSystem(`No se pudo enviar el privado (${error.message}).`); return; }
-    pmThreads[targetNick] = pmThreads[targetNick] || [];
-    pmThreads[targetNick].push({ from:'me', text, color: me.color });
-    if (pmTarget === targetNick) renderPM();
-  }
-
   /* ---------- CENTRO DE MENSAJES (ventana unica arrastrable de privados) ---------- */
 
   // Arrastre generico: handleEl dispara el arrastre, el.style.left/top se
@@ -1810,6 +1712,14 @@
     makeDraggable(win, win.querySelector('.dc-pmwin-title'), layer);
     document.getElementById('dc-msgcenter-x').addEventListener('click', (e) => {
       e.stopPropagation();
+      if (pmMode === 'adminRead') {
+        if (pmAdminReadPartner) { showAdminReadListMode(); return; }
+        pmMode = 'own';
+        pmAdminReadNick = null;
+        pmAdminReadThreads = {};
+        win.style.display = 'none';
+        return;
+      }
       if (pmActiveNick) showMsgCenterListMode();
       else win.style.display = 'none';
     });
@@ -1847,6 +1757,7 @@
   }
 
   function openMsgCenter(){
+    pmMode = 'own';
     document.getElementById('dc-msgcenter-win').style.display = 'flex';
     showMsgCenterListMode();
   }
@@ -1912,6 +1823,7 @@
   // Mensajes) como el usuario reabriendo algo pendiente. Siempre
   // reemplaza el contenido de la unica ventana - nunca se abre una nueva.
   function openPmConversation(nick){
+    pmMode = 'own';
     ensurePmConversation(nick).unread = 0;
     pmActiveNick = nick;
     const win = document.getElementById('dc-msgcenter-win');
@@ -1919,6 +1831,7 @@
     document.getElementById('dc-msgcenter-title').textContent = `Privado con ${nick}`;
     document.getElementById('dc-msgcenter-list-view').style.display = 'none';
     document.getElementById('dc-msgcenter-convo-view').style.display = 'flex';
+    document.getElementById('dc-msgcenter-inputrow').style.display = 'flex';
     renderMsgCenterBadge();
     renderMsgCenterLog();
     loadPmHistory(nick).then(renderMsgCenterLog);
@@ -1947,7 +1860,7 @@
   // toolbar) hasta que el usuario entra al Centro de Mensajes a leerla.
   function handleIncomingPm(fromNick){
     const conv = ensurePmConversation(fromNick);
-    const winOpen = document.getElementById('dc-msgcenter-win').style.display === 'flex';
+    const winOpen = pmMode === 'own' && document.getElementById('dc-msgcenter-win').style.display === 'flex';
     if (pmActiveNick === fromNick && winOpen) {
       renderMsgCenterLog();
       return;
@@ -1955,6 +1868,94 @@
     conv.unread += 1;
     renderMsgCenterBadge();
     if (winOpen && !pmActiveNick) renderMsgCenterList();
+  }
+
+  /* ---------- LECTURA ADMIN: "Leer privados" muestra el Centro de
+     Mensajes de OTRO usuario (agrupado por con quien hablo cada uno),
+     reusando la misma ventana en modo solo-lectura ---------- */
+
+  async function loadAdminReadThreads(nick){
+    const [{ data: sent }, { data: recv }] = await Promise.all([
+      sb.from('chat_pms').select('*').eq('from_nick', nick).order('created_at', { ascending:true }).limit(300),
+      sb.from('chat_pms').select('*').eq('to_nick', nick).order('created_at', { ascending:true }).limit(300),
+    ]);
+    const merged = [...(sent||[]), ...(recv||[])].sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
+    const grouped = {};
+    merged.forEach(row => {
+      const partner = row.from_nick === nick ? row.to_nick : row.from_nick;
+      grouped[partner] = grouped[partner] || [];
+      grouped[partner].push({ from: row.from_nick, to: row.to_nick, text: row.body, color: row.color });
+    });
+    return grouped;
+  }
+
+  async function openAdminReadCenter(nick){
+    pmMode = 'adminRead';
+    pmAdminReadNick = nick;
+    pmAdminReadPartner = null;
+    pmAdminReadThreads = {};
+    const win = document.getElementById('dc-msgcenter-win');
+    win.style.display = 'flex';
+    showAdminReadListMode();
+    pmAdminReadThreads = await loadAdminReadThreads(nick);
+    if (pmMode === 'adminRead' && pmAdminReadNick === nick && !pmAdminReadPartner) renderAdminReadList();
+  }
+
+  function showAdminReadListMode(){
+    pmAdminReadPartner = null;
+    document.getElementById('dc-msgcenter-title').textContent = `Privados de ${pmAdminReadNick}`;
+    document.getElementById('dc-msgcenter-list-view').style.display = 'flex';
+    document.getElementById('dc-msgcenter-convo-view').style.display = 'none';
+    renderAdminReadList();
+  }
+
+  function renderAdminReadList(){
+    const list = document.getElementById('dc-msgcenter-list');
+    const partners = Object.keys(pmAdminReadThreads);
+    if (!partners.length) {
+      list.innerHTML = `<div class="msg sys"><span class="msgtext">(${escapeHtml(pmAdminReadNick)} no tiene privados registrados.)</span></div>`;
+      return;
+    }
+    list.innerHTML = partners.map(partner => {
+      const u = findUserObject(partner);
+      const entries = pmAdminReadThreads[partner];
+      const last = entries[entries.length - 1];
+      const preview = last ? `${last.from === pmAdminReadNick ? pmAdminReadNick : last.from}: ${last.text}` : '';
+      return `
+        <div class="dc-msgcenter-item" data-partner="${escapeHtml(partner)}">
+          ${userIconHtml(u || {})}
+          <div class="dc-msgcenter-item-body">
+            <div class="dc-msgcenter-item-nick">${escapeHtml(partner)}</div>
+            <div class="dc-msgcenter-item-preview">${escapeHtml(preview)}</div>
+          </div>
+          <span class="dc-msgcenter-item-badge" style="background:#3f60a3;">${entries.length}</span>
+        </div>
+      `;
+    }).join('');
+    list.querySelectorAll('[data-partner]').forEach(item => {
+      item.onclick = () => openAdminReadConvo(item.dataset.partner);
+    });
+  }
+
+  function openAdminReadConvo(partner){
+    pmAdminReadPartner = partner;
+    document.getElementById('dc-msgcenter-title').textContent = `Privados de ${pmAdminReadNick} con ${partner}`;
+    document.getElementById('dc-msgcenter-list-view').style.display = 'none';
+    document.getElementById('dc-msgcenter-convo-view').style.display = 'flex';
+    document.getElementById('dc-msgcenter-inputrow').style.display = 'none';
+    renderAdminReadLog();
+  }
+
+  function renderAdminReadLog(){
+    const log = document.getElementById('dc-msgcenter-log');
+    const entries = pmAdminReadThreads[pmAdminReadPartner] || [];
+    log.innerHTML = entries.length
+      ? entries.map(e => {
+          const u = findUserObject(e.from);
+          return `<div class="msg">${userIconHtml(u || {})}<span class="msgtext">${colorNickHtml(`${e.from} → ${e.to}`, e.color || '#000000')}<br>${wrapEmojiHtml(e.text)}</span></div>`;
+        }).join('')
+      : `<div class="msg sys"><span class="msgtext">(Sin mensajes)</span></div>`;
+    log.scrollTop = log.scrollHeight;
   }
 
   /* ---------- ACCIONES DE MODERACION ---------- */
@@ -2473,7 +2474,7 @@
         else if (act === 'mod') toggleModerator(nick);
         else if (act === 'kick') { openKickDialog(nick); return; }
         else if (act === 'ban') banUser(nick);
-        else if (act === 'readpm') { openPM(nick, true); return; }
+        else if (act === 'readpm') { openAdminReadCenter(nick); return; }
         else if (act === 'editprofile') { adminEditingNick = adminEditingNick === nick ? null : nick; renderAdminBody(); return; }
         else if (act === 'cancelprofile') { adminEditingNick = null; renderAdminBody(); return; }
         else if (act === 'applyprofile') {
