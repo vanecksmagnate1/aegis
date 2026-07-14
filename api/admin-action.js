@@ -9,6 +9,7 @@ const MAX_HELPER_MESSAGES = 20;
 const HELPER_NICK_COLOR = '#1958D6';
 const MAX_WORD_FILTERS = 200;
 const MAX_HIDDEN_DEFAULTS = 300;
+const MAX_ENABLED_FRAMES = 100;
 const AVAILABLE_THEMES = ['default', 'royale-obsidian'];
 
 async function notice(room, text) {
@@ -167,6 +168,7 @@ export default async function handler(req, res) {
           text_font: payload?.textFont || null,
           avatar: String(payload?.avatar || 'default'),
           rank: String(payload?.rank || 'none'),
+          frame: String(payload?.frame || 'none'),
           visibility_mode: String(payload?.visibilityMode || 'normal'),
           custom_avatars: customAvatars,
         });
@@ -360,6 +362,13 @@ export default async function handler(req, res) {
           ? payload.hidden.filter((e) => typeof e === 'string' && e.length && e.length <= 8).slice(0, MAX_HIDDEN_DEFAULTS)
           : [];
         await sbUpdate('chat_emoticon_settings', 'id', 'true', { hidden_defaults: hidden });
+        break;
+      }
+      case 'setEnabledFrames': {
+        const enabled = Array.isArray(payload?.enabled)
+          ? payload.enabled.filter((f) => typeof f === 'string' && f.length && f.length <= 30).slice(0, MAX_ENABLED_FRAMES)
+          : [];
+        await sbUpdate('chat_frame_settings', 'id', 'true', { enabled_defaults: enabled });
         break;
       }
       case 'setTheme': {
