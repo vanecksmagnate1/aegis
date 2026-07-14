@@ -3106,10 +3106,11 @@
   }
 
   let pendingBannerDataUrl = null;
+  let editingBannerId = null; // null = nuevo, 'default' = el banner de fallback, o el id real
   function renderAdminBanners(body){
     body.innerHTML = `
       <h4>Banners</h4>
-      <p>Se muestran arriba del chat (donde dice AEGIS) y rotan entre sí. El sistema redimensiona la imagen que subís al tamaño del banner automáticamente.</p>
+      <p>Se muestran arriba del chat (donde dice AEGIS) y rotan entre sí. El sistema redimensiona la imagen que subís al tamaño del banner automáticamente. Un banner con link se abre en una pestaña nueva al hacer click.</p>
       <div class="dc-field">
         <label>Minutos entre banners (si hay más de uno)</label>
         <div style="display:flex; gap:8px; align-items:center;">
@@ -3117,32 +3118,84 @@
           <button class="dc-btn dc-smallbtn" id="dc-banner-rotation-save">Guardar</button>
         </div>
       </div>
-      <div id="dc-banner-list" style="margin-top:10px;"></div>
+      <table class="dc-table" style="margin-top:10px;">
+        <thead><tr><th>ID</th><th>Vista previa</th><th>Link</th><th colspan="4"></th></tr></thead>
+        <tbody id="dc-banner-rows"></tbody>
+      </table>
       <div class="dc-field" style="margin-top:16px;">
-        <label>Nuevo banner</label>
+        <label id="dc-banner-form-label">Nuevo banner</label>
         <div style="display:flex; align-items:center; gap:8px;">
           <input type="file" id="dc-banner-upload" accept="image/*">
           <span id="dc-banner-preview" style="width:80px; height:20px; background-size:cover; background-position:center; border:1px solid #1c2c5c; border-radius:2px;"></span>
         </div>
         <input type="text" id="dc-banner-link" placeholder="https://... (opcional: a dónde lleva al hacer click)" style="width:100%; margin-top:6px;">
-        <button class="dc-btn dc-default" id="dc-banner-add" style="margin-top:8px;">Agregar banner</button>
+        <div style="display:flex; gap:8px; margin-top:8px;">
+          <button class="dc-btn dc-default" id="dc-banner-add">Agregar banner</button>
+          <button class="dc-btn dc-smallbtn" id="dc-banner-cancel-edit" style="display:none;">Cancelar</button>
+        </div>
         <p class="dc-error" id="dc-banner-error"></p>
       </div>
     `;
-    const list = document.getElementById('dc-banner-list');
-    list.innerHTML = BANNERS.length
-      ? BANNERS.map(b => `
-          <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px; background:#7f95cf; padding:6px 8px; border-radius:3px;">
-            <span style="display:inline-block; width:90px; height:20px; background-image:url('${b.imageData}'); background-size:cover; background-position:center; border:1px solid #1c2c5c; border-radius:2px; flex-shrink:0;"></span>
-            <span style="flex:1; font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${b.linkUrl ? escapeHtml(b.linkUrl) : '(sin link)'}</span>
-            <button class="dc-btn dc-smallbtn dc-danger" data-del-banner="${b.id}">Borrar</button>
-          </div>
-        `).join('')
-      : '<p style="color:#333;">No hay banners subidos todavía (se muestra el banner por defecto).</p>';
-    list.querySelectorAll('[data-del-banner]').forEach(btn => {
+    editingBannerId = null;
+    pendingBannerDataUrl = null;
+    const rowsEl = document.getElementById('dc-banner-rows');
+    const rowsHtml = [];
+    if (!BANNERS.length) {
+      rowsHtml.push(`
+        <tr>
+          <td>—</td>
+          <td><span style="display:inline-block; width:90px; height:20px; background-image:url('${THEME_ICONS.banner}'); background-size:cover; background-position:center; border:1px solid #1c2c5c;"></span></td>
+          <td style="font-size:12px; color:#555;">(banner por defecto, sin link)</td>
+          <td colspan="4"><button class="dc-btn dc-smallbtn" data-edit-banner="default">Editar</button></td>
+        </tr>
+      `);
+    } else {
+      BANNERS.forEach((b, i) => {
+        rowsHtml.push(`
+          <tr>
+            <td>${1000+i}</td>
+            <td><span style="display:inline-block; width:90px; height:20px; background-image:url('${b.imageData}'); background-size:cover; background-position:center; border:1px solid #1c2c5c;"></span></td>
+            <td style="font-size:12px; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${b.linkUrl ? escapeHtml(b.linkUrl) : '(sin link)'}</td>
+            <td><button class="dc-btn dc-smallbtn" data-edit-banner="${b.id}">Editar</button></td>
+            <td><button class="dc-btn dc-smallbtn" data-move-banner="${b.id}" data-dir="up" ${i===0?'disabled':''}>&#9650;</button></td>
+            <td><button class="dc-btn dc-smallbtn" data-move-banner="${b.id}" data-dir="down" ${i===BANNERS.length-1?'disabled':''}>&#9660;</button></td>
+            <td><button class="dc-btn dc-smallbtn dc-danger" data-del-banner="${b.id}">Borrar</button></td>
+          </tr>
+        `);
+      });
+    }
+    rowsEl.innerHTML = rowsHtml.join('');
+    rowsEl.querySelectorAll('[data-del-banner]').forEach(btn => {
       btn.onclick = () => callAdminAction('deleteBanner', { id: Number(btn.dataset.delBanner) });
     });
-    pendingBannerDataUrl = null;
+    rowsEl.querySelectorAll('[data-move-banner]').forEach(btn => {
+      btn.onclick = () => callAdminAction('moveBanner', { id: Number(btn.dataset.moveBanner), direction: btn.dataset.dir });
+    });
+    rowsEl.querySelectorAll('[data-edit-banner]').forEach(btn => {
+      btn.onclick = () => startEditBanner(btn.dataset.editBanner);
+    });
+
+    function startEditBanner(idOrDefault){
+      editingBannerId = idOrDefault === 'default' ? 'default' : Number(idOrDefault);
+      pendingBannerDataUrl = null;
+      const current = editingBannerId === 'default' ? null : BANNERS.find(b => b.id === editingBannerId);
+      document.getElementById('dc-banner-form-label').textContent = 'Editar banner';
+      document.getElementById('dc-banner-link').value = current ? (current.linkUrl || '') : '';
+      document.getElementById('dc-banner-preview').style.backgroundImage = `url('${current ? current.imageData : THEME_ICONS.banner}')`;
+      document.getElementById('dc-banner-add').textContent = 'Guardar cambios';
+      document.getElementById('dc-banner-cancel-edit').style.display = '';
+    }
+    function resetBannerForm(){
+      editingBannerId = null;
+      pendingBannerDataUrl = null;
+      document.getElementById('dc-banner-form-label').textContent = 'Nuevo banner';
+      document.getElementById('dc-banner-link').value = '';
+      document.getElementById('dc-banner-preview').style.backgroundImage = '';
+      document.getElementById('dc-banner-upload').value = '';
+      document.getElementById('dc-banner-add').textContent = 'Agregar banner';
+      document.getElementById('dc-banner-cancel-edit').style.display = 'none';
+    }
+    document.getElementById('dc-banner-cancel-edit').onclick = resetBannerForm;
     document.getElementById('dc-banner-upload').onchange = (e) => {
       const file = e.target.files && e.target.files[0];
       if (!file) return;
@@ -3158,10 +3211,17 @@
     document.getElementById('dc-banner-add').onclick = async () => {
       const err = document.getElementById('dc-banner-error');
       err.textContent = '';
-      if (!pendingBannerDataUrl) { err.textContent = 'Elegí una imagen primero.'; return; }
       const linkUrl = document.getElementById('dc-banner-link').value.trim();
-      const ok = await callAdminAction('addBanner', { imageData: pendingBannerDataUrl, linkUrl });
-      if (ok) { pendingBannerDataUrl = null; renderAdminBanners(body); }
+      let ok;
+      if (editingBannerId === null || editingBannerId === 'default') {
+        if (!pendingBannerDataUrl) { err.textContent = 'Elegí una imagen primero.'; return; }
+        ok = await callAdminAction('addBanner', { imageData: pendingBannerDataUrl, linkUrl });
+      } else {
+        const payload = { id: editingBannerId, linkUrl };
+        if (pendingBannerDataUrl) payload.imageData = pendingBannerDataUrl;
+        ok = await callAdminAction('editBanner', payload);
+      }
+      if (ok) { resetBannerForm(); renderAdminBanners(body); }
     };
   }
 
@@ -3170,8 +3230,11 @@
     body.innerHTML = `
       <h4>Emoticones</h4>
       <p>Agregá imágenes propias que se suman a los emoticones que ya tienen todos los usuarios en el selector del chat.</p>
-      <div id="dc-emoticon-list" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px;"></div>
-      <div class="dc-field">
+      <table class="dc-table">
+        <thead><tr><th>ID</th><th>Vista previa</th><th>Código</th><th></th></tr></thead>
+        <tbody id="dc-emoticon-rows"></tbody>
+      </table>
+      <div class="dc-field" style="margin-top:16px;">
         <label>Nuevo emoticono</label>
         <div style="display:flex; align-items:center; gap:8px;">
           <input type="file" id="dc-emoticon-upload" accept="image/*">
@@ -3181,16 +3244,18 @@
         <p class="dc-error" id="dc-emoticon-error"></p>
       </div>
     `;
-    const list = document.getElementById('dc-emoticon-list');
-    list.innerHTML = CUSTOM_EMOTICONS.length
-      ? CUSTOM_EMOTICONS.map(em => `
-          <div style="position:relative;">
-            <span style="display:inline-block; width:36px; height:36px; background-image:url('${em.imageData}'); background-size:cover; background-position:center; border:1px solid #1c2c5c; border-radius:3px;"></span>
-            <span data-del-emoticon="${em.id}" title="Borrar" style="position:absolute; top:-6px; right:-6px; background:#c00000; color:#fff; border-radius:50%; width:16px; height:16px; font-size:10px; line-height:16px; text-align:center; cursor:pointer;">&#10005;</span>
-          </div>
+    const rowsEl = document.getElementById('dc-emoticon-rows');
+    rowsEl.innerHTML = CUSTOM_EMOTICONS.length
+      ? CUSTOM_EMOTICONS.map((em, i) => `
+          <tr>
+            <td>${1000+i}</td>
+            <td><span style="display:inline-block; width:32px; height:32px; background-image:url('${em.imageData}'); background-size:cover; background-position:center; border:1px solid #1c2c5c; border-radius:3px;"></span></td>
+            <td style="font-family:monospace; font-size:13px;">${escapeHtml(em.shortcode)}</td>
+            <td><button class="dc-btn dc-smallbtn dc-danger" data-del-emoticon="${em.id}">Borrar</button></td>
+          </tr>
         `).join('')
-      : '<p style="color:#333;">Todavía no agregaste ninguno.</p>';
-    list.querySelectorAll('[data-del-emoticon]').forEach(x => {
+      : '<tr><td colspan="4" style="color:#555;">Todavía no agregaste ninguno.</td></tr>';
+    rowsEl.querySelectorAll('[data-del-emoticon]').forEach(x => {
       x.onclick = () => callAdminAction('deleteEmoticon', { id: Number(x.dataset.delEmoticon) });
     });
     pendingEmoticonDataUrl = null;
@@ -3252,27 +3317,61 @@
 
       <div class="dc-field" style="margin-top:18px;">
         <label>Mensajes (se elige uno al azar en cada disparo)</label>
-        <div id="dc-helper-msglist"></div>
+        <table class="dc-table">
+          <thead><tr><th>ID</th><th>Mensaje</th><th colspan="3"></th></tr></thead>
+          <tbody id="dc-helper-msgrows"></tbody>
+        </table>
         <div style="position:relative; margin-top:8px;">
           <textarea id="dc-helper-newmsg" class="dc-sunken" style="width:100%; min-height:60px; padding:5px;" placeholder="Escribí el mensaje (podés usar emoticones)"></textarea>
           <button type="button" class="dc-btn dc-emobtn" id="dc-helper-emobtn" style="position:absolute; right:4px; bottom:4px;"><span class="emo-face"></span></button>
           <div class="dc-emopop" id="dc-helper-emopop"></div>
         </div>
-        <button class="dc-btn dc-default" id="dc-helper-addmsg" style="margin-top:6px;">Agregar mensaje</button>
+        <div style="display:flex; gap:8px; margin-top:6px;">
+          <button class="dc-btn dc-default" id="dc-helper-addmsg">Agregar mensaje</button>
+          <button class="dc-btn dc-smallbtn" id="dc-helper-cancel-edit" style="display:none;">Cancelar</button>
+        </div>
       </div>
     `;
-    const msgList = document.getElementById('dc-helper-msglist');
-    msgList.innerHTML = HELPER_MESSAGES.length
-      ? HELPER_MESSAGES.map(m => `
-          <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px; background:#7f95cf; padding:6px 8px; border-radius:3px;">
-            <span style="flex:1; font-size:13px;">${wrapEmojiHtml(m.body)}</span>
-            <button class="dc-btn dc-smallbtn dc-danger" data-del-helpermsg="${m.id}">Borrar</button>
-          </div>
+    let editingHelperMsgId = null;
+    const msgRows = document.getElementById('dc-helper-msgrows');
+    msgRows.innerHTML = HELPER_MESSAGES.length
+      ? HELPER_MESSAGES.map((m, i) => `
+          <tr>
+            <td>${1000+i}</td>
+            <td style="font-size:13px; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${wrapEmojiHtml(m.body)}</td>
+            <td><button class="dc-btn dc-smallbtn" data-edit-helpermsg="${m.id}">Editar</button></td>
+            <td><button class="dc-btn dc-smallbtn" data-fire-helpermsg="${m.id}">Lanzar ahora</button></td>
+            <td><button class="dc-btn dc-smallbtn dc-danger" data-del-helpermsg="${m.id}">Borrar</button></td>
+          </tr>
         `).join('')
-      : '<p style="color:#333;">Todavía no hay mensajes cargados.</p>';
-    msgList.querySelectorAll('[data-del-helpermsg]').forEach(btn => {
+      : '<tr><td colspan="5" style="color:#555;">Todavía no hay mensajes cargados.</td></tr>';
+    msgRows.querySelectorAll('[data-del-helpermsg]').forEach(btn => {
       btn.onclick = () => callAdminAction('deleteHelperMessage', { id: Number(btn.dataset.delHelpermsg) });
     });
+    msgRows.querySelectorAll('[data-fire-helpermsg]').forEach(btn => {
+      btn.onclick = async () => {
+        const ok = await callAdminAction('fireHelperMessageNow', { id: Number(btn.dataset.fireHelpermsg) });
+        if (ok) localSystem('Mensaje del ChatHelper enviado a Sala General.');
+      };
+    });
+    msgRows.querySelectorAll('[data-edit-helpermsg]').forEach(btn => {
+      btn.onclick = () => {
+        const msg = HELPER_MESSAGES.find(m => m.id === Number(btn.dataset.editHelpermsg));
+        if (!msg) return;
+        editingHelperMsgId = msg.id;
+        document.getElementById('dc-helper-newmsg').value = msg.body;
+        document.getElementById('dc-helper-addmsg').textContent = 'Guardar cambios';
+        document.getElementById('dc-helper-cancel-edit').style.display = '';
+        document.getElementById('dc-helper-newmsg').focus();
+      };
+    });
+    function resetHelperMsgForm(){
+      editingHelperMsgId = null;
+      document.getElementById('dc-helper-newmsg').value = '';
+      document.getElementById('dc-helper-addmsg').textContent = 'Agregar mensaje';
+      document.getElementById('dc-helper-cancel-edit').style.display = 'none';
+    }
+    document.getElementById('dc-helper-cancel-edit').onclick = resetHelperMsgForm;
 
     let helperAvatar = HELPER_CONFIG.icon;
     function refreshHelperAvatarPreview(){
@@ -3310,8 +3409,10 @@
     document.getElementById('dc-helper-addmsg').onclick = async () => {
       const text = newMsg.value.trim();
       if (!text) return;
-      const ok = await callAdminAction('addHelperMessage', { body: text });
-      if (ok) { newMsg.value = ''; renderAdminChatHelper(body); }
+      const ok = editingHelperMsgId
+        ? await callAdminAction('editHelperMessage', { id: editingHelperMsgId, body: text })
+        : await callAdminAction('addHelperMessage', { body: text });
+      if (ok) { resetHelperMsgForm(); renderAdminChatHelper(body); }
     };
   }
 

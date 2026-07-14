@@ -6,6 +6,7 @@ const LOCKED_ROOM = 'Sala General';
 const MAX_BANNERS = 10;
 const MAX_EMOTICONS = 60;
 const MAX_HELPER_MESSAGES = 20;
+const HELPER_NICK_COLOR = '#1958D6';
 
 async function notice(room, text) {
   await sbInsert('chat_messages', {
@@ -264,6 +265,60 @@ export default async function handler(req, res) {
         const id = Number(payload?.id);
         if (!id) throw new Error('missing_id');
         await sbDelete('chat_helper_messages', 'id', id);
+        break;
+      }
+      case 'editBanner': {
+        const id = Number(payload?.id);
+        if (!id) throw new Error('missing_id');
+        const patch = {};
+        if (typeof payload?.imageData === 'string' && payload.imageData.startsWith('data:image/')) patch.image_data = payload.imageData;
+        if (typeof payload?.linkUrl === 'string') patch.link_url = payload.linkUrl.trim() || null;
+        if (!Object.keys(patch).length) throw new Error('nothing_to_update');
+        await sbUpdate('chat_banners', 'id', id, patch);
+        break;
+      }
+      case 'moveBanner': {
+        const id = Number(payload?.id);
+        const direction = payload?.direction === 'up' ? 'up' : 'down';
+        if (!id) throw new Error('missing_id');
+        const rows = await sbSelect('chat_banners', 'select=id,sort_order&order=sort_order.asc');
+        const idx = rows.findIndex((r) => r.id === id);
+        if (idx === -1) throw new Error('not_found');
+        const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+        if (swapIdx >= 0 && swapIdx < rows.length) {
+          const a = rows[idx];
+          const b = rows[swapIdx];
+          await sbUpdate('chat_banners', 'id', a.id, { sort_order: b.sort_order });
+          await sbUpdate('chat_banners', 'id', b.id, { sort_order: a.sort_order });
+        }
+        break;
+      }
+      case 'editHelperMessage': {
+        const id = Number(payload?.id);
+        const bodyText = String(payload?.body || '').trim();
+        if (!id || !bodyText) throw new Error('missing_fields');
+        await sbUpdate('chat_helper_messages', 'id', id, { body: bodyText });
+        break;
+      }
+      case 'fireHelperMessageNow': {
+        const id = Number(payload?.id);
+        if (!id) throw new Error('missing_id');
+        const msgRows = await sbSelect('chat_helper_messages', `id=eq.${id}&select=body`);
+        const msg = msgRows[0];
+        if (!msg) throw new Error('not_found');
+        const cfgRows = await sbSelect('chat_helper_config', 'id=eq.true&select=icon,nick,text_color');
+        const cfg = cfgRows[0] || {};
+        await sbInsert('chat_messages', {
+          room: LOCKED_ROOM,
+          nick: cfg.nick || 'Ayudante',
+          color: HELPER_NICK_COLOR,
+          text_color: cfg.text_color || null,
+          avatar: cfg.icon || 'default',
+          role: 'general',
+          kind: 'chat',
+          body: msg.body,
+        });
+        await sbUpdate('chat_helper_config', 'id', 'true', { last_sent_at: new Date().toISOString() });
         break;
       }
       default:
