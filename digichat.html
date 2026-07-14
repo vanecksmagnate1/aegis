@@ -512,46 +512,49 @@
   /* ventana de mensaje privado (overlay de solo lectura, admin) */
   #dc-pm-log { min-height: 160px; max-height: 220px; }
 
-  /* ventanas flotantes de privados (multi-conversacion, arrastrables) */
-  #dc-pmwin-layer, #dc-pmbubble-layer { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
-  #dc-pmwin-layer { z-index: 45; }
-  #dc-pmbubble-layer { z-index: 46; }
+  /* ventana unica flotante "Centro de Mensajes" (arrastrable, alterna entre
+     lista de conversaciones y una conversacion abierta) */
+  #dc-pmwin-layer { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 45; }
   .dc-pmwin {
-    position: absolute; width: 300px; height: 280px; display: none; flex-direction: column;
+    position: absolute; width: 340px; height: 400px; display: none; flex-direction: column;
     background: #45519f; border: 2px solid #1c2c5c; border-radius: 6px;
     box-shadow: 0 10px 30px rgba(0,0,0,0.45); pointer-events: auto; overflow: hidden;
+    box-sizing: border-box;
   }
   .dc-pmwin-title {
     background: linear-gradient(135deg, #d9e8fb 0%, #a9c6ea 35%, #6f93cf 70%, #3f60a3 100%);
-    color: #16224e; font-weight: bold; font-size: 14px; padding: 5px 8px; cursor: move;
+    color: #16224e; font-weight: bold; font-size: 14px; padding: 7px 8px; cursor: move;
     display: flex; align-items: center; justify-content: space-between; user-select: none;
     border-bottom: 1px solid #1c2c5c; flex-shrink: 0;
   }
   .dc-pmwin-title-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .dc-pmwin-x {
-    width: 20px; height: 18px; border-radius: 2px; flex-shrink: 0; margin-left: 6px;
+    width: 22px; height: 20px; border-radius: 2px; flex-shrink: 0; margin-left: 6px;
     display: inline-flex; align-items: center; justify-content: center;
     background: linear-gradient(180deg, #ff8a7a 0%, #e8543d 45%, #c00000 100%);
     color: #fff; font-size: 11px; cursor: pointer;
   }
-  .dc-pmwin-body { flex: 1; display: flex; flex-direction: column; padding: 6px; min-height: 0; }
-  .dc-pmwin-log { flex: 1; overflow-y: auto; background: #fff; border: 1px solid #16224e; padding: 5px; margin-bottom: 5px; min-height: 0; }
+  .dc-pmwin-body { flex: 1; display: flex; flex-direction: column; padding: 8px; min-height: 0; box-sizing: border-box; }
+  .dc-pmwin-log { flex: 1; overflow-y: auto; background: #fff; border: 1px solid #16224e; padding: 5px; margin-bottom: 6px; min-height: 0; }
   .dc-pmwin-inputrow { display: flex; gap: 4px; flex-shrink: 0; }
-  .dc-pmbubble {
-    position: absolute; width: 44px; height: 44px; border-radius: 50%; display: none;
-    background: linear-gradient(180deg, #ffdf7a 0%, #f5b400 60%, #c98700 100%);
-    border: 2px solid #7a5200; box-shadow: 0 4px 10px rgba(0,0,0,0.4);
-    align-items: center; justify-content: center; font-size: 20px; font-weight: bold; color: #3a2500;
-    cursor: pointer; pointer-events: auto; user-select: none;
+  #dc-msgcenter-list-view { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  .dc-msgcenter-list { flex: 1; overflow-y: auto; background: #fff; border: 1px solid #16224e; }
+  .dc-msgcenter-item { display: flex; align-items: center; gap: 8px; padding: 8px; cursor: pointer; border-bottom: 1px solid #dfe6f5; }
+  .dc-msgcenter-item:hover { background: #dfe6f5; }
+  .dc-msgcenter-item-body { flex: 1; min-width: 0; }
+  .dc-msgcenter-item-nick { font-weight: bold; font-size: 14px; color: #16224e; }
+  .dc-msgcenter-item-preview { font-size: 12px; color: #444; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dc-msgcenter-item-badge {
+    flex-shrink: 0; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px;
+    background: #c00000; color: #fff; font-size: 11px; font-weight: bold;
+    display: flex; align-items: center; justify-content: center;
   }
-  .dc-pmbubble-badge {
+  .dc-msgcentericon { position: relative; font-size: 17px; }
+  .dc-msgcenter-badge {
     position: absolute; top: -6px; right: -6px; min-width: 16px; height: 16px; padding: 0 3px; border-radius: 8px;
     background: #c00000; color: #fff; font-size: 10px; font-weight: bold; display: flex; align-items: center; justify-content: center;
     border: 1px solid #fff;
   }
-  .dc-pmchooser-item { display: flex; align-items: center; gap: 8px; padding: 8px 6px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.25); }
-  .dc-pmchooser-item:hover { background: #8fa8dd; }
-  .dc-pmchooser-item small { color: #dfe8f7; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
@@ -668,21 +671,16 @@
   let pmThreads = {};
   let pmTarget = null;
   let pmReadOnly = false;
-  // Ventanas flotantes arrastrables de privados (una por conversacion,
-  // independientes del overlay de solo lectura de arriba, que sigue
-  // usandose solo para "Leer privados" del admin).
-  let pmWindows = {}; // nick -> { state: 'open'|'minimized', unread: number }
-  let pmPendingQueue = []; // nicks nuevos esperando resolverse (auto-abrir o elegir)
-  let pmPendingUnread = {}; // nick -> mensajes acumulados mientras esta pendiente
-  let pmQueueTimer = null;
-  let pmZTop = 100;
-  let pmCloseTargetNick = null;
-  let pmWindowsCreated = 0;
+  // Centro de Mensajes: una unica ventana arrastrable (independiente del
+  // overlay de solo lectura de arriba, que sigue usandose solo para "Leer
+  // privados" del admin) que alterna entre la lista de conversaciones y
+  // una conversacion abierta, para no acumular ventanas.
+  let pmConversations = {}; // nick -> { unread: number } - todas las conversaciones que existen esta sesion
+  let pmActiveNick = null; // null = mostrando la lista; si no, conversacion abierta con ese nick
   let selectedNick = null;
   let settingsTab = "profile";
   let adminTab = "rooms";
   let adminEditingNick = null;
-  let filterQ = "";
   let floodTimestamps = [];
   let floodUntil = 0;
   const FLOOD_LIMIT = 5;
@@ -766,7 +764,7 @@
                   </div>
                   <div class="dc-checkrow">
                     <input type="checkbox" id="dc-showall"><label for="dc-showall">Show users in all rooms</label>
-                    <span class="dc-searchico" id="dc-ico-search" title="Buscar usuario">&#128269;</span>
+                    <span class="dc-searchico dc-msgcentericon" id="dc-ico-msgcenter" title="Centro de mensajes">💬<span class="dc-msgcenter-badge" id="dc-msgcenter-badge" style="display:none;"></span></span>
                   </div>
                   <div class="dc-listhead"><span>Nickname</span><span style="font-size:8px;">&#9660;</span></div>
                   <div class="dc-userlist dc-sunken" id="dc-userlist"></div>
@@ -790,8 +788,28 @@
                 </div>
               </div>
             </div>
-            <div id="dc-pmwin-layer"></div>
-            <div id="dc-pmbubble-layer"></div>
+            <div id="dc-pmwin-layer">
+              <div class="dc-pmwin" id="dc-msgcenter-win">
+                <div class="dc-pmwin-title">
+                  <span class="dc-pmwin-title-text" id="dc-msgcenter-title">Centro de Mensajes</span>
+                  <span class="dc-pmwin-x" id="dc-msgcenter-x" data-no-drag>&#10005;</span>
+                </div>
+                <div class="dc-pmwin-body">
+                  <div id="dc-msgcenter-list-view">
+                    <div class="dc-msgcenter-list" id="dc-msgcenter-list"></div>
+                  </div>
+                  <div id="dc-msgcenter-convo-view" style="display:none; flex:1; flex-direction:column; min-height:0;">
+                    <div class="dc-pmwin-log dc-sunken" id="dc-msgcenter-log"></div>
+                    <div class="dc-pmwin-inputrow" style="position:relative;">
+                      <div class="dc-emopop" id="dc-msgcenter-emopop" style="bottom:32px;"></div>
+                      <button class="dc-btn dc-smallbtn" id="dc-msgcenter-emobtn" type="button" title="Emoticones" data-no-drag>🙂</button>
+                      <input type="text" id="dc-msgcenter-input" class="dc-sunken" style="flex:1; padding:4px 5px;" maxlength="200">
+                      <button class="dc-btn dc-default" id="dc-msgcenter-send" data-no-drag>Enviar</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -858,36 +876,6 @@
                   <button class="dc-btn dc-default" id="dc-pm-send">Enviar</button>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- PM CHOOSER (varios privados nuevos a la vez) -->
-        <div class="dc-overlay" id="dc-pmchooser-overlay">
-          <div class="dc-dialog" style="width:300px;">
-            <div class="dc-titlebar">
-              <div class="dc-logo"><span class="dc-tbicon"></span><span>Nuevos privados</span></div>
-            </div>
-            <div class="dc-dialog-body">
-              <p>Te escribieron varias personas a la vez. ¿Cuál querés abrir primero?</p>
-              <div id="dc-pmchooser-list"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- PM CLOSE/MINIMIZE CONFIRM -->
-        <div class="dc-overlay" id="dc-pmclose-overlay">
-          <div class="dc-dialog" style="width:300px;">
-            <div class="dc-titlebar">
-              <div class="dc-logo"><span class="dc-tbicon"></span><span id="dc-pmclose-title">Privado</span></div>
-            </div>
-            <div class="dc-dialog-body">
-              <p>¿Querés cerrar esta conversación o solo minimizarla a una burbuja?</p>
-            </div>
-            <div class="dc-dialog-footer">
-              <button class="dc-btn" id="dc-pmclose-cancel">Cancelar</button>
-              <button class="dc-btn" id="dc-pmclose-minimize">Minimizar</button>
-              <button class="dc-btn dc-default" id="dc-pmclose-close">Cerrar conversación</button>
             </div>
           </div>
         </div>
@@ -1259,7 +1247,6 @@
     wireChat();
     wireSettingsDialog();
     wireAdminDialog();
-    wirePmCloseDialog();
 
     subscribeRoomMessages(me.room);
     subscribeMyPms();
@@ -1378,20 +1365,17 @@
     me = { nick: "", color: GENERAL_COLOR, textColor: null, avatar: 'default', room: LOCKED_ROOM, role: "general", visibilityMode: "normal", rank: "none" };
     adminToken = null;
     selectedNick = null;
-    filterQ = "";
     blockedNicks = new Set();
     floodTimestamps = [];
     floodUntil = 0;
     roomLogs = {};
     lastSeenMessageId = {};
     seenMessageIds = {};
-    if (pmQueueTimer) { clearTimeout(pmQueueTimer); pmQueueTimer = null; }
-    pmPendingQueue = [];
-    pmPendingUnread = {};
-    pmWindows = {};
+    pmConversations = {};
+    pmActiveNick = null;
     pmThreads = {};
-    document.getElementById('dc-pmwin-layer').innerHTML = '';
-    document.getElementById('dc-pmbubble-layer').innerHTML = '';
+    document.getElementById('dc-msgcenter-win').style.display = 'none';
+    renderMsgCenterBadge();
     updateTitle();
     document.getElementById('dc-nick').value = '';
   }
@@ -1437,7 +1421,6 @@
   }
 
   function renderUsers(){
-    const q = filterQ.toLowerCase();
     const showAll = document.getElementById('dc-showall')?.checked;
     let list = (showAll ? presenceList : presenceList.filter(p => p.room === me.room))
       .map(p => ({ ...p, isMe: p.clientId === CLIENT_ID }));
@@ -1445,7 +1428,6 @@
     // administradores y moderadores siempre pueden verse entre sí.
     const staffViewer = isStaffViewer();
     list = list.filter(u => u.isMe || !u.invisible || staffViewer);
-    list = list.filter(u => u.nick.toLowerCase().includes(q));
     const rolePriority = { admin: 0, moderator: 1, general: 2 };
     list.sort((a, b) => (rolePriority[a.role] ?? 2) - (rolePriority[b.role] ?? 2));
     const el = document.getElementById('dc-userlist');
@@ -1497,7 +1479,7 @@
 
   function updateToolbarState(){
     const hasTarget = !!selectedNick && selectedNick !== me.nick;
-    ['dc-ico-info','dc-ico-search'].forEach(id => {
+    ['dc-ico-info','dc-ico-msgcenter'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.classList.remove('disabled');
     });
@@ -1602,12 +1584,7 @@
       const u = findUserObject(selectedNick);
       if (u) localSystem(`Perfil de ${u.nick} — ${u.role==='admin'?'Administrador':u.role==='moderator'?'Moderador':'Usuario'} · Sala: ${u.room}`);
     };
-    document.getElementById('dc-ico-search').onclick = () => {
-      const q = prompt("Buscar nickname:", filterQ);
-      if (q === null) return;
-      filterQ = q.trim();
-      renderUsers();
-    };
+    document.getElementById('dc-ico-msgcenter').onclick = () => openMsgCenter();
     document.getElementById('dc-ico-pm').onclick = () => {
       if (!selectedNick || selectedNick === me.nick) { localSystem("Selecciona a otro usuario para enviarle un privado."); return; }
       openPmConversation(selectedNick);
@@ -1784,11 +1761,7 @@
     if (pmTarget === targetNick) renderPM();
   }
 
-  /* ---------- VENTANAS FLOTANTES DE PRIVADOS (arrastrables, multi-conversacion) ---------- */
-
-  function pmWindowElId(nick){
-    return 'dc-pmwin-' + nick.replace(/[^a-zA-Z0-9_-]/g, '_');
-  }
+  /* ---------- CENTRO DE MENSAJES (ventana unica arrastrable de privados) ---------- */
 
   // Arrastre generico: handleEl dispara el arrastre, el.style.left/top se
   // mueve dentro de containerEl. Como todo el chat vive escalado con CSS
@@ -1828,68 +1801,97 @@
     });
   }
 
-  function bringPmWindowToFront(el){
-    pmZTop += 1;
-    el.style.zIndex = pmZTop;
-  }
-
-  function wirePmWindowEmoticons(el, input){
-    const pop = el.querySelector('.dc-pmwin-emopop');
-    const btn = el.querySelector('.dc-pmwin-emobtn');
+  // Wireo de una sola vez (el elemento es estatico en el HTML, no se crea
+  // dinamicamente por conversacion como antes) - se llama una unica vez al
+  // cargar la pagina, no en cada login.
+  function wireMsgCenter(){
+    const win = document.getElementById('dc-msgcenter-win');
+    const layer = document.getElementById('dc-pmwin-layer');
+    makeDraggable(win, win.querySelector('.dc-pmwin-title'), layer);
+    document.getElementById('dc-msgcenter-x').addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (pmActiveNick) showMsgCenterListMode();
+      else win.style.display = 'none';
+    });
+    document.getElementById('dc-msgcenter-send').onclick = sendMsgCenterMessage;
+    const input = document.getElementById('dc-msgcenter-input');
+    input.onkeydown = (e) => { if (e.key === 'Enter') sendMsgCenterMessage(); };
+    const pop = document.getElementById('dc-msgcenter-emopop');
+    const emoBtn = document.getElementById('dc-msgcenter-emobtn');
     pop.innerHTML = EMOTICONS.map(e => `<span data-emo="${escapeHtml(e)}">${e}</span>`).join('');
     pop.querySelectorAll('span').forEach(s => s.onclick = () => {
       input.value += s.dataset.emo;
       input.focus();
       pop.classList.remove('active');
     });
-    btn.onclick = (e) => { e.stopPropagation(); pop.classList.toggle('active'); };
+    emoBtn.onclick = (e) => { e.stopPropagation(); pop.classList.toggle('active'); };
     document.addEventListener('click', (e) => {
-      if (!pop.contains(e.target) && e.target !== btn) pop.classList.remove('active');
+      if (!pop.contains(e.target) && e.target !== emoBtn) pop.classList.remove('active');
     });
   }
 
-  function getOrCreatePmWindowEl(nick){
-    const id = pmWindowElId(nick);
-    let el = document.getElementById(id);
-    if (el) return el;
-    const layer = document.getElementById('dc-pmwin-layer');
-    el = document.createElement('div');
-    el.className = 'dc-pmwin';
-    el.id = id;
-    el.dataset.nick = nick;
-    const idx = pmWindowsCreated++;
-    el.style.left = (40 + (idx % 6) * 30) + 'px';
-    el.style.top = (30 + (idx % 6) * 26) + 'px';
-    el.innerHTML = `
-      <div class="dc-pmwin-title">
-        <span class="dc-pmwin-title-text">Privado con ${escapeHtml(nick)}</span>
-        <span class="dc-pmwin-x" data-no-drag>&#10005;</span>
-      </div>
-      <div class="dc-pmwin-body">
-        <div class="dc-pmwin-log dc-sunken"></div>
-        <div class="dc-pmwin-inputrow" style="position:relative;">
-          <div class="dc-emopop dc-pmwin-emopop" style="bottom:32px;"></div>
-          <button class="dc-btn dc-smallbtn dc-pmwin-emobtn" type="button" title="Emoticones" data-no-drag>🙂</button>
-          <input type="text" class="dc-sunken dc-pmwin-input" style="flex:1; padding:4px 5px;" maxlength="200">
-          <button class="dc-btn dc-default dc-pmwin-send" data-no-drag>Enviar</button>
-        </div>
-      </div>
-    `;
-    layer.appendChild(el);
-    el.addEventListener('pointerdown', () => bringPmWindowToFront(el));
-    makeDraggable(el, el.querySelector('.dc-pmwin-title'), layer);
-    el.querySelector('.dc-pmwin-x').addEventListener('click', (e) => { e.stopPropagation(); requestClosePmWindow(nick); });
-    const input = el.querySelector('.dc-pmwin-input');
-    el.querySelector('.dc-pmwin-send').onclick = () => sendPmFromWindow(nick);
-    input.onkeydown = (e) => { if (e.key === 'Enter') sendPmFromWindow(nick); };
-    wirePmWindowEmoticons(el, input);
-    return el;
+  function ensurePmConversation(nick){
+    pmConversations[nick] = pmConversations[nick] || { unread: 0 };
+    return pmConversations[nick];
   }
 
-  function renderPmWindowLog(nick){
-    const el = document.getElementById(pmWindowElId(nick));
-    if (!el) return;
-    const log = el.querySelector('.dc-pmwin-log');
+  function pmUnreadConversationCount(){
+    return Object.keys(pmConversations).filter(n => pmConversations[n].unread > 0).length;
+  }
+
+  function renderMsgCenterBadge(){
+    const badge = document.getElementById('dc-msgcenter-badge');
+    const n = pmUnreadConversationCount();
+    if (n > 0) { badge.textContent = n; badge.style.display = 'flex'; }
+    else { badge.style.display = 'none'; }
+  }
+
+  function openMsgCenter(){
+    document.getElementById('dc-msgcenter-win').style.display = 'flex';
+    showMsgCenterListMode();
+  }
+
+  function showMsgCenterListMode(){
+    pmActiveNick = null;
+    document.getElementById('dc-msgcenter-title').textContent = 'Centro de Mensajes';
+    document.getElementById('dc-msgcenter-list-view').style.display = 'flex';
+    document.getElementById('dc-msgcenter-convo-view').style.display = 'none';
+    renderMsgCenterList();
+  }
+
+  function renderMsgCenterList(){
+    const list = document.getElementById('dc-msgcenter-list');
+    const nicks = Object.keys(pmConversations);
+    if (!nicks.length) {
+      list.innerHTML = `<div class="msg sys"><span class="msgtext">(No hay privados. Selecciona a alguien de la lista de usuarios para escribirle.)</span></div>`;
+      return;
+    }
+    list.innerHTML = nicks.map(nick => {
+      const u = findUserObject(nick);
+      const conv = pmConversations[nick];
+      const entries = pmThreads[nick] || [];
+      const last = entries[entries.length - 1];
+      const preview = last ? (last.from === 'me' ? 'Tú: ' : '') + last.text : '';
+      return `
+        <div class="dc-msgcenter-item" data-nick="${escapeHtml(nick)}">
+          ${userIconHtml(u || {})}
+          <div class="dc-msgcenter-item-body">
+            <div class="dc-msgcenter-item-nick">${escapeHtml(nick)}</div>
+            <div class="dc-msgcenter-item-preview">${escapeHtml(preview)}</div>
+          </div>
+          ${conv.unread > 0 ? `<span class="dc-msgcenter-item-badge">${conv.unread}</span>` : ''}
+        </div>
+      `;
+    }).join('');
+    list.querySelectorAll('[data-nick]').forEach(item => {
+      item.onclick = () => openPmConversation(item.dataset.nick);
+    });
+  }
+
+  function renderMsgCenterLog(){
+    if (!pmActiveNick) return;
+    const nick = pmActiveNick;
+    const log = document.getElementById('dc-msgcenter-log');
     const isBlocked = blockedNicks.has(nick.toLowerCase());
     const entries = (pmThreads[nick] || []).filter(e => e.from === 'me' || !isBlocked);
     const otherUser = findUserObject(nick);
@@ -1905,10 +1907,30 @@
     log.scrollTop = log.scrollHeight;
   }
 
-  async function sendPmFromWindow(nick){
-    const el = document.getElementById(pmWindowElId(nick));
-    if (!el) return;
-    const input = el.querySelector('.dc-pmwin-input');
+  // Punto de entrada unico para abrir una conversacion: tanto un click
+  // manual (lista de usuarios, boton "Privado", entrada del Centro de
+  // Mensajes) como el usuario reabriendo algo pendiente. Siempre
+  // reemplaza el contenido de la unica ventana - nunca se abre una nueva.
+  function openPmConversation(nick){
+    ensurePmConversation(nick).unread = 0;
+    pmActiveNick = nick;
+    const win = document.getElementById('dc-msgcenter-win');
+    win.style.display = 'flex';
+    document.getElementById('dc-msgcenter-title').textContent = `Privado con ${nick}`;
+    document.getElementById('dc-msgcenter-list-view').style.display = 'none';
+    document.getElementById('dc-msgcenter-convo-view').style.display = 'flex';
+    renderMsgCenterBadge();
+    renderMsgCenterLog();
+    loadPmHistory(nick).then(renderMsgCenterLog);
+    const input = document.getElementById('dc-msgcenter-input');
+    input.value = '';
+    input.focus();
+  }
+
+  async function sendMsgCenterMessage(){
+    if (!pmActiveNick) return;
+    const nick = pmActiveNick;
+    const input = document.getElementById('dc-msgcenter-input');
     const text = input.value.trim();
     if (!text) return;
     input.value = '';
@@ -1916,144 +1938,23 @@
     if (error) { localSystem(`No se pudo enviar el privado (${error.message}).`); return; }
     pmThreads[nick] = pmThreads[nick] || [];
     pmThreads[nick].push({ from:'me', text, color: me.color });
-    renderPmWindowLog(nick);
+    renderMsgCenterLog();
   }
 
-  function showPmWindowEl(nick){
-    const el = getOrCreatePmWindowEl(nick);
-    el.style.display = 'flex';
-    bringPmWindowToFront(el);
-    renderPmWindowLog(nick);
-    loadPmHistory(nick).then(() => renderPmWindowLog(nick));
-    const input = el.querySelector('.dc-pmwin-input');
-    if (input) input.focus();
-  }
-
-  // Punto de entrada unico para abrir una conversacion como ventana: tanto
-  // para un click manual ("Privado" en la lista) como para la
-  // auto-apertura de un privado entrante nuevo.
-  function openPmConversation(nick){
-    delete pmPendingUnread[nick];
-    pmPendingQueue = pmPendingQueue.filter(n => n !== nick);
-    pmWindows[nick] = pmWindows[nick] || {};
-    pmWindows[nick].state = 'open';
-    pmWindows[nick].unread = 0;
-    removePmBubbleEl(nick);
-    showPmWindowEl(nick);
-  }
-
-  function removePmBubbleEl(nick){
-    const b = document.querySelector(`.dc-pmbubble[data-nick="${CSS.escape(nick)}"]`);
-    if (b) b.remove();
-  }
-
-  function renderPmBubbles(){
-    const layer = document.getElementById('dc-pmbubble-layer');
-    const minimized = Object.keys(pmWindows).filter(n => pmWindows[n].state === 'minimized');
-    layer.querySelectorAll('.dc-pmbubble').forEach(b => {
-      if (!minimized.includes(b.dataset.nick)) b.remove();
-    });
-    minimized.forEach((nick, i) => {
-      let b = layer.querySelector(`.dc-pmbubble[data-nick="${CSS.escape(nick)}"]`);
-      if (!b) {
-        b = document.createElement('div');
-        b.className = 'dc-pmbubble';
-        b.dataset.nick = nick;
-        b.style.left = (1024 - 60 - i * 54) + 'px';
-        b.style.top = (744 - 60) + 'px';
-        b.title = `Privado con ${nick}`;
-        layer.appendChild(b);
-        makeDraggable(b, b, layer);
-        b.addEventListener('click', () => {
-          if (b.dataset.justDragged === '1') { delete b.dataset.justDragged; return; }
-          openPmConversation(nick);
-        });
-      }
-      const unread = (pmWindows[nick] && pmWindows[nick].unread) || 0;
-      b.innerHTML = `!${unread > 0 ? `<span class="dc-pmbubble-badge">${unread}</span>` : ''}`;
-      b.style.display = 'flex';
-    });
-  }
-
-  function requestClosePmWindow(nick){
-    pmCloseTargetNick = nick;
-    document.getElementById('dc-pmclose-title').textContent = `Privado con ${nick}`;
-    document.getElementById('dc-pmclose-overlay').classList.add('active');
-  }
-
-  function wirePmCloseDialog(){
-    document.getElementById('dc-pmclose-cancel').onclick = () => {
-      document.getElementById('dc-pmclose-overlay').classList.remove('active');
-      pmCloseTargetNick = null;
-    };
-    document.getElementById('dc-pmclose-minimize').onclick = () => {
-      const nick = pmCloseTargetNick;
-      document.getElementById('dc-pmclose-overlay').classList.remove('active');
-      pmCloseTargetNick = null;
-      if (!nick) return;
-      const el = document.getElementById(pmWindowElId(nick));
-      if (el) el.style.display = 'none';
-      pmWindows[nick] = pmWindows[nick] || {};
-      pmWindows[nick].state = 'minimized';
-      pmWindows[nick].unread = 0;
-      renderPmBubbles();
-    };
-    document.getElementById('dc-pmclose-close').onclick = () => {
-      const nick = pmCloseTargetNick;
-      document.getElementById('dc-pmclose-overlay').classList.remove('active');
-      pmCloseTargetNick = null;
-      if (!nick) return;
-      const el = document.getElementById(pmWindowElId(nick));
-      if (el) el.remove();
-      delete pmWindows[nick];
-      renderPmBubbles();
-    };
-  }
-
-  // Cuando llegan privados nuevos de gente con la que no hay ventana ni
-  // burbuja todavia, se acumulan un instante (debounce) antes de decidir:
-  // si al final solo hay una persona nueva, se abre sola; si llegaron
-  // varias casi juntas, se muestra el panel para elegir cual ver primero.
+  // Un privado entrante nunca abre ni apila ventanas solo: si la
+  // conversacion ya esta abierta se refleja al toque, si no queda como
+  // pendiente (contador en la entrada de la lista + globo en el icono del
+  // toolbar) hasta que el usuario entra al Centro de Mensajes a leerla.
   function handleIncomingPm(fromNick){
-    const win = pmWindows[fromNick];
-    if (win && win.state === 'open') { renderPmWindowLog(fromNick); return; }
-    if (win && win.state === 'minimized') { win.unread = (win.unread || 0) + 1; renderPmBubbles(); return; }
-    pmPendingUnread[fromNick] = (pmPendingUnread[fromNick] || 0) + 1;
-    if (!pmPendingQueue.includes(fromNick)) pmPendingQueue.push(fromNick);
-    if (pmQueueTimer) clearTimeout(pmQueueTimer);
-    pmQueueTimer = setTimeout(resolvePmQueue, 400);
-  }
-
-  function resolvePmQueue(){
-    pmQueueTimer = null;
-    const queued = pmPendingQueue;
-    pmPendingQueue = [];
-    if (!queued.length) return;
-    if (queued.length === 1) { openPmConversation(queued[0]); return; }
-    showPmChooser(queued);
-  }
-
-  function showPmChooser(nicks){
-    const list = document.getElementById('dc-pmchooser-list');
-    list.innerHTML = nicks.map(n => {
-      const u = findUserObject(n);
-      const count = pmPendingUnread[n] || 1;
-      return `<div class="dc-pmchooser-item" data-nick="${escapeHtml(n)}">${userIconHtml(u || {})}<span>${escapeHtml(n)}</span>${count > 1 ? `<small>(${count} mensajes)</small>` : ''}</div>`;
-    }).join('');
-    list.querySelectorAll('[data-nick]').forEach(item => {
-      item.onclick = () => {
-        const chosen = item.dataset.nick;
-        const rest = nicks.filter(n => n !== chosen);
-        document.getElementById('dc-pmchooser-overlay').classList.remove('active');
-        openPmConversation(chosen);
-        rest.forEach(n => {
-          pmWindows[n] = { state: 'minimized', unread: pmPendingUnread[n] || 1 };
-          delete pmPendingUnread[n];
-        });
-        renderPmBubbles();
-      };
-    });
-    document.getElementById('dc-pmchooser-overlay').classList.add('active');
+    const conv = ensurePmConversation(fromNick);
+    const winOpen = document.getElementById('dc-msgcenter-win').style.display === 'flex';
+    if (pmActiveNick === fromNick && winOpen) {
+      renderMsgCenterLog();
+      return;
+    }
+    conv.unread += 1;
+    renderMsgCenterBadge();
+    if (winOpen && !pmActiveNick) renderMsgCenterList();
   }
 
   /* ---------- ACCIONES DE MODERACION ---------- */
@@ -3131,6 +3032,7 @@
 
   render();
   rescaleDigichat();
+  wireMsgCenter();
   setupGlobalSubscriptions();
   setupPresence();
   loadInitialData();
