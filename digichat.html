@@ -678,6 +678,7 @@
   let pmAdminReadNick = null; // usuario cuyos privados esta leyendo el admin
   let pmAdminReadThreads = {}; // partner -> [entries] agrupados del usuario de arriba
   let pmAdminReadPartner = null; // con quien de esos esta viendo la conversacion ahora
+  let pmAdminReadChannel = null; // suscripcion realtime a los privados de ese usuario
   let selectedNick = null;
   let settingsTab = "profile";
   let adminTab = "rooms";
@@ -1357,6 +1358,7 @@
     pmAdminReadNick = null;
     pmAdminReadThreads = {};
     pmAdminReadPartner = null;
+    unsubscribeAdminReadPms();
     pmThreads = {};
     document.getElementById('dc-msgcenter-win').style.display = 'none';
     renderMsgCenterBadge();
@@ -1717,6 +1719,7 @@
         pmMode = 'own';
         pmAdminReadNick = null;
         pmAdminReadThreads = {};
+        unsubscribeAdminReadPms();
         win.style.display = 'none';
         return;
       }
@@ -1897,8 +1900,36 @@
     const win = document.getElementById('dc-msgcenter-win');
     win.style.display = 'flex';
     showAdminReadListMode();
+    subscribeAdminReadPms(nick);
     pmAdminReadThreads = await loadAdminReadThreads(nick);
     if (pmMode === 'adminRead' && pmAdminReadNick === nick && !pmAdminReadPartner) renderAdminReadList();
+  }
+
+  // Mientras el admin tiene abierto "Leer privados" de alguien, sus
+  // conversaciones siguen en vivo: sin esto, la carga de arriba es una
+  // sola vez y quedaba desactualizada hasta cerrar y volver a abrir.
+  // Un solo filtro no alcanza (from_nick=eq / to_nick=eq son columnas
+  // distintas), asi que se escuchan ambas direcciones sobre el mismo
+  // canal y se combinan en el mismo handler.
+  function subscribeAdminReadPms(nick){
+    if (pmAdminReadChannel) { sb.removeChannel(pmAdminReadChannel); pmAdminReadChannel = null; }
+    pmAdminReadChannel = sb.channel('pm-adminread-' + nick)
+      .on('postgres_changes', { event:'INSERT', schema:'public', table:'chat_pms', filter:`from_nick=eq.${nick}` }, (payload) => handleAdminReadInsert(nick, payload.new))
+      .on('postgres_changes', { event:'INSERT', schema:'public', table:'chat_pms', filter:`to_nick=eq.${nick}` }, (payload) => handleAdminReadInsert(nick, payload.new))
+      .subscribe();
+  }
+
+  function unsubscribeAdminReadPms(){
+    if (pmAdminReadChannel) { sb.removeChannel(pmAdminReadChannel); pmAdminReadChannel = null; }
+  }
+
+  function handleAdminReadInsert(nick, row){
+    if (pmMode !== 'adminRead' || pmAdminReadNick !== nick) return;
+    const partner = row.from_nick === nick ? row.to_nick : row.from_nick;
+    pmAdminReadThreads[partner] = pmAdminReadThreads[partner] || [];
+    pmAdminReadThreads[partner].push({ from: row.from_nick, to: row.to_nick, text: row.body, color: row.color });
+    if (pmAdminReadPartner === partner) renderAdminReadLog();
+    else if (!pmAdminReadPartner) renderAdminReadList();
   }
 
   function showAdminReadListMode(){
