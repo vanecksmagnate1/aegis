@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/cron-expire-rooms",
-      "schedule": "*/15 * * * *"
+      "schedule": "0 3 * * *"
     }
   ]
 }
