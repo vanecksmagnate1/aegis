@@ -94,6 +94,36 @@
     --dc-c-panel-bg: #12151b;
     --dc-c-panel-text: #dbe2ee;
   }
+  /* Diamante Blindado: negro facetado (patron tipo diamante en capas de
+     gradientes repetidos, sin imagen) con chrome/gris metalico en vez del
+     azul de Royale Obsidian. Mismo alcance que los demas themes: solo
+     chrome de ventanas, el log/lista/input quedan iguales a proposito. */
+  html[data-theme="diamante-blindado"] {
+    --dc-c-frame-bg:
+      repeating-linear-gradient(45deg, rgba(255,255,255,0.045) 0px, rgba(255,255,255,0.045) 1px, transparent 1px, transparent 22px),
+      repeating-linear-gradient(-45deg, rgba(255,255,255,0.035) 0px, rgba(255,255,255,0.035) 1px, transparent 1px, transparent 22px),
+      repeating-linear-gradient(45deg, rgba(0,0,0,0.35) 0px, rgba(0,0,0,0.35) 11px, transparent 11px, transparent 22px),
+      linear-gradient(160deg, #202124 0%, #0c0d0f 55%, #000000 100%);
+    --dc-c-frame-border: #4a4d53;
+    --dc-c-frame-border-strong: #6b6f76;
+    --dc-c-titlebar-bg: linear-gradient(180deg, #4a4d53 0%, #202124 45%, #000000 100%);
+    --dc-c-titlebar-text: #eef0f3;
+    --dc-c-dialog-titlebar-bg: linear-gradient(135deg, #4a4d53 0%, #0c0d0f 100%);
+    --dc-c-menubar-bg: linear-gradient(180deg, #2a2c30, #08090a);
+    --dc-c-wbtn-border: #6b6f76;
+    --dc-c-wbtn-blue-bg: linear-gradient(180deg, #e4e7ea 0%, #aeb3ba 45%, #6b6f76 100%);
+    --dc-c-popup-bg: #0e0f11;
+    --dc-c-popup-text: #eef0f3;
+    --dc-c-popup-hover-bg: #55585e;
+    --dc-c-btn-bg: linear-gradient(180deg, #5a5d63, #17181a);
+    --dc-c-btn-text: #eef0f3;
+    --dc-c-tab-bg: #1c1d20;
+    --dc-c-tab-text: #9aa0a8;
+    --dc-c-tab-active-bg: #d4d7db;
+    --dc-c-tab-active-text: #0c0d0f;
+    --dc-c-panel-bg: #101113;
+    --dc-c-panel-text: #dfe2e6;
+  }
   #dc-root, #dc-root * { box-sizing: border-box; }
   #dc-root input:focus, #dc-root textarea:focus, #dc-root button:focus, #dc-root select:focus { outline: none; }
   #dc-root {
@@ -271,6 +301,35 @@
     transition: background-image 0.3s ease;
   }
   .dc-banner.dc-banner-clickable { pointer-events: auto; cursor: pointer; }
+  /* Banner cromado, SOLO para el theme "diamante-blindado" (decision explicita
+     de esta sesion): pisa el banner configurable via CSS puro (sin imagen
+     nueva), texto "AEGIS" con efecto chrome sobre el mismo patron facetado
+     del frame. En cualquier otro theme el banner configurable sigue intacto. */
+  html[data-theme="diamante-blindado"] #dc-banner {
+    background-image: none !important;
+    background-color: #0c0d0f;
+    background-repeat: repeat; background-size: 44px 44px; background-position: center;
+    border-color: #6b6f76;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -2px 0 rgba(0,0,0,0.6), 0 1px 2px rgba(0,0,0,0.4);
+    pointer-events: none !important; cursor: default !important;
+  }
+  html[data-theme="diamante-blindado"] #dc-banner.dc-banner-clickable { pointer-events: none !important; }
+  html[data-theme="diamante-blindado"] #dc-banner::before {
+    content: ""; position: absolute; inset: 0;
+    background:
+      repeating-linear-gradient(45deg, rgba(255,255,255,0.06) 0px, rgba(255,255,255,0.06) 1px, transparent 1px, transparent 18px),
+      repeating-linear-gradient(-45deg, rgba(255,255,255,0.045) 0px, rgba(255,255,255,0.045) 1px, transparent 1px, transparent 18px);
+  }
+  html[data-theme="diamante-blindado"] #dc-banner::after {
+    content: "AEGIS"; position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-family: Tahoma, "MS Sans Serif", Geneva, sans-serif;
+    font-weight: bold; font-size: 52px; letter-spacing: 12px;
+    background: linear-gradient(180deg, #ffffff 0%, #d6d9dd 28%, #7a7f87 52%, #c7cbd0 74%, #ffffff 100%);
+    -webkit-background-clip: text; background-clip: text;
+    color: transparent; -webkit-text-fill-color: transparent;
+    text-shadow: 0 2px 1px rgba(0,0,0,0.7);
+  }
 
   /* botones bisel XP azul */
   .dc-btn {
@@ -859,6 +918,7 @@
   const AVAILABLE_THEMES = [
     { id: 'default', label: 'Default', desc: 'El look clasico XP azul de siempre. Es el respaldo: siempre se puede volver a este.' },
     { id: 'royale-obsidian', label: 'Royale Obsidian', desc: 'Negro gloss con bisel metalico y acento azul electrico, estilo Windows XP Royale Noir.' },
+    { id: 'diamante-blindado', label: 'Diamante Blindado', desc: 'Negro facetado tipo diamante con marco y controles en cromado gris, banner AEGIS metalico propio.' },
   ];
   // Piel visual PERSONAL: override solo-local (localStorage), nunca se manda
   // al servidor ni se ve reflejado para otros usuarios. '' = sin override,
