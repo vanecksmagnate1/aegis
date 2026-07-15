@@ -1954,10 +1954,16 @@
 
     const nick = String(profile.username || '').replace(/[,()]/g, '').trim().slice(0, MAX_NICK_LEN);
     if (!nick || nick.length < 2) return;
-    if (nick.toLowerCase() === ADMIN_NICK.toLowerCase()) return;
     if (bannedNicks.has(nick.toLowerCase())) return;
-    if (presenceList.some(p => p.nick.toLowerCase() === nick.toLowerCase())) return;
 
+    // El chequeo de "nick == ADMIN_NICK reservado" y el de "nick ya
+    // conectado" son solo para el camino de moderador/suscriptor de abajo:
+    // si profile.role es admin, que el username del portal coincida con
+    // ADMIN_NICK (el caso normal, es la misma persona) o que "Van Eck" ya
+    // esté conectado en otra pestaña son escenarios legítimos — la rama de
+    // admin ya maneja ambos (mintea el token igual, y el kick de sesión
+    // duplicada de abajo se encarga de la sesión repetida). Si estos
+    // guards corrieran antes, cortaban el auto-login del admin real.
     if (profile.role === 'admin') {
       let token = null;
       try {
@@ -1995,6 +2001,9 @@
       // Si el portal dice admin pero no se pudo mintar el token (ej. perfil
       // recién cambiado), entra igual como suscriptor en vez de bloquear.
     }
+
+    if (nick.toLowerCase() === ADMIN_NICK.toLowerCase()) return;
+    if (presenceList.some(p => p.nick.toLowerCase() === nick.toLowerCase())) return;
 
     me.nick = nick;
     me.portalRole = profile.role;
@@ -5059,6 +5068,19 @@
   setupPresence();
   const loadInitialDataPromise = loadInitialData();
   attemptAutoLogin(loadInitialDataPromise);
+
+  // Si el login del portal pasa DESPUES de que este iframe ya cargó (caso
+  // normal: se entra por el dropdown de la nav sin recargar la página), el
+  // intento de arriba ya corrió sin sesión. supabase-js sincroniza la
+  // sesión entre pestañas/iframes del mismo origen vía el evento
+  // 'storage', así que reintentamos una sola vez cuando eso dispare
+  // 'SIGNED_IN' — solo si seguimos en la pantalla de login (me.nick vacío).
+  let autoLoginRetried = false;
+  sb.auth.onAuthStateChange((event) => {
+    if (event !== 'SIGNED_IN' || autoLoginRetried || me.nick) return;
+    autoLoginRetried = true;
+    attemptAutoLogin(Promise.resolve());
+  });
 })();
 </script>
 </body>
