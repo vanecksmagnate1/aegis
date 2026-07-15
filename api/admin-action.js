@@ -11,7 +11,18 @@ const MAX_WORD_FILTERS = 200;
 const MAX_HIDDEN_DEFAULTS = 300;
 const MAX_ENABLED_FRAMES = 100;
 const MAX_HIDDEN_AVATARS = 100;
-const AVAILABLE_THEMES = ['default', 'royale-obsidian'];
+const AVAILABLE_THEMES = ['default', 'royale-obsidian', 'diamante-blindado'];
+
+// Mismo formato de color que usan los nicks: "#hex" estatico, "grad:#a,#b"
+// degradado, o "rainbow" (arcoiris animado). Usado por broadcast y por el
+// glow de la ventana (Opciones Site).
+function normalizeColorValue(value) {
+  const v = String(value || '');
+  if (v === 'rainbow') return 'rainbow';
+  if (/^grad:#[0-9a-fA-F]{6},#[0-9a-fA-F]{6}$/.test(v)) return v;
+  if (/^#[0-9a-fA-F]{6}$/.test(v)) return v;
+  return null;
+}
 
 async function notice(room, text) {
   await sbInsert('chat_messages', {
@@ -217,7 +228,9 @@ export default async function handler(req, res) {
       case 'broadcast': {
         const text = String(payload?.body || '').trim();
         if (!text) throw new Error('missing_body');
-        await sbInsert('chat_broadcasts', { body: text });
+        const glowEnabled = !!payload?.glow_enabled;
+        const glowColor = glowEnabled ? normalizeColorValue(payload?.glow_color) : null;
+        await sbInsert('chat_broadcasts', { body: text, glow_enabled: glowEnabled, glow_color: glowColor });
         break;
       }
       case 'addBanner': {
@@ -383,6 +396,12 @@ export default async function handler(req, res) {
         const theme = String(payload?.theme || '').trim();
         if (!AVAILABLE_THEMES.includes(theme)) throw new Error('invalid_theme');
         await sbUpdate('chat_theme_settings', 'id', 'true', { active_theme: theme, forced_at: new Date().toISOString() });
+        break;
+      }
+      case 'setSiteGlow': {
+        const enabled = !!payload?.enabled;
+        const color = enabled ? normalizeColorValue(payload?.color) : null;
+        await sbUpdate('chat_site_options', 'id', 'true', { window_glow_enabled: enabled, window_glow_color: color });
         break;
       }
       default:

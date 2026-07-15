@@ -38,6 +38,32 @@
   }
   .dc-globalbroadcast-box > button:hover { filter: brightness(1.04); }
   .dc-globalbroadcast-box > button:active { filter: brightness(0.94); }
+
+  /* Efecto glow opcional: color estatico/degradado se aplica inline
+     (applyGlowToElement en el script principal), el "arcoiris" usa esta
+     animacion de keyframes (mismo alcance de colores que .dc-rainbow-text). */
+  @keyframes dc-glow-rainbow-broadcast {
+    0%   { box-shadow: 0 15px 40px rgba(0,0,0,0.5), 0 0 40px 14px #e6194b; }
+    14%  { box-shadow: 0 15px 40px rgba(0,0,0,0.5), 0 0 40px 14px #f58231; }
+    28%  { box-shadow: 0 15px 40px rgba(0,0,0,0.5), 0 0 40px 14px #ffe119; }
+    42%  { box-shadow: 0 15px 40px rgba(0,0,0,0.5), 0 0 40px 14px #3cb44b; }
+    57%  { box-shadow: 0 15px 40px rgba(0,0,0,0.5), 0 0 40px 14px #42d4f4; }
+    71%  { box-shadow: 0 15px 40px rgba(0,0,0,0.5), 0 0 40px 14px #4363d8; }
+    85%  { box-shadow: 0 15px 40px rgba(0,0,0,0.5), 0 0 40px 14px #911eb4; }
+    100% { box-shadow: 0 15px 40px rgba(0,0,0,0.5), 0 0 40px 14px #e6194b; }
+  }
+  .dc-broadcast-glow-rainbow { animation: dc-glow-rainbow-broadcast 4s linear infinite; }
+  @keyframes dc-glow-rainbow-window {
+    0%   { box-shadow: 0 10px 30px rgba(0,0,0,0.35), 0 0 45px 16px #e6194b; }
+    14%  { box-shadow: 0 10px 30px rgba(0,0,0,0.35), 0 0 45px 16px #f58231; }
+    28%  { box-shadow: 0 10px 30px rgba(0,0,0,0.35), 0 0 45px 16px #ffe119; }
+    42%  { box-shadow: 0 10px 30px rgba(0,0,0,0.35), 0 0 45px 16px #3cb44b; }
+    57%  { box-shadow: 0 10px 30px rgba(0,0,0,0.35), 0 0 45px 16px #42d4f4; }
+    71%  { box-shadow: 0 10px 30px rgba(0,0,0,0.35), 0 0 45px 16px #4363d8; }
+    85%  { box-shadow: 0 10px 30px rgba(0,0,0,0.35), 0 0 45px 16px #911eb4; }
+    100% { box-shadow: 0 10px 30px rgba(0,0,0,0.35), 0 0 45px 16px #e6194b; }
+  }
+  .dc-window-glow-rainbow { animation: dc-glow-rainbow-window 4s linear infinite; }
 </style>
 </head>
 <body>
@@ -1037,6 +1063,17 @@
   let settingsTab = "profile";
   let adminTab = "rooms";
   let adminEditingNick = null;
+  // Ultimo glow usado al armar un broadcast (solo en memoria, se resetea
+  // al recargar): asi no se pierde si el admin va y vuelve de la pestaña
+  // sin haber enviado todavia. El glow real que ve todo el mundo viaja
+  // adjunto a cada fila de chat_broadcasts (ver showBroadcast).
+  let BROADCAST_GLOW_ENABLED = false;
+  let BROADCAST_GLOW_COLOR = null;
+  // Glow de la ventana del chat: setting de sitio (chat_site_options),
+  // sincronizado por Realtime a todos los conectados (ver
+  // setupGlobalSubscriptions / refreshSiteOptions).
+  let SITE_GLOW_ENABLED = false;
+  let SITE_GLOW_COLOR = null;
   let floodTimestamps = [];
   let floodUntil = 0;
   const FLOOD_LIMIT = 5;
@@ -1391,6 +1428,23 @@
     // FRAMES/frameOverlayHtml mas arriba.
     const overlay = u && u.frame ? frameOverlayHtml(u.frame) : '';
     return overlay ? `<span class="dc-frame-wrap">${icon}${overlay}</span>` : icon;
+  }
+
+  // Efecto glow (broadcast / ventana del chat): reusa el mismo formato de
+  // color que los nicks ("#hex" estatico, "grad:#a,#b" degradado, o
+  // RAINBOW). kind decide el box-shadow base y la clase de animacion
+  // arcoiris a usar (ver @keyframes dc-glow-rainbow-* en el <style> de arriba).
+  function applyGlowToElement(el, enabled, colorValue, kind){
+    if (!el) return;
+    const rainbowClass = kind === 'window' ? 'dc-window-glow-rainbow' : 'dc-broadcast-glow-rainbow';
+    el.classList.remove(rainbowClass);
+    el.style.boxShadow = '';
+    if (!enabled || !colorValue) return;
+    const baseShadow = kind === 'window' ? '0 10px 30px rgba(0,0,0,0.35)' : '0 15px 40px rgba(0,0,0,0.5)';
+    if (colorValue === RAINBOW) { el.classList.add(rainbowClass); return; }
+    const m = /^grad:(#[0-9a-fA-F]{6}),(#[0-9a-fA-F]{6})$/.exec(colorValue);
+    if (m) el.style.boxShadow = `${baseShadow}, 0 0 35px 10px ${m[1]}, 0 0 60px 20px ${m[2]}`;
+    else if (/^#[0-9a-fA-F]{6}$/.test(colorValue)) el.style.boxShadow = `${baseShadow}, 0 0 40px 14px ${colorValue}`;
   }
 
   /* "grad:#hex1,#hex2" = degradado estático de 2 colores (nick o texto de mensaje) */
@@ -2985,17 +3039,18 @@
 
 
   /* ---------- BROADCAST (fuera del chat) ---------- */
-  function showBroadcast(text){
+  function showBroadcast(text, glowEnabled, glowColor){
     const overlay = document.createElement('div');
     overlay.className = 'dc-globalbroadcast';
     overlay.innerHTML = `
-      <div class="dc-globalbroadcast-box">
+      <div class="dc-globalbroadcast-box" id="dc-globalbroadcast-box">
         <div class="dc-globalbroadcast-title">AEGIS CHAT - BROADCAST</div>
         <div class="dc-globalbroadcast-body">${escapeHtml(applyWordFilters(text)).toUpperCase()}</div>
         <button type="button">OK</button>
       </div>
     `;
     document.body.appendChild(overlay);
+    applyGlowToElement(overlay.querySelector('.dc-globalbroadcast-box'), !!glowEnabled, glowColor, 'broadcast');
     overlay.querySelector('button').onclick = () => overlay.remove();
   }
 
@@ -3175,6 +3230,7 @@
     {id:"filtros", label:"Filtros"},
     {id:"retrato", label:"Retrato"},
     {id:"themes", label:"Themes"},
+    {id:"siteoptions", label:"Opciones Site"},
   ];
 
   function wireAdminDialog(){
@@ -3227,6 +3283,7 @@
     if (adminTab === "filtros") return renderAdminFiltros(body);
     if (adminTab === "retrato") return renderAdminRetrato(body);
     if (adminTab === "themes") return renderAdminThemes(body);
+    if (adminTab === "siteoptions") return renderAdminSiteOptions(body);
   }
 
   function renderAdminRooms(body){
@@ -3723,14 +3780,46 @@
       <h4>Broadcast</h4>
       <p>Envía un mensaje emergente que se muestra por encima de toda la página a todos los conectados, y debe cerrarse con OK.</p>
       <div class="dc-field"><textarea id="dc-broadcast-text" rows="4"></textarea></div>
-      <button class="dc-btn dc-default" id="dc-broadcast-send">Enviar Broadcast</button>
+      <label style="display:flex; align-items:center; gap:6px; margin:10px 0 4px;">
+        <input type="checkbox" id="dc-broadcast-glow-enabled" ${BROADCAST_GLOW_ENABLED ? 'checked' : ''}> Efecto glow en la ventana del broadcast
+      </label>
+      ${profileColorCardHtml('dc-broadcast-glow', 'Color del glow', BROADCAST_GLOW_COLOR, '#42d4f4')}
+      <button class="dc-btn dc-default" id="dc-broadcast-send" style="margin-top:10px;">Enviar Broadcast</button>
     `;
+    function readGlowColor(){
+      const style = document.getElementById('dc-broadcast-glow-style').value;
+      const hex = document.getElementById('dc-broadcast-glow-native').value;
+      if (style === 'rainbow') return RAINBOW;
+      if (style === 'gradient') return `grad:${hex},${shiftHueHex(hex, 40)}`;
+      return hex;
+    }
     document.getElementById('dc-broadcast-send').onclick = async () => {
       const ta = document.getElementById('dc-broadcast-text');
       const text = ta.value.trim();
       if (!text) return;
+      BROADCAST_GLOW_ENABLED = document.getElementById('dc-broadcast-glow-enabled').checked;
+      BROADCAST_GLOW_COLOR = readGlowColor();
       ta.value = '';
-      await callAdminAction('broadcast', { body: text });
+      await callAdminAction('broadcast', { body: text, glow_enabled: BROADCAST_GLOW_ENABLED, glow_color: BROADCAST_GLOW_COLOR });
+    };
+  }
+
+  function renderAdminSiteOptions(body){
+    body.innerHTML = `
+      <h4>Opciones Site</h4>
+      <p>Efecto glow (resplandor) alrededor de la ventana del chat, visible en vivo para todos los conectados.</p>
+      <label style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+        <input type="checkbox" id="dc-siteglow-enabled" ${SITE_GLOW_ENABLED ? 'checked' : ''}> Activar glow en la ventana del chat
+      </label>
+      ${profileColorCardHtml('dc-siteglow', 'Color del glow', SITE_GLOW_COLOR, '#42d4f4')}
+      <button class="dc-btn dc-default" id="dc-siteglow-save" style="margin-top:10px;">Guardar</button>
+    `;
+    document.getElementById('dc-siteglow-save').onclick = async () => {
+      const enabled = document.getElementById('dc-siteglow-enabled').checked;
+      const style = document.getElementById('dc-siteglow-style').value;
+      const hex = document.getElementById('dc-siteglow-native').value;
+      const color = style === 'rainbow' ? RAINBOW : style === 'gradient' ? `grad:${hex},${shiftHueHex(hex, 40)}` : hex;
+      await callAdminAction('setSiteGlow', { enabled, color });
     };
   }
 
@@ -4558,7 +4647,7 @@
       .on('postgres_changes', { event:'*', schema:'public', table:'chat_mutes' }, handleMutesChange)
       .on('postgres_changes', { event:'*', schema:'public', table:'chat_moderators' }, handleModsChange)
       .on('postgres_changes', { event:'*', schema:'public', table:'chat_rooms' }, () => refreshRooms())
-      .on('postgres_changes', { event:'INSERT', schema:'public', table:'chat_broadcasts' }, (payload) => showBroadcast(payload.new.body))
+      .on('postgres_changes', { event:'INSERT', schema:'public', table:'chat_broadcasts' }, (payload) => showBroadcast(payload.new.body, payload.new.glow_enabled, payload.new.glow_color))
       .on('postgres_changes', { event:'*', schema:'public', table:'chat_banners' }, () => refreshBanners())
       .on('postgres_changes', { event:'*', schema:'public', table:'chat_banner_settings' }, () => refreshBannerSettings())
       .on('postgres_changes', { event:'*', schema:'public', table:'chat_custom_emoticons' }, () => refreshEmoticons())
@@ -4568,6 +4657,7 @@
       .on('postgres_changes', { event:'*', schema:'public', table:'chat_theme_settings' }, () => refreshThemeSettings())
       .on('postgres_changes', { event:'*', schema:'public', table:'chat_frame_settings' }, () => refreshFrameSettings())
       .on('postgres_changes', { event:'*', schema:'public', table:'chat_avatar_settings' }, () => refreshAvatarSettings())
+      .on('postgres_changes', { event:'*', schema:'public', table:'chat_site_options' }, () => refreshSiteOptions())
       .subscribe();
   }
 
@@ -4630,6 +4720,19 @@
   async function refreshThemeSettings(){
     const { data } = await sb.from('chat_theme_settings').select('active_theme, forced_at').eq('id', true);
     applyThemeSettingsRow(data && data[0]);
+  }
+
+  // Glow de la ventana del chat (Opciones Site): setting de sitio, aplicado
+  // en vivo al mismo .dc-window que ya tienen todos en pantalla.
+  function applySiteGlowRow(row){
+    SITE_GLOW_ENABLED = !!(row && row.window_glow_enabled);
+    SITE_GLOW_COLOR = (row && row.window_glow_color) || null;
+    applyGlowToElement(document.querySelector('.dc-window'), SITE_GLOW_ENABLED, SITE_GLOW_COLOR, 'window');
+    refreshAdminPanelIfOpen();
+  }
+  async function refreshSiteOptions(){
+    const { data } = await sb.from('chat_site_options').select('window_glow_enabled, window_glow_color').eq('id', true);
+    applySiteGlowRow(data && data[0]);
   }
 
   function applyEmoticonRows(rows){
@@ -4754,7 +4857,7 @@
       { data: rooms }, { data: bans }, { data: mutes }, { data: mods }, { data: adminProfileRows },
       { data: banners }, { data: bannerSettingsRows }, { data: emoticons }, { data: helperMessages },
       { data: wordFilters }, { data: emoticonSettingsRows }, { data: themeSettingsRows }, { data: frameSettingsRows },
-      { data: avatarSettingsRows },
+      { data: avatarSettingsRows }, { data: siteOptionsRows },
     ] = await Promise.all([
       roomsQuery,
       sb.from('chat_bans').select('nick_lower'),
@@ -4770,6 +4873,7 @@
       sb.from('chat_theme_settings').select('active_theme, forced_at').eq('id', true),
       sb.from('chat_frame_settings').select('enabled_defaults').eq('id', true),
       sb.from('chat_avatar_settings').select('hidden_defaults').eq('id', true),
+      sb.from('chat_site_options').select('window_glow_enabled, window_glow_color').eq('id', true),
     ]);
     applyRoomRows(rooms);
     bannedNicks = new Set((bans||[]).map(b=>b.nick_lower));
@@ -4785,6 +4889,7 @@
     applyThemeSettingsRow(themeSettingsRows && themeSettingsRows[0]);
     applyFrameSettingsRow(frameSettingsRows && frameSettingsRows[0]);
     applyAvatarSettingsRow(avatarSettingsRows && avatarSettingsRows[0]);
+    applySiteGlowRow(siteOptionsRows && siteOptionsRows[0]);
     renderRoomsPanel();
     renderUsers();
     setupHelperCheckTimer();
