@@ -3054,16 +3054,12 @@
     } else if (settingsTab === "info"){
       body.innerHTML = `
         <h4>Info</h4>
-        <p>Este chat es una recreación con estilo retro inspirada en clientes de chat de applet de comienzos de los 2000. Ahora es un chat real: cualquiera con el enlace puede entrar y hablar contigo.</p>
         <p>Rol actual: ${me.role==='admin'?'Administrador':me.role==='moderator'?'Moderador':'Usuario'} — Sala actual: ${escapeHtml(me.room)}</p>
       `;
     } else if (settingsTab === "patch"){
       body.innerHTML = `
         <h4>Patch</h4>
-        <p>v3.0 — Chat real y compartido en vivo (Supabase): mensajes, usuarios conectados, salas y privados reales entre visitantes.</p>
-        <p>v2.0 — Roles (usuario/moderador/admin), salas múltiples, privados, emoticones y panel de admin funcional.</p>
-        <p>v1.4 — Estética clásica fiel al cliente original.</p>
-        <p>v1.0 — Versión inicial.</p>
+        <p>Aegis Chat - V2.0</p>
       `;
     }
   }
