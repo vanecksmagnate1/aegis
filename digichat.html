@@ -1768,6 +1768,23 @@
     }
   }
 
+  // Igual que callAdminAction, pero devuelve el JSON completo en vez de un
+  // booleano — para acciones que necesitan leer datos de vuelta (listas,
+  // ids recien creados), sin tocar ninguno de los usos existentes de
+  // callAdminAction.
+  async function callAdminQuery(action, payload){
+    try {
+      const res = await fetch('/api/admin-action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: adminToken, action, payload })
+      });
+      return await res.json();
+    } catch (e) {
+      return { ok: false, error: e.message || 'network_error' };
+    }
+  }
+
   // Deja constancia pública (persistida, visible para todos en la sala) de que
   // el admin entró, salió o actualizó su perfil — a diferencia del aviso de
   // entrada/salida normal (que es efímero y solo lo ven quienes ya están
@@ -1790,7 +1807,8 @@
     }, [...BASE_AVATARS, ...visibleCinemaAvatarUris()]);
     wireAvatarDropdown('dc-login-avatar-toggle', 'dc-login-avatardrop');
 
-    document.getElementById('dc-enter').onclick = () => {
+    document.getElementById('dc-enter').onclick = async () => {
+      const btn = document.getElementById('dc-enter');
       const nick = document.getElementById('dc-nick').value.trim();
       const err = document.getElementById('dc-error');
       if (!nick) { err.textContent = "Debes escribir un apodo para entrar."; return; }
@@ -1800,6 +1818,25 @@
       if (nick.toLowerCase() === ADMIN_NICK.toLowerCase()) { err.textContent = "Ese nombre está reservado. Usa el botón Login."; return; }
       if (bannedNicks.has(nick.toLowerCase())) { err.textContent = "Este apodo está baneado."; return; }
       if (presenceList.some(p => p.nick.toLowerCase() === nick.toLowerCase())) { err.textContent = "Ese apodo ya está en uso ahora mismo. Elige otro."; return; }
+
+      btn.disabled = true;
+      err.textContent = "Verificando...";
+      let available = true;
+      try {
+        const res = await fetch('/api/nick-available', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nick })
+        });
+        const data = await res.json();
+        available = data.ok ? !!data.available : true;
+      } catch (e) {
+        // Falla en abierto: un error de red no debe bloquear el login abierto.
+        available = true;
+      }
+      btn.disabled = false;
+      if (!available) { err.textContent = "Ese nombre pertenece a una cuenta registrada. Inicia sesión desde el portal para usarlo."; return; }
+
       me.nick = nick;
       me.role = moderatorNicks.has(nick.toLowerCase()) ? 'moderator' : 'general';
       me.color = me.role === 'moderator' ? MOD_COLOR : GENERAL_COLOR;
@@ -1960,9 +1997,8 @@
     }
 
     me.nick = nick;
-    me.role = (profile.role === 'moderator' && moderatorNicks.has(nick.toLowerCase()))
-      ? 'moderator'
-      : (profile.role === 'moderator' ? 'general' : 'suscriptor');
+    me.portalRole = profile.role;
+    me.role = profile.role === 'moderator' ? 'moderator' : 'suscriptor';
     me.color = me.role === 'moderator' ? MOD_COLOR : GENERAL_COLOR;
     me.textColor = null;
     me.avatar = BASE_AVATARS[Math.floor(Math.random() * BASE_AVATARS.length)];
@@ -3226,6 +3262,7 @@
   const ADMIN_TABS = [
     {id:"rooms", label:"Rooms"},
     {id:"usuarios", label:"Usuarios"},
+    {id:"usuariosportal", label:"Usuarios Portal"},
     {id:"bots", label:"Bots"},
     {id:"bans", label:"Bans"},
     {id:"perfil", label:"Mi Perfil"},
@@ -3279,6 +3316,7 @@
     }
     if (adminTab === "rooms") return renderAdminRooms(body);
     if (adminTab === "usuarios") return renderAdminUsers(body);
+    if (adminTab === "usuariosportal") return renderAdminUsuariosPortal(body);
     if (adminTab === "bots") return renderAdminBots(body);
     if (adminTab === "bans") return renderAdminBans(body);
     if (adminTab === "perfil") return renderAdminProfile(body);
@@ -3472,6 +3510,107 @@
     el.querySelectorAll('[data-unban]').forEach(btn => btn.onclick = async () => {
       await callAdminAction('unban', { nick: btn.dataset.unban });
     });
+  }
+
+  // "Usuarios Portal": cuentas reales (Supabase Auth + profiles), separado a
+  // proposito de "Usuarios" (conectados, ascenso momentaneo por nick sin
+  // cuenta). Crear o cambiar el rol acá escribe directo en `profiles`, la
+  // misma tabla que usa portal-web/app/admin — cualquiera de los dos lados
+  // ve siempre el mismo estado, no hace falta sincronizar nada aparte.
+  const PORTAL_ROLE_LABEL = { user: 'Suscriptor', moderator: 'Moderador', admin: 'Admin' };
+
+  function renderAdminUsuariosPortal(body){
+    body.innerHTML = `
+      <h4>Crear cuenta de portal</h4>
+      <div class="dc-field"><label>Nick</label><input type="text" id="dc-newportaluser-nick" maxlength="${MAX_NICK_LEN}"></div>
+      <div class="dc-field"><label>Correo</label><input type="text" id="dc-newportaluser-email"></div>
+      <div class="dc-field"><label>Contraseña</label><input type="password" id="dc-newportaluser-password"></div>
+      <div class="dc-field"><label>Rol</label>
+        <select id="dc-newportaluser-role">
+          <option value="user">Suscriptor</option>
+          <option value="moderator">Moderador</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <button class="dc-btn" id="dc-newportaluser-submit">Crear cuenta</button>
+      <p class="dc-error" id="dc-newportaluser-error"></p>
+      <h4>Cuentas registradas</h4>
+      <table class="dc-table"><thead><tr><th>Usuario</th><th>Rol</th><th>Registrado</th></tr></thead>
+      <tbody id="dc-admin-portalusers-rows"></tbody></table>
+    `;
+    document.getElementById('dc-newportaluser-submit').onclick = submitCreatePortalUser;
+    loadAndRenderPortalUsers();
+  }
+
+  async function loadAndRenderPortalUsers(){
+    const el = document.getElementById('dc-admin-portalusers-rows');
+    if (!el) return;
+    el.innerHTML = `<tr><td colspan="3" style="color:#555;">Cargando...</td></tr>`;
+    const data = await callAdminQuery('listPortalUsers', {});
+    if (!document.getElementById('dc-admin-portalusers-rows')) return;
+    if (!data.ok) { el.innerHTML = `<tr><td colspan="3" style="color:#c00;">No se pudo cargar la lista.</td></tr>`; return; }
+    const users = data.users || [];
+    el.innerHTML = users.length ? users.map(u => `
+      <tr>
+        <td>${escapeHtml(u.username)}</td>
+        <td>
+          <select class="dc-portaluser-role" data-id="${escapeHtml(u.id)}">
+            ${Object.entries(PORTAL_ROLE_LABEL).map(([val, label]) =>
+              `<option value="${val}" ${u.role === val ? 'selected' : ''}>${label}</option>`).join('')}
+          </select>
+        </td>
+        <td>${new Date(u.created_at).toLocaleDateString('es-ES')}</td>
+      </tr>
+    `).join('') : `<tr><td colspan="3" style="color:#555;">Todavía no hay cuentas de portal creadas.</td></tr>`;
+    el.querySelectorAll('.dc-portaluser-role').forEach(sel => {
+      const previous = sel.value;
+      sel.onchange = async () => {
+        const ok = await callAdminAction('setPortalUserRole', { id: sel.dataset.id, role: sel.value });
+        if (!ok) sel.value = previous;
+      };
+    });
+  }
+
+  async function submitCreatePortalUser(){
+    const nickEl = document.getElementById('dc-newportaluser-nick');
+    const emailEl = document.getElementById('dc-newportaluser-email');
+    const passwordEl = document.getElementById('dc-newportaluser-password');
+    const roleEl = document.getElementById('dc-newportaluser-role');
+    const err = document.getElementById('dc-newportaluser-error');
+    const btn = document.getElementById('dc-newportaluser-submit');
+
+    const nick = nickEl.value.trim();
+    const email = emailEl.value.trim();
+    const password = passwordEl.value;
+    const role = roleEl.value;
+
+    if (nick.length < 2) { err.textContent = "El nick es muy corto."; return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { err.textContent = "Correo inválido."; return; }
+    if (password.length < 6) { err.textContent = "La contraseña debe tener al menos 6 caracteres."; return; }
+
+    btn.disabled = true;
+    err.textContent = "Creando...";
+    const data = await callAdminQuery('createPortalUser', { nick, email, password, role });
+    btn.disabled = false;
+
+    if (!data.ok) {
+      const messages = {
+        nick_taken: "Ese nick ya está en uso.",
+        email_taken: "Ese correo ya está registrado.",
+        missing_nick: "El nick es muy corto.",
+        invalid_email: "Correo inválido.",
+        weak_password: "La contraseña debe tener al menos 6 caracteres.",
+      };
+      err.textContent = messages[data.error] || "No se pudo crear la cuenta.";
+      return;
+    }
+
+    err.textContent = "";
+    nickEl.value = "";
+    emailEl.value = "";
+    passwordEl.value = "";
+    roleEl.value = "user";
+    loadAndRenderPortalUsers();
   }
 
   // Las 4 opciones de visibilidad son mutuamente excluyentes (un solo
@@ -4612,7 +4751,7 @@
     if (payload.eventType === 'INSERT') moderatorNicks.add(payload.new.nick_lower);
     else if (payload.eventType === 'DELETE') moderatorNicks.delete(payload.old.nick_lower);
     if (me.nick && me.role !== 'admin') {
-      const shouldBeMod = moderatorNicks.has(me.nick.toLowerCase());
+      const shouldBeMod = moderatorNicks.has(me.nick.toLowerCase()) || me.portalRole === 'moderator';
       const newRole = shouldBeMod ? 'moderator' : 'general';
       if (newRole !== me.role) {
         me.role = newRole;

@@ -41,6 +41,17 @@ export async function sbSelect(table, query) {
   return res.json();
 }
 
+export async function sbAuthCreateUser(email, password, userMetadata) {
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify({ email, password, email_confirm: true, user_metadata: userMetadata || {} }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(res.status === 422 ? 'email_taken' : `sbAuthCreateUser failed: ${res.status}`);
+  return data;
+}
+
 export async function sbCount(table, selectCol) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=${selectCol || 'name'}`, {
     headers: headers({ Prefer: 'count=exact' }),

@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { verifyAdminToken } from './_lib/adminToken.js';
-import { sbInsert, sbDelete, sbUpdate, sbSelect, sbCount } from './_lib/supabaseRest.js';
+import { sbInsert, sbDelete, sbUpdate, sbSelect, sbCount, sbAuthCreateUser } from './_lib/supabaseRest.js';
 
 const LOCKED_ROOM = 'Sala General';
 const MAX_BANNERS = 10;
@@ -47,6 +47,7 @@ export default async function handler(req, res) {
     return;
   }
 
+  let result = {};
   try {
     switch (action) {
       case 'ban': {
@@ -404,6 +405,37 @@ export default async function handler(req, res) {
         await sbUpdate('chat_site_options', 'id', 'true', { window_glow_enabled: enabled, window_glow_color: color });
         break;
       }
+      case 'listPortalUsers': {
+        const users = await sbSelect('profiles', 'select=id,username,role,created_at&order=created_at.desc');
+        result = { users };
+        break;
+      }
+      case 'createPortalUser': {
+        const nick = String(payload?.nick || '').trim();
+        const email = String(payload?.email || '').trim().toLowerCase();
+        const password = String(payload?.password || '');
+        const role = String(payload?.role || 'user');
+        if (!nick || nick.length < 2) throw new Error('missing_nick');
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('invalid_email');
+        if (password.length < 6) throw new Error('weak_password');
+        if (!['user', 'moderator', 'admin'].includes(role)) throw new Error('invalid_role');
+
+        const existing = await sbSelect('profiles', `username=ilike.${encodeURIComponent(nick)}&select=id`);
+        if (existing.length) throw new Error('nick_taken');
+
+        const created = await sbAuthCreateUser(email, password, { username: nick });
+        if (role !== 'user') await sbUpdate('profiles', 'id', created.id, { role });
+        result = { id: created.id };
+        break;
+      }
+      case 'setPortalUserRole': {
+        const id = String(payload?.id || '').trim();
+        const role = String(payload?.role || '');
+        if (!id) throw new Error('missing_id');
+        if (!['user', 'moderator', 'admin'].includes(role)) throw new Error('invalid_role');
+        await sbUpdate('profiles', 'id', id, { role });
+        break;
+      }
       default:
         throw new Error('unknown_action');
     }
@@ -412,5 +444,5 @@ export default async function handler(req, res) {
     return;
   }
 
-  res.status(200).json({ ok: true });
+  res.status(200).json({ ok: true, ...result });
 }
