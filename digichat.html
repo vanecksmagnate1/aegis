@@ -96,14 +96,17 @@
     --dc-c-panel-text: #dbe2ee;
     --dc-c-footer-bg: linear-gradient(180deg, #2c3644 0%, #12161c 60%, #05060a 100%);
   }
-  /* Diamante Blindado: placa de diamante (SVG de un rombo partido en dos
-     mitades luz/sombra, tileado, sin imagen subida) con chrome/gris
+  /* Diamante Blindado: obsidiana negra facetada (placa de diamante SVG en
+     detalle fino + dos capas de conic-gradient rotadas/desalineadas para
+     facetas irregulares tipo cristal, sin imagen subida) con chrome/gris
      metalico en vez del azul de Royale Obsidian. Mismo alcance que los
      demas themes: solo chrome de ventanas, el log/lista/input quedan
      iguales a proposito. */
   html[data-theme="diamante-blindado"] {
     --dc-c-frame-bg:
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56'%3E%3Cpolygon points='28,2 28,54 2,28' fill='%23ffffff' fill-opacity='0.11'/%3E%3Cpolygon points='28,2 28,54 54,28' fill='%23000000' fill-opacity='0.4'/%3E%3C/svg%3E") 0 0/56px 56px repeat,
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56'%3E%3Cpolygon points='28,2 28,54 2,28' fill='%23ffffff' fill-opacity='0.09'/%3E%3Cpolygon points='28,2 28,54 54,28' fill='%23000000' fill-opacity='0.32'/%3E%3C/svg%3E") 0 0/56px 56px repeat,
+      conic-gradient(from 20deg at 22% 18%, rgba(255,255,255,.10) 0deg 70deg, rgba(0,0,0,.32) 70deg 150deg, rgba(255,255,255,.05) 150deg 230deg, rgba(0,0,0,.24) 230deg 300deg, rgba(255,255,255,.08) 300deg 360deg) 0 0/88px 88px,
+      conic-gradient(from 200deg at 68% 72%, rgba(0,0,0,.30) 0deg 80deg, rgba(255,255,255,.08) 80deg 160deg, rgba(0,0,0,.20) 160deg 240deg, rgba(255,255,255,.05) 240deg 320deg, rgba(0,0,0,.26) 320deg 360deg) 0 0/128px 128px,
       radial-gradient(130% 90% at 50% 0%, #202124 0%, #0a0a0b 60%, #000000 100%);
     --dc-c-frame-border: #4a4d53;
     --dc-c-frame-border-strong: #6b6f76;
@@ -116,7 +119,9 @@
     --dc-c-popup-bg: #0e0f11;
     --dc-c-popup-text: #eef0f3;
     --dc-c-popup-hover-bg: #55585e;
-    --dc-c-btn-bg: linear-gradient(180deg, #5a5d63, #17181a);
+    --dc-c-btn-bg:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Ccircle cx='3' cy='4' r='0.6' fill='%23fff' fill-opacity='0.06'/%3E%3Ccircle cx='11' cy='9' r='0.5' fill='%23000' fill-opacity='0.15'/%3E%3Ccircle cx='16' cy='3' r='0.5' fill='%23fff' fill-opacity='0.05'/%3E%3Ccircle cx='7' cy='15' r='0.6' fill='%23000' fill-opacity='0.12'/%3E%3Ccircle cx='17' cy='16' r='0.5' fill='%23fff' fill-opacity='0.05'/%3E%3C/svg%3E") 0 0/20px 20px repeat,
+      linear-gradient(180deg, #5a5d63, #17181a);
     --dc-c-btn-text: #eef0f3;
     --dc-c-tab-bg: #1c1d20;
     --dc-c-tab-text: #9aa0a8;
@@ -319,18 +324,20 @@
   html[data-theme="diamante-blindado"] #dc-banner::before {
     content: ""; position: absolute; inset: 0;
     background:
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56'%3E%3Cpolygon points='28,2 28,54 2,28' fill='%23ffffff' fill-opacity='0.11'/%3E%3Cpolygon points='28,2 28,54 54,28' fill='%23000000' fill-opacity='0.4'/%3E%3C/svg%3E") 0 0/56px 56px repeat,
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56'%3E%3Cpolygon points='28,2 28,54 2,28' fill='%23ffffff' fill-opacity='0.09'/%3E%3Cpolygon points='28,2 28,54 54,28' fill='%23000000' fill-opacity='0.32'/%3E%3C/svg%3E") 0 0/56px 56px repeat,
+      conic-gradient(from 20deg at 22% 18%, rgba(255,255,255,.10) 0deg 70deg, rgba(0,0,0,.32) 70deg 150deg, rgba(255,255,255,.05) 150deg 230deg, rgba(0,0,0,.24) 230deg 300deg, rgba(255,255,255,.08) 300deg 360deg) 0 0/88px 88px,
+      conic-gradient(from 200deg at 68% 72%, rgba(0,0,0,.30) 0deg 80deg, rgba(255,255,255,.08) 80deg 160deg, rgba(0,0,0,.20) 160deg 240deg, rgba(255,255,255,.05) 240deg 320deg, rgba(0,0,0,.26) 320deg 360deg) 0 0/128px 128px,
       radial-gradient(130% 140% at 50% 0%, #202124 0%, #0a0a0b 60%, #000000 100%);
   }
   html[data-theme="diamante-blindado"] #dc-banner::after {
     content: "AEGIS"; position: absolute; inset: 0;
     display: flex; align-items: center; justify-content: center;
     font-family: Tahoma, "MS Sans Serif", Geneva, sans-serif;
-    font-weight: bold; font-size: 60px; letter-spacing: 14px;
-    background: linear-gradient(180deg, #9aa0a8 0%, #6b6f76 45%, #2c2d30 100%);
+    font-weight: bold; font-size: 62px; letter-spacing: 16px;
+    background: linear-gradient(180deg, #c6cad0 0%, #8a8e94 22%, #4a4d53 50%, #8a8e94 78%, #c6cad0 100%);
     -webkit-background-clip: text; background-clip: text;
     color: transparent; -webkit-text-fill-color: transparent;
-    text-shadow: 0 1px 0 rgba(255,255,255,0.18), 0 3px 5px rgba(0,0,0,0.75);
+    text-shadow: 0 1px 0 rgba(255,255,255,0.35), 0 -1px 0 rgba(0,0,0,0.5), 0 4px 8px rgba(0,0,0,0.8);
   }
 
   /* botones bisel XP azul */
