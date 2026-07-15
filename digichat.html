@@ -710,6 +710,7 @@
   .dc-vismode-opt span { display: flex; flex-direction: column; gap: 2px; }
   .dc-vismode-opt b { color: #fff; font-size: 13px; }
   .dc-vismode-opt small { color: #dfe8f7; font-size: 11px; line-height: 1.35; }
+  .dc-themepreview { width: 90px; height: 56px; flex-shrink: 0; border-radius: 3px; border: 1px solid rgba(0,0,0,0.35); display: block; }
   .dc-checklist label { display: flex; align-items: center; gap: 6px; margin-bottom: 7px; }
   .dc-table { width: 100%; border-collapse: collapse; font-size: 15px; background: #fff;
     border: 1px solid #2c3f8f; }
@@ -988,10 +989,14 @@
   // botones, popup de menu, broadcast). "default" = look clasico, sin
   // atributo data-theme. Ver AVAILABLE_THEMES para el listado del panel.
   let ACTIVE_THEME = 'default';
+  // preview: mini-mockup SVG (no es una captura real, es una recreacion a
+  // escala de titlebar/menubar/log/lista con los mismos colores exactos
+  // del theme) para que se vea de un vistazo en Settings > Themes y en el
+  // panel admin, sin depender de subir/mantener screenshots reales.
   const AVAILABLE_THEMES = [
-    { id: 'default', label: 'Default', desc: 'El look clasico XP azul de siempre. Es el respaldo: siempre se puede volver a este.' },
-    { id: 'royale-obsidian', label: 'Royale Obsidian', desc: 'Negro gloss con bisel metalico y acento azul electrico, estilo Windows XP Royale Noir.' },
-    { id: 'diamante-blindado', label: 'Diamante Blindado', desc: 'Negro facetado tipo diamante con marco y controles en cromado gris, banner AEGIS metalico propio.' },
+    { id: 'default', label: 'Default', desc: 'El look clasico XP azul de siempre. Es el respaldo: siempre se puede volver a este.', preview: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 112' width='180' height='112'%3E%3Cdefs%3E%3ClinearGradient id='tbdefault' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%23d9e8fb'/%3E%3Cstop offset='35%25' stop-color='%23a9c6ea'/%3E%3Cstop offset='70%25' stop-color='%236f93cf'/%3E%3Cstop offset='100%25' stop-color='%233f60a3'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='180' height='112' fill='%2345519f'/%3E%3Crect x='0' y='0' width='180' height='16' fill='url(%23tbdefault)'/%3E%3Crect x='0' y='16' width='180' height='9' fill='%233f60a3'/%3E%3Crect x='6' y='31' width='118' height='75' fill='%23ffffff'/%3E%3Crect x='10' y='37' width='92' height='4' fill='%23c7d2e0'/%3E%3Crect x='10' y='45' width='70' height='4' fill='%23c7d2e0'/%3E%3Crect x='10' y='53' width='102' height='4' fill='%23c7d2e0'/%3E%3Crect x='10' y='65' width='80' height='4' fill='%23dbe3ee'/%3E%3Crect x='128' y='31' width='46' height='75' fill='%237f95cf'/%3E%3Crect x='132' y='37' width='38' height='7' fill='rgba(255,255,255,0.55)'/%3E%3Crect x='132' y='48' width='38' height='7' fill='rgba(255,255,255,0.3)'/%3E%3Crect x='132' y='59' width='38' height='7' fill='rgba(255,255,255,0.3)'/%3E%3C/svg%3E" },
+    { id: 'royale-obsidian', label: 'Royale Obsidian', desc: 'Negro gloss con bisel metalico y acento azul electrico, estilo Windows XP Royale Noir.', preview: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 112' width='180' height='112'%3E%3Cdefs%3E%3ClinearGradient id='tbroyale' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%23333f4f'/%3E%3Cstop offset='55%25' stop-color='%2312161c'/%3E%3Cstop offset='100%25' stop-color='%2305060a'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='180' height='112' fill='%230a0c10'/%3E%3Crect x='0' y='0' width='180' height='16' fill='url(%23tbroyale)'/%3E%3Crect x='0' y='16' width='180' height='9' fill='%230d1015'/%3E%3Crect x='6' y='31' width='118' height='75' fill='%23ffffff'/%3E%3Crect x='10' y='37' width='92' height='4' fill='%23c7d2e0'/%3E%3Crect x='10' y='45' width='70' height='4' fill='%23c7d2e0'/%3E%3Crect x='10' y='53' width='102' height='4' fill='%23c7d2e0'/%3E%3Crect x='10' y='65' width='80' height='4' fill='%23dbe3ee'/%3E%3Crect x='128' y='31' width='46' height='75' fill='%2312151b'/%3E%3Crect x='132' y='37' width='38' height='7' fill='rgba(58,160,255,0.55)'/%3E%3Crect x='132' y='48' width='38' height='7' fill='rgba(255,255,255,0.12)'/%3E%3Crect x='132' y='59' width='38' height='7' fill='rgba(255,255,255,0.12)'/%3E%3C/svg%3E" },
+    { id: 'diamante-blindado', label: 'Diamante Blindado', desc: 'Negro facetado tipo diamante con marco y controles en cromado gris, banner AEGIS metalico propio.', preview: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 112' width='180' height='112'%3E%3Cdefs%3E%3ClinearGradient id='tbd' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%234a4d53'/%3E%3Cstop offset='45%25' stop-color='%23202124'/%3E%3Cstop offset='100%25' stop-color='%23000000'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='180' height='112' fill='%230a0a0b'/%3E%3Cg stroke='%23ffffff' stroke-opacity='0.12' stroke-width='2'%3E%3Cline x1='0' y1='96' x2='16' y2='80'/%3E%3Cline x1='14' y1='112' x2='34' y2='92'/%3E%3Cline x1='150' y1='18' x2='168' y2='0'/%3E%3Cline x1='164' y1='30' x2='180' y2='14'/%3E%3C/g%3E%3Crect x='0' y='0' width='180' height='16' fill='url(%23tbd)'/%3E%3Crect x='0' y='16' width='180' height='9' fill='%2308090a'/%3E%3Crect x='6' y='31' width='118' height='75' fill='%23ffffff'/%3E%3Crect x='10' y='37' width='92' height='4' fill='%23c7d2e0'/%3E%3Crect x='10' y='45' width='70' height='4' fill='%23c7d2e0'/%3E%3Crect x='10' y='53' width='102' height='4' fill='%23c7d2e0'/%3E%3Crect x='10' y='65' width='80' height='4' fill='%23dbe3ee'/%3E%3Crect x='128' y='31' width='46' height='75' fill='%23101113'/%3E%3Crect x='132' y='37' width='38' height='7' fill='rgba(212,215,219,0.55)'/%3E%3Crect x='132' y='48' width='38' height='7' fill='rgba(255,255,255,0.12)'/%3E%3Crect x='132' y='59' width='38' height='7' fill='rgba(255,255,255,0.12)'/%3E%3C/svg%3E" },
   ];
   // Piel visual PERSONAL: override solo-local (localStorage), nunca se manda
   // al servidor ni se ve reflejado para otros usuarios. '' = sin override,
@@ -3169,8 +3174,9 @@
         </div>
       `;
     } else if (settingsTab === "themes"){
+      const activeSiteTheme = AVAILABLE_THEMES.find(t=>t.id===ACTIVE_THEME) || AVAILABLE_THEMES[0];
       const localThemeChoices = [
-        { id: '', label: 'Usar el del sitio', desc: `Sigue la apariencia que el administrador definió para todo el chat (actualmente: ${escapeHtml(AVAILABLE_THEMES.find(t=>t.id===ACTIVE_THEME)?.label || 'Default')}).` },
+        { id: '', label: 'Usar el del sitio', desc: `Sigue la apariencia que el administrador definió para todo el chat (actualmente: ${escapeHtml(activeSiteTheme.label)}).`, preview: activeSiteTheme.preview },
         ...AVAILABLE_THEMES,
       ];
       body.innerHTML = `
@@ -3181,6 +3187,7 @@
       const list = document.getElementById('dc-localtheme-list');
       list.innerHTML = localThemeChoices.map(t => `
         <div class="dc-vismode-opt" style="cursor:default;">
+          <img src="${t.preview}" alt="" class="dc-themepreview">
           <span style="flex:1;"><b>${escapeHtml(t.label)}</b><small>${escapeHtml(t.desc)}</small></span>
           ${t.id === LOCAL_THEME_OVERRIDE
             ? `<span class="dc-admincard-tag" style="flex-shrink:0; align-self:center;">Activo</span>`
@@ -4428,6 +4435,7 @@
     const list = document.getElementById('dc-themes-list');
     list.innerHTML = AVAILABLE_THEMES.map(t => `
       <div class="dc-vismode-opt" style="cursor:default; flex-wrap:wrap;">
+        <img src="${t.preview}" alt="" class="dc-themepreview">
         <span style="flex:1 1 220px;">
           <b>${escapeHtml(t.label)}
             ${t.id === ACTIVE_THEME ? `<span class="dc-admincard-tag" style="margin-left:6px;">Activo para todos</span>` : ''}
