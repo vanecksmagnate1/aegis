@@ -734,8 +734,60 @@
     "🐢","🐙","🦀","🐳","🦖","🐲","👻","🌸","☀️","🌈",
     "💀","🕹️","🎮","🎧","🎸","🍕","🍔","🍩","🎯","🚀"
   ];
+
+  // ---------- Avatares "Cine & TV" (2026-07-14): 30 iconos originales
+  // (SVG propio, data URI, no reproducen ningun personaje puntual con
+  // copyright) en 3 categorias de 10, pensados como paquete adicional al
+  // set de emoji de siempre. HIDDEN_CINEMA_AVATARS es el pool que el admin
+  // oculta desde la pestaña "Avatares" (mismo patron que
+  // HIDDEN_DEFAULT_EMOTICONS): por defecto ninguno esta oculto, admin/mod
+  // siempre ven los 30 sin filtrar.
+  const CINEMA_AVATAR_CATEGORIES = ['Cíborgs de acero', 'Criaturas de sofá', 'Héroes de sábado'];
+  const CINEMA_AVATARS = [
+    { id:'ojorojo', name:'Ojo Rojo', cat:'Cíborgs de acero', uri:"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect x=%274%27 y=%274%27 width=%2756%27 height=%2756%27 rx=%2714%27 fill=%27%233a3f47%27/%3E%3Ccircle cx=%2732%27 cy=%2730%27 r=%2716%27 fill=%27%2320242a%27/%3E%3Ccircle cx=%2732%27 cy=%2730%27 r=%277%27 fill=%27%23ff3b3b%27/%3E%3Ccircle cx=%2732%27 cy=%2730%27 r=%273%27 fill=%27%23ffb3b3%27/%3E%3Cpath d=%27M18 44 Q32 50 46 44%27 stroke=%27%236b7178%27 stroke-width=%273%27 fill=%27none%27 stroke-linecap=%27round%27/%3E%3Cpath d=%27M14 26 L20 22 M50 26 L44 22%27 stroke=%27%237a818a%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" },
+    { id:'viseradeacero', name:'Visera de Acero', cat:'Cíborgs de acero', uri:"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect x=%274%27 y=%274%27 width=%2756%27 height=%2756%27 rx=%2714%27 fill=%27%2333475e%27/%3E%3Crect x=%2714%27 y=%2718%27 width=%2736%27 height=%2724%27 rx=%278%27 fill=%27%231c2733%27/%3E%3Crect x=%2718%27 y=%2724%27 width=%2728%27 height=%279%27 rx=%274%27 fill=%27%235ec8ff%27/%3E%3Crect x=%2724%27 y=%2742%27 width=%2716%27 height=%276%27 rx=%272%27 fill=%27%238fa4b8%27/%3E%3C/svg%3E" },
+    { id:'mandibuladetitanio', name:'Mandíbula de Titanio', cat:'Cíborgs de acero', uri:"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect x=%274%27 y=%274%27 width=%2756%27 height=%2756%27 rx=%2714%27 fill=%27%234a4f57%27/%3E%3Ccircle cx=%2732%27 cy=%2726%27 r=%2714%27 fill=%27%23c7ccd3%27/%3E%3Ccircle cx=%2727%27 cy=%2724%27 r=%272.4%27 fill=%27%2320242a%27/%3E%3Ccircle cx=%2737%27 cy=%2724%27 r=%272.4%27 fill=%27%2320242a%27/%3E%3Crect x=%2720%27 y=%2736%27 width=%2724%27 height=%2710%27 rx=%273%27 fill=%27%239098a3%27/%3E%3Cpath d=%27M22 41 h20%27 stroke=%27%234a4f57%27 stroke-width=%272%27/%3E%3C/svg%3E" },
+    { id:'nucleodecombate', name:'Núcleo de Combate', cat:'Cíborgs de acero', uri:"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect x=%274%27 y=%274%27 width=%2756%27 height=%2756%27 rx=%2714%27 fill=%27%2339424f%27/%3E%3Crect x=%2716%27 y=%2716%27 width=%2732%27 height=%2732%27 rx=%2710%27 fill=%27%23232a34%27/%3E%3Ccircle cx=%2732%27 cy=%2732%27 r=%2710%27 fill=%27%232ee6d0%27/%3E%3Ccircle cx=%2732%27 cy=%2732%27 r=%274%27 fill=%27%23e9fffb%27/%3E%3C/svg%3E" },
+    { id:'cascotactico', name:'Casco Táctico', cat:'Cíborgs de acero', uri:"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect x=%274%27 y=%274%27 width=%2756%27 height=%2756%27 rx=%2714%27 fill=%27%234a5847%27/%3E%3Cpath d=%27M32 14 a18 18 0 0 1 18 18 v6 a4 4 0 0 1 -4 4 h-28 a4 4 0 0 1 -4 -4 v-6 a18 18 0 0 1 18 -18z%27 fill=%27%235c7a4f%27/%3E%3Crect x=%2718%27 y=%2730%27 width=%2728%27 height=%278%27 rx=%273%27 fill=%27%231c2418%27/%3E%3Crect x=%2720%27 y=%2732%27 width=%2724%27 height=%274%27 fill=%27%238fe36a%27/%3E%3C/svg%3E" },
+    { id:'androidenocturno', name:'Androide Nocturno', cat:'Cíborgs de acero', uri:"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect x=%274%27 y=%274%27 width=%2756%27 height=%2756%27 rx=%2714%27 fill=%27%231e1b26%27/%3E%3Ccircle cx=%2732%27 cy=%2728%27 r=%2715%27 fill=%27%232b2738%27/%3E%3Cellipse cx=%2726%27 cy=%2727%27 rx=%273%27 ry=%274%27 fill=%27%23b98bff%27/%3E%3Cellipse cx=%2738%27 cy=%2727%27 rx=%273%27 ry=%274%27 fill=%27%23b98bff%27/%3E%3Cpath d=%27M22 42 h20%27 stroke=%27%23463f5c%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" },
+    { id:'sargentoservo', name:'Sargento Servo', cat:'Cíborgs de acero', uri:"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect x=%274%27 y=%274%27 width=%2756%27 height=%2756%27 rx=%2714%27 fill=%27%233e4a3a%27/%3E%3Crect x=%2715%27 y=%2717%27 width=%2734%27 height=%2726%27 rx=%277%27 fill=%27%2326301f%27/%3E%3Crect x=%2719%27 y=%2724%27 width=%2726%27 height=%277%27 rx=%273%27 fill=%27%237bd85a%27/%3E%3Ccircle cx=%2724%27 cy=%2740%27 r=%273%27 fill=%27%239aa38f%27/%3E%3Ccircle cx=%2740%27 cy=%2740%27 r=%273%27 fill=%27%239aa38f%27/%3E%3C/svg%3E" },
+    { id:'guardianoxidado', name:'Guardián Oxidado', cat:'Cíborgs de acero', uri:"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect x=%274%27 y=%274%27 width=%2756%27 height=%2756%27 rx=%2714%27 fill=%27%235a4632%27/%3E%3Ccircle cx=%2732%27 cy=%2728%27 r=%2715%27 fill=%27%238a6a45%27/%3E%3Ccircle cx=%2732%27 cy=%2728%27 r=%2715%27 fill=%27%2300000018%27/%3E%3Ccircle cx=%2726%27 cy=%2726%27 r=%272.5%27 fill=%27%232b2016%27/%3E%3Ccircle cx=%2738%27 cy=%2726%27 r=%272.5%27 fill=%27%232b2016%27/%3E%3Cpath d=%27M24 36 q8 6 16 0%27 stroke=%27%232b2016%27 stroke-width=%272.5%27 fill=%27none%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" },
+    { id:'pilotomecha', name:'Piloto Mecha', cat:'Cíborgs de acero', uri:"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect x=%274%27 y=%274%27 width=%2756%27 height=%2756%27 rx=%2714%27 fill=%27%233a3f4e%27/%3E%3Cpath d=%27M17 30 a15 15 0 0 1 30 0 v8 h-30z%27 fill=%27%23232838%27/%3E%3Crect x=%2720%27 y=%2724%27 width=%2724%27 height=%2710%27 rx=%275%27 fill=%27%23ffb454%27/%3E%3Crect x=%2726%27 y=%2740%27 width=%2712%27 height=%276%27 rx=%272%27 fill=%27%238891a3%27/%3E%3C/svg%3E" },
+    { id:'centineladorado', name:'Centinela Dorado', cat:'Cíborgs de acero', uri:"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect x=%274%27 y=%274%27 width=%2756%27 height=%2756%27 rx=%2714%27 fill=%27%234a3f22%27/%3E%3Ccircle cx=%2732%27 cy=%2728%27 r=%2715%27 fill=%27%23d8ab4e%27/%3E%3Ccircle cx=%2726%27 cy=%2727%27 r=%272.4%27 fill=%27%233a2e10%27/%3E%3Ccircle cx=%2738%27 cy=%2727%27 r=%272.4%27 fill=%27%233a2e10%27/%3E%3Cpath d=%27M20 20 q12 -10 24 0%27 stroke=%27%233a2e10%27 stroke-width=%272.5%27 fill=%27none%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" },
+    { id:'bichonaranja', name:'Bicho Naranja', cat:'Criaturas de sofá', uri:"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect x=%274%27 y=%274%27 width=%2756%27 height=%2756%27 rx=%2714%27 fill=%27%237a3d1e%27/%3E%3Cellipse cx=%2732%27 cy=%2732%27 rx=%2717%27 ry=%2715%27 fill=%27%23f2894a%27/%3E%3Ccircle cx=%2725%27 cy=%2728%27 r=%275%27 fill=%27%23fff%27/%3E%3Ccircle cx=%2739%27 cy=%2728%27 r=%275%27 fill=%27%23fff%27/%3E%3Ccircle cx=%2725%27 cy=%2728%27 r=%272.2%27 fill=%27%232b2016%27/%3E%3Ccircle cx=%2739%27 cy=%2728%27 r=%272.2%27 fill=%27%232b2016%27/%3E%3Cellipse cx=%2732%27 cy=%2738%27 rx=%276%27 ry=%274%27 fill=%27%23c9601f%27/%3E%3C/svg%3E" },
+    { id:'peludoazulado', name:'Peludo Azulado', cat:'Criaturas de sofá', uri:"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect x=%274%27 y=%274%27 width=%2756%27 height=%2756%27 rx=%2714%27 fill=%27%231f4f5c%27/%3E%3Cellipse cx=%2732%27 cy=%2732%27 rx=%2716%27 ry=%2716%27 fill=%27%234fb0c9%27/%3E%3Ccircle cx=%2726%27 cy=%2729%27 r=%274.5%27 fill=%27%23fff%27/%3E%3Ccircle cx=%2738%27 cy=%2729%27 r=%274.5%27 fill=%27%23fff%27/%3E%3Ccircle cx=%2726%27 cy=%2729%27 r=%272%27 fill=%27%23153740%27/%3E%3Ccircle cx=%2738%27 cy=%2729%27 r=%272%27 fill=%27%23153740%27/%3E%3Cpath d=%27M26 40 q6 5 12 0%27 stroke=%27%23153740%27 stroke-width=%272.5%27 fill=%27none%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" },
+    { id:'ojossaltones', name:'Ojos Saltones', cat:'Criaturas de sofá', uri:"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect x=%274%27 y=%274%27 width=%2756%27 height=%2756%27 rx=%2714%27 fill=%27%235c3d7a%27/%3E%3Ccircle cx=%2732%27 cy=%2732%27 r=%2716%27 fill=%27%23a97fd1%27/%3E%3Ccircle cx=%2724%27 cy=%2726%27 r=%276%27 fill=%27%23fff%27/%3E%3Ccircle cx=%2740%27 cy=%2726%27 r=%276%27 fill=%27%23fff%27/%3E%3Ccircle cx=%2722%27 cy=%2724%27 r=%272.6%27 fill=%27%23241636%27/%3E%3Ccircle cx=%2742%27 cy=%2728%27 r=%272.6%27 fill=%27%23241636%27/%3E%3Cellipse cx=%2732%27 cy=%2742%27 rx=%275%27 ry=%273%27 fill=%27%233c2454%27/%3E%3C/svg%3E" },
+    { id:'rayitasespaciales', name:'Rayitas Espaciales', cat:'Criaturas de sofá', uri:"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect x=%274%27 y=%274%27 width=%2756%27 height=%2756%27 rx=%2714%27 fill=%27%232f5c3d%27/%3E%3Cellipse cx=%2732%27 cy=%2732%27 rx=%2716%27 ry=%2715%27 fill=%27%236fbf7a%27/%3E%3Crect x=%2716%27 y=%2724%27 width=%2732%27 height=%274%27 fill=%27%232f5c3d%27/%3E%3Crect x=%2716%27 y=%2734%27 width=%2732%27 height=%274%27 fill=%27%232f5c3d%27/%3E%3Ccircle cx=%2726%27 cy=%2720%27 r=%273%27 fill=%27%23fff%27/%3E%3Ccircle cx=%2738%27 cy=%2720%27 r=%273%27 fill=%27%23fff%27/%3E%3C/svg%3E" },
+    { id:'naricitacuriosa', name:'Naricita Curiosa', cat:'Criaturas de sofá', uri:"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect x=%274%27 y=%274%27 width=%2756%27 height=%2756%27 rx=%2714%27 fill=%27%237a5c1e%27/%3E%3Ccircle cx=%2732%27 cy=%2730%27 r=%2715%27 fill=%27%23d9a63f%27/%3E%3Ccircle cx=%2727%27 cy=%2727%27 r=%272.3%27 fill=%27%233a2b0a%27/%3E%3Ccircle cx=%2737%27 cy=%2727%27 r=%272.3%27 fill=%27%233a2b0a%27/%3E%3Cellipse cx=%2732%27 cy=%2735%27 rx=%276%27 ry=%275%27 fill=%27%23c78a2a%27/%3E%3Cellipse cx=%2732%27 cy=%2735%27 rx=%272%27 ry=%271.6%27 fill=%27%233a2b0a%27/%3E%3C/svg%3E" },
+    { id:'boladepelos', name:'Bola de Pelos', cat:'Criaturas de sofá', uri:"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect x=%274%27 y=%274%27 width=%2756%27 height=%2756%27 rx=%2714%27 fill=%27%234a4a1e%27/%3E%3Ccircle cx=%2732%27 cy=%2732%27 r=%2716%27 fill=%27%239a9a3a%27/%3E%3Ccircle cx=%2724%27 cy=%2724%27 r=%273%27 fill=%27%23c8c85a%27/%3E%3Ccircle cx=%2740%27 cy=%2724%27 r=%273%27 fill=%27%23c8c85a%27/%3E%3Ccircle cx=%2720%27 cy=%2734%27 r=%273%27 fill=%27%23c8c85a%27/%3E%3Ccircle cx=%2744%27 cy=%2734%27 r=%273%27 fill=%27%23c8c85a%27/%3E%3Ccircle cx=%2728%27 cy=%2730%27 r=%272%27 fill=%27%231c1c08%27/%3E%3Ccircle cx=%2736%27 cy=%2730%27 r=%272%27 fill=%27%231c1c08%27/%3E%3C/svg%3E" },
+    { id:'mascotadelliving', name:'Mascota del Living', cat:'Criaturas de sofá', uri:"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect x=%274%27 y=%274%27 width=%2756%27 height=%2756%27 rx=%2714%27 fill=%27%233d5c7a%27/%3E%3Cellipse cx=%2732%27 cy=%2734%27 rx=%2717%27 ry=%2714%27 fill=%27%236ea3c9%27/%3E%3Cellipse cx=%2732%27 cy=%2720%27 rx=%2710%27 ry=%278%27 fill=%27%236ea3c9%27/%3E%3Ccircle cx=%2728%27 cy=%2719%27 r=%272%27 fill=%27%23152738%27/%3E%3Ccircle cx=%2736%27 cy=%2719%27 r=%272%27 fill=%27%23152738%27/%3E%3Cpath d=%27M27 40 q5 4 10 0%27 stroke=%27%23152738%27 stroke-width=%272.2%27 fill=%27none%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" },
+    { id:'bigotestraviesos', name:'Bigotes Traviesos', cat:'Criaturas de sofá', uri:"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect x=%274%27 y=%274%27 width=%2756%27 height=%2756%27 rx=%2714%27 fill=%27%237a3d5c%27/%3E%3Ccircle cx=%2732%27 cy=%2730%27 r=%2715%27 fill=%27%23d1729f%27/%3E%3Ccircle cx=%2726%27 cy=%2728%27 r=%272.4%27 fill=%27%233a1526%27/%3E%3Ccircle cx=%2738%27 cy=%2728%27 r=%272.4%27 fill=%27%233a1526%27/%3E%3Cpath d=%27M14 30 h10 M40 30 h10 M15 36 l9 -2 M49 36 l-9 -2%27 stroke=%27%233a1526%27 stroke-width=%271.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" },
+    { id:'estrelladepeluche', name:'Estrella de Peluche', cat:'Criaturas de sofá', uri:"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect x=%274%27 y=%274%27 width=%2756%27 height=%2756%27 rx=%2714%27 fill=%27%235c4a1e%27/%3E%3Ccircle cx=%2732%27 cy=%2730%27 r=%2715%27 fill=%27%23e0b25a%27/%3E%3Ccircle cx=%2726%27 cy=%2727%27 r=%272.4%27 fill=%27%233a2b0a%27/%3E%3Ccircle cx=%2738%27 cy=%2727%27 r=%272.4%27 fill=%27%233a2b0a%27/%3E%3Cpath d=%27M22 40 l4 -4 4 4 4 -4 4 4%27 stroke=%27%233a2b0a%27 stroke-width=%272%27 fill=%27none%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" },
+    { id:'vecinopeludo', name:'Vecino Peludo', cat:'Criaturas de sofá', uri:"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect x=%274%27 y=%274%27 width=%2756%27 height=%2756%27 rx=%2714%27 fill=%27%232f4a3d%27/%3E%3Cellipse cx=%2732%27 cy=%2732%27 rx=%2716%27 ry=%2716%27 fill=%27%235ea38a%27/%3E%3Cellipse cx=%2720%27 cy=%2724%27 rx=%274%27 ry=%276%27 fill=%27%235ea38a%27/%3E%3Cellipse cx=%2744%27 cy=%2724%27 rx=%274%27 ry=%276%27 fill=%27%235ea38a%27/%3E%3Ccircle cx=%2727%27 cy=%2730%27 r=%272.2%27 fill=%27%23123028%27/%3E%3Ccircle cx=%2737%27 cy=%2730%27 r=%272.2%27 fill=%27%23123028%27/%3E%3Cpath d=%27M27 38 q5 4 10 0%27 stroke=%27%23123028%27 stroke-width=%272%27 fill=%27none%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" },
+    { id:'caparoja', name:'Capa Roja', cat:'Héroes de sábado', uri:"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect x=%274%27 y=%274%27 width=%2756%27 height=%2756%27 rx=%2714%27 fill=%27%237a1e1e%27/%3E%3Cpath d=%27M16 46 L22 20 h20 l6 26 z%27 fill=%27%23a32d2d%27/%3E%3Ccircle cx=%2732%27 cy=%2722%27 r=%2710%27 fill=%27%23f0c9a0%27/%3E%3Crect x=%2724%27 y=%2730%27 width=%2716%27 height=%276%27 fill=%27%23fff%27/%3E%3C/svg%3E" },
+    { id:'varitamagica', name:'Varita Mágica', cat:'Héroes de sábado', uri:"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect x=%274%27 y=%274%27 width=%2756%27 height=%2756%27 rx=%2714%27 fill=%27%235c1e6e%27/%3E%3Ccircle cx=%2726%27 cy=%2724%27 r=%279%27 fill=%27%23f0c9a0%27/%3E%3Cpath d=%27M34 34 L48 20%27 stroke=%27%23e0b25a%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3Cpath d=%27M48 20 l3 -3 M48 20 l-3 -3 M48 20 l4 1 M48 20 l-1 4%27 stroke=%27%23ffe08a%27 stroke-width=%272%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" },
+    { id:'dinoamigo', name:'Dino Amigo', cat:'Héroes de sábado', uri:"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect x=%274%27 y=%274%27 width=%2756%27 height=%2756%27 rx=%2714%27 fill=%27%231e6e3d%27/%3E%3Cellipse cx=%2730%27 cy=%2734%27 rx=%2715%27 ry=%2712%27 fill=%27%234fbf7a%27/%3E%3Cpath d=%27M40 26 l8 -6 -2 10z%27 fill=%27%234fbf7a%27/%3E%3Ccircle cx=%2724%27 cy=%2730%27 r=%272.2%27 fill=%27%230f3a20%27/%3E%3Cpath d=%27M18 20 l3 -6 M24 18 l2 -6%27 stroke=%27%232f8a52%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" },
+    { id:'robotmascota', name:'Robot Mascota', cat:'Héroes de sábado', uri:"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect x=%274%27 y=%274%27 width=%2756%27 height=%2756%27 rx=%2714%27 fill=%27%231e5c6e%27/%3E%3Crect x=%2718%27 y=%2720%27 width=%2728%27 height=%2722%27 rx=%278%27 fill=%27%235ec8e0%27/%3E%3Ccircle cx=%2727%27 cy=%2730%27 r=%272.6%27 fill=%27%230a2b33%27/%3E%3Ccircle cx=%2737%27 cy=%2730%27 r=%272.6%27 fill=%27%230a2b33%27/%3E%3Crect x=%2730%27 y=%2710%27 width=%274%27 height=%278%27 fill=%27%235ec8e0%27/%3E%3Ccircle cx=%2732%27 cy=%279%27 r=%273%27 fill=%27%23ffe08a%27/%3E%3C/svg%3E" },
+    { id:'mascarajusticiera', name:'Máscara Justiciera', cat:'Héroes de sábado', uri:"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect x=%274%27 y=%274%27 width=%2756%27 height=%2756%27 rx=%2714%27 fill=%27%231e3a6e%27/%3E%3Ccircle cx=%2732%27 cy=%2730%27 r=%2715%27 fill=%27%23f0c9a0%27/%3E%3Cpath d=%27M17 26 q15 -10 30 0 q-2 8 -15 8 t-15 -8z%27 fill=%27%232e4d8a%27/%3E%3Cpath d=%27M24 45 q8 4 16 0%27 stroke=%27%237a4a2a%27 stroke-width=%272%27 fill=%27none%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" },
+    { id:'exploradorvaliente', name:'Explorador Valiente', cat:'Héroes de sábado', uri:"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect x=%274%27 y=%274%27 width=%2756%27 height=%2756%27 rx=%2714%27 fill=%27%236e5c1e%27/%3E%3Ccircle cx=%2732%27 cy=%2732%27 r=%2714%27 fill=%27%23f0c9a0%27/%3E%3Cpath d=%27M16 26 a16 8 0 0 1 32 0z%27 fill=%27%238a6a2a%27/%3E%3Ccircle cx=%2727%27 cy=%2733%27 r=%272.2%27 fill=%27%233a2b0a%27/%3E%3Ccircle cx=%2737%27 cy=%2733%27 r=%272.2%27 fill=%27%233a2b0a%27/%3E%3C/svg%3E" },
+    { id:'unicornioarcoiris', name:'Unicornio Arcoíris', cat:'Héroes de sábado', uri:"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect x=%274%27 y=%274%27 width=%2756%27 height=%2756%27 rx=%2714%27 fill=%27%236e1e5c%27/%3E%3Cellipse cx=%2730%27 cy=%2734%27 rx=%2714%27 ry=%2712%27 fill=%27%23f4d9ec%27/%3E%3Cpath d=%27M22 22 l6 8 -8 2z%27 fill=%27%23ffe08a%27/%3E%3Ccircle cx=%2725%27 cy=%2732%27 r=%272%27 fill=%27%235c1e4a%27/%3E%3Cpath d=%27M40 26 q6 -2 8 4 q-6 2 -8 -4%27 fill=%27%237fd8ff%27/%3E%3C/svg%3E" },
+    { id:'capitanestelar', name:'Capitán Estelar', cat:'Héroes de sábado', uri:"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect x=%274%27 y=%274%27 width=%2756%27 height=%2756%27 rx=%2714%27 fill=%27%231e2f6e%27/%3E%3Ccircle cx=%2732%27 cy=%2728%27 r=%2713%27 fill=%27%23f0c9a0%27/%3E%3Cpath d=%27M18 18 h28 l-4 10 h-20z%27 fill=%27%232e4da8%27/%3E%3Cpath d=%27M28 10 l4 6 4 -6%27 fill=%27%23ffd166%27/%3E%3C/svg%3E" },
+    { id:'bandamusical', name:'Banda Musical', cat:'Héroes de sábado', uri:"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect x=%274%27 y=%274%27 width=%2756%27 height=%2756%27 rx=%2714%27 fill=%27%236e3d1e%27/%3E%3Ccircle cx=%2732%27 cy=%2728%27 r=%2713%27 fill=%27%23e0b25a%27/%3E%3Crect x=%2720%27 y=%2738%27 width=%2724%27 height=%278%27 rx=%273%27 fill=%27%23a86a2a%27/%3E%3Ccircle cx=%2726%27 cy=%2726%27 r=%272%27 fill=%27%233a2b0a%27/%3E%3Ccircle cx=%2738%27 cy=%2726%27 r=%272%27 fill=%27%233a2b0a%27/%3E%3C/svg%3E" },
+    { id:'escudocosmico', name:'Escudo Cósmico', cat:'Héroes de sábado', uri:"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect x=%274%27 y=%274%27 width=%2756%27 height=%2756%27 rx=%2714%27 fill=%27%233a1e6e%27/%3E%3Cpath d=%27M32 14 l16 6 v10 c0 12 -8 18 -16 20 c-8 -2 -16 -8 -16 -20 v-10z%27 fill=%27%238a6ad1%27/%3E%3Ccircle cx=%2732%27 cy=%2730%27 r=%276%27 fill=%27%23ffe08a%27/%3E%3C/svg%3E" },
+  ];
+  const CINEMA_AVATAR_MAP = Object.fromEntries(CINEMA_AVATARS.map(a => [a.id, a]));
+  let HIDDEN_CINEMA_AVATARS = new Set();
+  function visibleCinemaAvatarUris(){
+    return CINEMA_AVATARS.filter(a => !HIDDEN_CINEMA_AVATARS.has(a.id)).map(a => a.uri);
+  }
+  function allCinemaAvatarUris(){
+    return CINEMA_AVATARS.map(a => a.uri);
+  }
   function avatarSetForRole(role){
-    return (role === 'admin' || role === 'moderator') ? EXTENDED_AVATARS : BASE_AVATARS;
+    const isStaff = role === 'admin' || role === 'moderator';
+    const base = isStaff ? EXTENDED_AVATARS : BASE_AVATARS;
+    const cinema = isStaff ? allCinemaAvatarUris() : visibleCinemaAvatarUris();
+    return [...base, ...cinema];
   }
 
   function randomBotAvatar(){
@@ -1571,7 +1623,7 @@
     buildAvatarGrid('dc-login-avatars', loginAvatar, (val) => {
       loginAvatar = val;
       document.getElementById('dc-login-avatardrop').classList.remove('active');
-    }, BASE_AVATARS);
+    }, [...BASE_AVATARS, ...visibleCinemaAvatarUris()]);
     wireAvatarDropdown('dc-login-avatar-toggle', 'dc-login-avatardrop');
 
     document.getElementById('dc-enter').onclick = () => {
@@ -2942,6 +2994,7 @@
     {id:"broadcast", label:"Broadcast"},
     {id:"banners", label:"Banners"},
     {id:"emoticones", label:"Emoticones"},
+    {id:"avatares", label:"Avatares"},
     {id:"chathelper", label:"ChatHelper"},
     {id:"filtros", label:"Filtros"},
     {id:"retrato", label:"Retrato"},
@@ -2993,6 +3046,7 @@
     if (adminTab === "broadcast") return renderAdminBroadcast(body);
     if (adminTab === "banners") return renderAdminBanners(body);
     if (adminTab === "emoticones") return renderAdminEmoticons(body);
+    if (adminTab === "avatares") return renderAdminAvatares(body);
     if (adminTab === "chathelper") return renderAdminChatHelper(body);
     if (adminTab === "filtros") return renderAdminFiltros(body);
     if (adminTab === "retrato") return renderAdminRetrato(body);
@@ -3393,7 +3447,7 @@
     // grilla (me.customAvatars, persistido en chat_admin_profile), para
     // poder volver a elegirlos sin tener que resubir el archivo.
     function rebuildAdminAvatarGrid(){
-      buildAvatarGrid('dc-admin-avatars', me.avatar, onPickAvatar, [...me.customAvatars, ...EXTENDED_AVATARS]);
+      buildAvatarGrid('dc-admin-avatars', me.avatar, onPickAvatar, [...me.customAvatars, ...EXTENDED_AVATARS, ...allCinemaAvatarUris()]);
     }
     rebuildAdminAvatarGrid();
     wireAvatarDropdown('dc-admin-avatar-toggle', 'dc-admin-avatardrop');
@@ -3741,6 +3795,64 @@
     };
   }
 
+  function renderAdminAvatares(body){
+    body.innerHTML = `
+      <h4>Avatares</h4>
+      <p>Los ${CINEMA_AVATARS.length} íconos "Cine &amp; TV" agregados al selector de avatares, agrupados por categoría. Podés ocultar cualquiera (individualmente o todos de una vez) para que no aparezca en el selector de usuarios normales/moderadores — vos y otros admins siempre los ven todos, en Mi Perfil.</p>
+      <div style="display:flex; gap:8px; margin-bottom:8px;">
+        <button class="dc-btn dc-smallbtn" id="dc-defaultavatar-hideall">Ocultar todos</button>
+        <button class="dc-btn dc-smallbtn" id="dc-defaultavatar-showall">Mostrar todos</button>
+        <button class="dc-btn dc-default" id="dc-defaultavatar-save">Guardar</button>
+      </div>
+      <div id="dc-defaultavatar-grid" style="max-height:420px; overflow-y:auto; background:#7f95cf; padding:8px; border-radius:4px;"></div>
+    `;
+
+    const pendingHidden = new Set(HIDDEN_CINEMA_AVATARS);
+    const grid = document.getElementById('dc-defaultavatar-grid');
+
+    function renderGrid(){
+      grid.innerHTML = CINEMA_AVATAR_CATEGORIES.map(cat => `
+        <div class="dc-framecat">
+          <h5>${escapeHtml(cat)}</h5>
+          <div class="dc-framegrid">
+            ${CINEMA_AVATARS.filter(a => a.cat === cat).map(a => {
+              const hidden = pendingHidden.has(a.id);
+              return `
+                <div class="dc-framepick-wrap">
+                  <div class="dc-framepick" data-default-avatar="${a.id}" title="${hidden ? 'Oculto' : 'Visible'}" style="opacity:${hidden ? '0.4' : '1'};">
+                    <span class="dc-icon-img" style="width:38px; height:38px; background-image:url('${a.uri}')"></span>
+                  </div>
+                  <div class="dc-framepick-name">${escapeHtml(a.name)}</div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `).join('');
+      grid.querySelectorAll('[data-default-avatar]').forEach(el => {
+        el.onclick = () => {
+          const id = el.dataset.defaultAvatar;
+          if (pendingHidden.has(id)) pendingHidden.delete(id); else pendingHidden.add(id);
+          renderGrid();
+        };
+      });
+    }
+    renderGrid();
+
+    document.getElementById('dc-defaultavatar-hideall').onclick = () => {
+      CINEMA_AVATARS.forEach(a => pendingHidden.add(a.id));
+      renderGrid();
+    };
+    document.getElementById('dc-defaultavatar-showall').onclick = () => {
+      pendingHidden.clear();
+      renderGrid();
+    };
+    document.getElementById('dc-defaultavatar-save').onclick = async () => {
+      const ok = await callAdminAction('setHiddenDefaultAvatars', { hidden: Array.from(pendingHidden) });
+      if (ok) localSystem('Se actualizaron los avatares predeterminados visibles.');
+    };
+  }
+
   async function renderAdminChatHelper(body){
     const { data } = await sb.from('chat_helper_config').select('*').eq('id', true);
     const cfg = data && data[0];
@@ -3848,7 +3960,7 @@
       helperAvatar = val;
       refreshHelperAvatarPreview();
       document.getElementById('dc-helper-avatardrop').classList.remove('active');
-    }, EXTENDED_AVATARS);
+    }, [...EXTENDED_AVATARS, ...allCinemaAvatarUris()]);
     wireAvatarDropdown('dc-helper-avatar-toggle', 'dc-helper-avatardrop');
 
     document.getElementById('dc-helper-save-config').onclick = async () => {
@@ -4279,6 +4391,7 @@
       .on('postgres_changes', { event:'*', schema:'public', table:'chat_emoticon_settings' }, () => refreshEmoticonSettings())
       .on('postgres_changes', { event:'*', schema:'public', table:'chat_theme_settings' }, () => refreshThemeSettings())
       .on('postgres_changes', { event:'*', schema:'public', table:'chat_frame_settings' }, () => refreshFrameSettings())
+      .on('postgres_changes', { event:'*', schema:'public', table:'chat_avatar_settings' }, () => refreshAvatarSettings())
       .subscribe();
   }
 
@@ -4374,6 +4487,17 @@
     refreshAdminPanelIfOpen();
   }
 
+  async function refreshAvatarSettings(){
+    const { data } = await sb.from('chat_avatar_settings').select('hidden_defaults').eq('id', true);
+    applyAvatarSettingsRow(data && data[0]);
+  }
+
+  function applyAvatarSettingsRow(row){
+    HIDDEN_CINEMA_AVATARS = new Set(Array.isArray(row?.hidden_defaults) ? row.hidden_defaults : []);
+    if (document.getElementById('dc-settings-overlay')?.classList.contains('active') && settingsTab === 'profile') renderSettingsBody();
+    refreshAdminPanelIfOpen();
+  }
+
   async function refreshFrameSettings(){
     const { data } = await sb.from('chat_frame_settings').select('enabled_defaults').eq('id', true);
     applyFrameSettingsRow(data && data[0]);
@@ -4454,6 +4578,7 @@
       { data: rooms }, { data: bans }, { data: mutes }, { data: mods }, { data: adminProfileRows },
       { data: banners }, { data: bannerSettingsRows }, { data: emoticons }, { data: helperMessages },
       { data: wordFilters }, { data: emoticonSettingsRows }, { data: themeSettingsRows }, { data: frameSettingsRows },
+      { data: avatarSettingsRows },
     ] = await Promise.all([
       roomsQuery,
       sb.from('chat_bans').select('nick_lower'),
@@ -4468,6 +4593,7 @@
       sb.from('chat_emoticon_settings').select('hidden_defaults').eq('id', true),
       sb.from('chat_theme_settings').select('active_theme, forced_at').eq('id', true),
       sb.from('chat_frame_settings').select('enabled_defaults').eq('id', true),
+      sb.from('chat_avatar_settings').select('hidden_defaults').eq('id', true),
     ]);
     applyRoomRows(rooms);
     bannedNicks = new Set((bans||[]).map(b=>b.nick_lower));
@@ -4482,6 +4608,7 @@
     applyEmoticonSettingsRow(emoticonSettingsRows && emoticonSettingsRows[0]);
     applyThemeSettingsRow(themeSettingsRows && themeSettingsRows[0]);
     applyFrameSettingsRow(frameSettingsRows && frameSettingsRows[0]);
+    applyAvatarSettingsRow(avatarSettingsRows && avatarSettingsRows[0]);
     renderRoomsPanel();
     renderUsers();
     setupHelperCheckTimer();

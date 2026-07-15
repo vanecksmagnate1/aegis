@@ -10,6 +10,7 @@ const HELPER_NICK_COLOR = '#1958D6';
 const MAX_WORD_FILTERS = 200;
 const MAX_HIDDEN_DEFAULTS = 300;
 const MAX_ENABLED_FRAMES = 100;
+const MAX_HIDDEN_AVATARS = 100;
 const AVAILABLE_THEMES = ['default', 'royale-obsidian'];
 
 async function notice(room, text) {
@@ -369,6 +370,13 @@ export default async function handler(req, res) {
           ? payload.enabled.filter((f) => typeof f === 'string' && f.length && f.length <= 30).slice(0, MAX_ENABLED_FRAMES)
           : [];
         await sbUpdate('chat_frame_settings', 'id', 'true', { enabled_defaults: enabled });
+        break;
+      }
+      case 'setHiddenDefaultAvatars': {
+        const hidden = Array.isArray(payload?.hidden)
+          ? payload.hidden.filter((a) => typeof a === 'string' && a.length && a.length <= 30).slice(0, MAX_HIDDEN_AVATARS)
+          : [];
+        await sbUpdate('chat_avatar_settings', 'id', 'true', { hidden_defaults: hidden });
         break;
       }
       case 'setTheme': {
