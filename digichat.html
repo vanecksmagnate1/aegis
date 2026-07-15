@@ -243,7 +243,7 @@
   @keyframes dc-rainbow-shift { to { background-position: 250% center; } }
 
   /* ===== escenario: ventana fija 1024x744 escalada, como el mockup (no responsive/embebido) ===== */
-  .dc-stage { width: 100%; display: flex; justify-content: center; padding: 16px 8px; }
+  .dc-stage { width: 100%; display: flex; justify-content: center; padding: 64px 60px; }
   .dc-scaler { position: relative; width: 1024px; height: 744px; transform-origin: top center; flex-shrink: 0; }
 
   .dc-window {
@@ -252,7 +252,7 @@
     border: 1px solid var(--dc-c-frame-border);
     border-radius: 4px;
     overflow: hidden;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.35), 0 0 55px rgba(178,75,243,0.45);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.35), 0 0 55px 8px rgba(178,75,243,0.6);
   }
   .dc-titlebar {
     position: absolute; top: 0; left: 0; width: 1024px; height: 38px;
@@ -942,8 +942,8 @@
     const scaler = document.getElementById('dc-scaler');
     if (!scaler) return;
     const stage = scaler.parentElement;
-    const availW = stage.clientWidth - 4;
-    const availH = window.innerHeight - 32;
+    const availW = stage.clientWidth - 108;
+    const availH = window.innerHeight - 128;
     const scale = Math.min(availW / 1024, availH / 744, 1);
     scaler.style.transform = `scale(${scale})`;
     stage.style.height = (744 * scale) + 'px';
