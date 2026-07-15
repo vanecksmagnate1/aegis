@@ -71,6 +71,7 @@
     --dc-c-tab-active-text: #16224e;
     --dc-c-panel-bg: #7f95cf;
     --dc-c-panel-text: #eef2fb;
+    --dc-c-footer-bg: linear-gradient(180deg, #7fa2d6, #4c72b3);
   }
   html[data-theme="royale-obsidian"] {
     --dc-c-frame-bg: linear-gradient(180deg, #1c2029 0%, #0a0c10 100%);
@@ -93,17 +94,17 @@
     --dc-c-tab-active-text: #0a0c10;
     --dc-c-panel-bg: #12151b;
     --dc-c-panel-text: #dbe2ee;
+    --dc-c-footer-bg: linear-gradient(180deg, #2c3644 0%, #12161c 60%, #05060a 100%);
   }
-  /* Diamante Blindado: negro facetado (patron tipo diamante en capas de
-     gradientes repetidos, sin imagen) con chrome/gris metalico en vez del
-     azul de Royale Obsidian. Mismo alcance que los demas themes: solo
-     chrome de ventanas, el log/lista/input quedan iguales a proposito. */
+  /* Diamante Blindado: placa de diamante (SVG de un rombo partido en dos
+     mitades luz/sombra, tileado, sin imagen subida) con chrome/gris
+     metalico en vez del azul de Royale Obsidian. Mismo alcance que los
+     demas themes: solo chrome de ventanas, el log/lista/input quedan
+     iguales a proposito. */
   html[data-theme="diamante-blindado"] {
     --dc-c-frame-bg:
-      repeating-linear-gradient(45deg, rgba(255,255,255,0.045) 0px, rgba(255,255,255,0.045) 1px, transparent 1px, transparent 22px),
-      repeating-linear-gradient(-45deg, rgba(255,255,255,0.035) 0px, rgba(255,255,255,0.035) 1px, transparent 1px, transparent 22px),
-      repeating-linear-gradient(45deg, rgba(0,0,0,0.35) 0px, rgba(0,0,0,0.35) 11px, transparent 11px, transparent 22px),
-      linear-gradient(160deg, #202124 0%, #0c0d0f 55%, #000000 100%);
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56'%3E%3Cpolygon points='28,2 28,54 2,28' fill='%23ffffff' fill-opacity='0.11'/%3E%3Cpolygon points='28,2 28,54 54,28' fill='%23000000' fill-opacity='0.4'/%3E%3C/svg%3E") 0 0/56px 56px repeat,
+      radial-gradient(130% 90% at 50% 0%, #202124 0%, #0a0a0b 60%, #000000 100%);
     --dc-c-frame-border: #4a4d53;
     --dc-c-frame-border-strong: #6b6f76;
     --dc-c-titlebar-bg: linear-gradient(180deg, #4a4d53 0%, #202124 45%, #000000 100%);
@@ -123,6 +124,7 @@
     --dc-c-tab-active-text: #0c0d0f;
     --dc-c-panel-bg: #101113;
     --dc-c-panel-text: #dfe2e6;
+    --dc-c-footer-bg: linear-gradient(180deg, #4a4d53 0%, #202124 45%, #000000 100%);
   }
   #dc-root, #dc-root * { box-sizing: border-box; }
   #dc-root input:focus, #dc-root textarea:focus, #dc-root button:focus, #dc-root select:focus { outline: none; }
@@ -301,34 +303,34 @@
     transition: background-image 0.3s ease;
   }
   .dc-banner.dc-banner-clickable { pointer-events: auto; cursor: pointer; }
-  /* Banner cromado, SOLO para el theme "diamante-blindado" (decision explicita
-     de esta sesion): pisa el banner configurable via CSS puro (sin imagen
-     nueva), texto "AEGIS" con efecto chrome sobre el mismo patron facetado
-     del frame. En cualquier otro theme el banner configurable sigue intacto. */
+  /* Banner "AEGIS" grabado en metal, SOLO para el theme "diamante-blindado"
+     (decision explicita de esta sesion): pisa el banner configurable via
+     CSS puro (mismo patron de placa de diamante del frame, sin imagen
+     nueva), sin borde propio para que se funda con el marco de la ventana.
+     En cualquier otro theme el banner configurable sigue intacto. */
   html[data-theme="diamante-blindado"] #dc-banner {
     background-image: none !important;
-    background-color: #0c0d0f;
-    background-repeat: repeat; background-size: 44px 44px; background-position: center;
-    border-color: #6b6f76;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -2px 0 rgba(0,0,0,0.6), 0 1px 2px rgba(0,0,0,0.4);
+    background-color: transparent;
+    border-color: transparent;
+    box-shadow: inset 0 -3px 8px rgba(0,0,0,0.55);
     pointer-events: none !important; cursor: default !important;
   }
   html[data-theme="diamante-blindado"] #dc-banner.dc-banner-clickable { pointer-events: none !important; }
   html[data-theme="diamante-blindado"] #dc-banner::before {
     content: ""; position: absolute; inset: 0;
     background:
-      repeating-linear-gradient(45deg, rgba(255,255,255,0.06) 0px, rgba(255,255,255,0.06) 1px, transparent 1px, transparent 18px),
-      repeating-linear-gradient(-45deg, rgba(255,255,255,0.045) 0px, rgba(255,255,255,0.045) 1px, transparent 1px, transparent 18px);
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56'%3E%3Cpolygon points='28,2 28,54 2,28' fill='%23ffffff' fill-opacity='0.11'/%3E%3Cpolygon points='28,2 28,54 54,28' fill='%23000000' fill-opacity='0.4'/%3E%3C/svg%3E") 0 0/56px 56px repeat,
+      radial-gradient(130% 140% at 50% 0%, #202124 0%, #0a0a0b 60%, #000000 100%);
   }
   html[data-theme="diamante-blindado"] #dc-banner::after {
     content: "AEGIS"; position: absolute; inset: 0;
     display: flex; align-items: center; justify-content: center;
     font-family: Tahoma, "MS Sans Serif", Geneva, sans-serif;
-    font-weight: bold; font-size: 52px; letter-spacing: 12px;
-    background: linear-gradient(180deg, #ffffff 0%, #d6d9dd 28%, #7a7f87 52%, #c7cbd0 74%, #ffffff 100%);
+    font-weight: bold; font-size: 60px; letter-spacing: 14px;
+    background: linear-gradient(180deg, #9aa0a8 0%, #6b6f76 45%, #2c2d30 100%);
     -webkit-background-clip: text; background-clip: text;
     color: transparent; -webkit-text-fill-color: transparent;
-    text-shadow: 0 2px 1px rgba(0,0,0,0.7);
+    text-shadow: 0 1px 0 rgba(255,255,255,0.18), 0 3px 5px rgba(0,0,0,0.75);
   }
 
   /* botones bisel XP azul */
@@ -545,8 +547,8 @@
 
   .dc-helpbar {
     position: absolute; top: 652px; left: 0; width: 1024px; height: 92px;
-    background: linear-gradient(180deg, #7fa2d6, #4c72b3);
-    border-top: 1px solid #1c2c5c;
+    background: var(--dc-c-footer-bg);
+    border-top: 1px solid var(--dc-c-frame-border-strong);
   }
   .dc-helpbtn {
     position: absolute; top: 18px; left: 35px;
