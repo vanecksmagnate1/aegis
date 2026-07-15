@@ -131,6 +131,26 @@
     --dc-c-panel-text: #dfe2e6;
     --dc-c-footer-bg: linear-gradient(180deg, #4a4d53 0%, #202124 45%, #000000 100%);
   }
+  /* Login: bezel siempre oscuro (Royale Obsidian), sin importar el theme
+     global activo -- pisa las variables de chrome solo mientras la
+     pantalla de login este activa; al entrar al chat el theme real
+     vuelve a aplicarse normalmente. */
+  .dc-window:has(.dc-login.active) {
+    --dc-c-frame-bg: linear-gradient(180deg, #1c2029 0%, #0a0c10 100%);
+    --dc-c-frame-border: #3a4557;
+    --dc-c-frame-border-strong: #4a5568;
+    --dc-c-titlebar-bg: linear-gradient(180deg, #333f4f 0%, #12161c 55%, #05060a 100%);
+    --dc-c-titlebar-text: #eef2f7;
+    --dc-c-menubar-bg: linear-gradient(180deg, #232935, #0d1015);
+    --dc-c-wbtn-border: #4a5568;
+    --dc-c-wbtn-blue-bg: linear-gradient(180deg, #6fb6ff 0%, #2f7fe0 45%, #155bb0 100%);
+    --dc-c-popup-bg: #12151b;
+    --dc-c-popup-text: #e8ecf3;
+    --dc-c-popup-hover-bg: #2f7fe0;
+    --dc-c-btn-bg: linear-gradient(180deg, #2b3542, #12161c);
+    --dc-c-btn-text: #eef2f7;
+    --dc-c-footer-bg: linear-gradient(180deg, #2c3644 0%, #12161c 60%, #05060a 100%);
+  }
   #dc-root, #dc-root * { box-sizing: border-box; }
   #dc-root input:focus, #dc-root textarea:focus, #dc-root button:focus, #dc-root select:focus { outline: none; }
   #dc-root {
@@ -376,6 +396,18 @@
   .dc-field input[type=text], .dc-field input[type=password] { width: 100%; padding: 7px 9px; font-size: 15px; }
   .dc-error { color: #FFD2D2; font-size: 13px; margin-top: 5px; min-height: 15px; }
   .dc-login .dc-btnrow { margin-top: 16px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+
+  /* nick del login: campo gris moderno en vez del hundido blanco clasico */
+  #dc-nick {
+    background: #1c212e; border: 1px solid #333a4a; color: #fff;
+    border-radius: 10px; box-shadow: none;
+  }
+  #dc-nick::placeholder { color: #8a93a6; }
+
+  /* botones del login con el degradado violeta de la landing page */
+  #dc-loginbtn, #dc-enter {
+    background: linear-gradient(90deg, #7c5cf0, #b24bf3); border: 1px solid transparent; color: #fff;
+  }
 
   /* dentro de dialogos, el error va claro (fondo azul medio) */
   .dc-dialog-body .dc-error { color: #ffd2d2; }
