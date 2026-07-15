@@ -698,7 +698,7 @@
      lista de conversaciones y una conversacion abierta) */
   #dc-pmwin-layer { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 45; }
   .dc-pmwin {
-    position: absolute; width: 340px; height: 400px; display: none; flex-direction: column;
+    position: absolute; width: 620px; height: 400px; display: none; flex-direction: column;
     background: var(--dc-c-frame-bg); border: 2px solid var(--dc-c-frame-border-strong); border-radius: 6px;
     box-shadow: 0 10px 30px rgba(0,0,0,0.45); pointer-events: auto; overflow: hidden;
     box-sizing: border-box;
@@ -718,7 +718,22 @@
   }
   .dc-pmwin-body { flex: 1; display: flex; flex-direction: column; padding: 8px; min-height: 0; box-sizing: border-box; }
   .dc-pmwin-log { flex: 1; overflow-y: auto; background: #fff; border: 1px solid #16224e; padding: 5px; margin-bottom: 6px; min-height: 0; }
-  .dc-pmwin-inputrow { display: flex; gap: 4px; flex-shrink: 0; }
+  /* mismo look que el log del chat principal (.dc-log .msg): avatar a la
+     izquierda (con marco/rank si el usuario tiene uno, via userIconHtml),
+     nick en negrita arriba, mensaje abajo, filas alternadas blanco/gris. */
+  .dc-pmwin-log .msg {
+    word-wrap: break-word; display: flex; gap: 8px; align-items: flex-start;
+    padding: 5px 6px; border-bottom: 1px solid #dbe3f2; font-size: 16px;
+  }
+  .dc-pmwin-log .msg:nth-child(even) { background: #eef1f6; }
+  .dc-pmwin-log .msg .msgtext { min-width: 0; font-size: 16px; }
+  .dc-pmwin-log .nick { font-weight: bold; color: #000; font-size: 16px; }
+  .dc-pmwin-log .msg.sys { color: #000; }
+  .dc-pmwin-inputrow { display: flex; gap: 4px; flex-shrink: 0; align-items: stretch; }
+  .dc-emobtn-inline {
+    position: static; width: 38px; height: auto; padding: 0; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
   #dc-msgcenter-list-view { flex: 1; display: flex; flex-direction: column; min-height: 0; }
   .dc-msgcenter-list { flex: 1; overflow-y: auto; background: #fff; border: 1px solid #16224e; }
   .dc-msgcenter-item { display: flex; align-items: center; gap: 8px; padding: 8px; cursor: pointer; border-bottom: 1px solid #dfe6f5; }
@@ -1123,7 +1138,7 @@
                     <div class="dc-pmwin-log dc-sunken" id="dc-msgcenter-log"></div>
                     <div class="dc-pmwin-inputrow" id="dc-msgcenter-inputrow" style="position:relative;">
                       <div class="dc-emopop" id="dc-msgcenter-emopop" style="bottom:32px;"></div>
-                      <button class="dc-btn dc-smallbtn" id="dc-msgcenter-emobtn" type="button" title="Emoticones" data-no-drag>🙂</button>
+                      <button class="dc-btn dc-emobtn dc-emobtn-inline" id="dc-msgcenter-emobtn" type="button" title="Emoticones" data-no-drag><span class="emo-face"></span></button>
                       <input type="text" id="dc-msgcenter-input" class="dc-sunken" style="flex:1; padding:4px 5px;" maxlength="200">
                       <button class="dc-btn dc-default" id="dc-msgcenter-send" data-no-drag>Enviar</button>
                     </div>
