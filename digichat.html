@@ -942,8 +942,8 @@
     const scaler = document.getElementById('dc-scaler');
     if (!scaler) return;
     const stage = scaler.parentElement;
-    const availW = stage.clientWidth - 108;
-    const availH = window.innerHeight - 128;
+    const availW = stage.clientWidth - 4;
+    const availH = window.innerHeight - 32;
     const scale = Math.min(availW / 1024, availH / 744, 1);
     scaler.style.transform = `scale(${scale})`;
     stage.style.height = (744 * scale) + 'px';
