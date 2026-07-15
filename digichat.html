@@ -1833,6 +1833,85 @@
     enterRoom();
   }
 
+  /* ---------- AUTO-LOGIN (sesión ya iniciada en el portal) ----------
+     digichat.html se sirve mismo origen y mismo proyecto Supabase que el
+     portal, así que comparten sesión vía localStorage — no hace falta
+     postMessage ni query string. Si hay sesión, entra directo con el nick
+     del portal (admin/moderador/suscriptor); si no hay sesión, no hace
+     nada y queda la pantalla de login normal de siempre. */
+  async function attemptAutoLogin(loadInitialDataPromise){
+    let session;
+    try {
+      const { data } = await sb.auth.getSession();
+      session = data.session;
+    } catch (e) { return; }
+    if (!session) return;
+
+    await loadInitialDataPromise;
+
+    let profile;
+    try {
+      const { data } = await sb.from('profiles').select('username, role').eq('id', session.user.id).single();
+      profile = data;
+    } catch (e) { return; }
+    if (!profile) return;
+
+    const nick = String(profile.username || '').replace(/[,()]/g, '').trim().slice(0, MAX_NICK_LEN);
+    if (!nick || nick.length < 2) return;
+    if (nick.toLowerCase() === ADMIN_NICK.toLowerCase()) return;
+    if (bannedNicks.has(nick.toLowerCase())) return;
+    if (presenceList.some(p => p.nick.toLowerCase() === nick.toLowerCase())) return;
+
+    if (profile.role === 'admin') {
+      let token = null;
+      try {
+        const res = await fetch('/api/chat-admin-token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ access_token: session.access_token })
+        });
+        const data = await res.json();
+        token = data.ok ? data.token : null;
+      } catch (e) { token = null; }
+
+      if (token) {
+        adminToken = token;
+        me.nick = savedAdminProfile?.nick || ADMIN_NICK;
+        me.role = "admin";
+        me.color = savedAdminProfile?.color || RAINBOW;
+        me.textColor = savedAdminProfile ? (savedAdminProfile.text_color || null) : null;
+        me.textFont = savedAdminProfile?.text_font || null;
+        me.visibilityMode = savedAdminProfile?.visibility_mode || 'normal';
+        me.avatar = savedAdminProfile?.avatar || DEFAULT_ADMIN_AVATAR;
+        me.rank = savedAdminProfile?.rank || 'none';
+        me.frame = savedAdminProfile?.frame || 'none';
+        me.customAvatars = Array.isArray(savedAdminProfile?.custom_avatars) ? savedAdminProfile.custom_avatars : [];
+        me.room = LOCKED_ROOM;
+
+        // Misma regla que el login manual: solo una sesión de admin activa a la vez.
+        const existingAdmin = presenceList.find(p => p.nick.toLowerCase() === ADMIN_NICK.toLowerCase() && p.clientId !== CLIENT_ID);
+        if (existingAdmin) {
+          await callAdminAction('kick', { nick: ADMIN_NICK, room: existingAdmin.room, reason: 'Se inició sesión en otro dispositivo.' });
+        }
+        await enterRoom();
+        return;
+      }
+      // Si el portal dice admin pero no se pudo mintar el token (ej. perfil
+      // recién cambiado), entra igual como suscriptor en vez de bloquear.
+    }
+
+    me.nick = nick;
+    me.role = (profile.role === 'moderator' && moderatorNicks.has(nick.toLowerCase()))
+      ? 'moderator'
+      : (profile.role === 'moderator' ? 'general' : 'suscriptor');
+    me.color = me.role === 'moderator' ? MOD_COLOR : GENERAL_COLOR;
+    me.textColor = null;
+    me.avatar = BASE_AVATARS[Math.floor(Math.random() * BASE_AVATARS.length)];
+    me.room = LOCKED_ROOM;
+    me.visibilityMode = 'normal';
+    await enterRoom();
+  }
+
   /* ---------- ENTRAR A LA SALA ---------- */
   async function enterRoom(){
     document.getElementById('dc-login').classList.remove('active');
@@ -3071,7 +3150,7 @@
     } else if (settingsTab === "info"){
       body.innerHTML = `
         <h4>Info</h4>
-        <p>Rol actual: ${me.role==='admin'?'Administrador':me.role==='moderator'?'Moderador':'Usuario'} — Sala actual: ${escapeHtml(me.room)}</p>
+        <p>Rol actual: ${me.role==='admin'?'Administrador':me.role==='moderator'?'Moderador':me.role==='suscriptor'?'Suscriptor':'Usuario'} — Sala actual: ${escapeHtml(me.room)}</p>
       `;
     } else if (settingsTab === "patch"){
       body.innerHTML = `
@@ -4726,7 +4805,8 @@
   wireMsgCenter();
   setupGlobalSubscriptions();
   setupPresence();
-  loadInitialData();
+  const loadInitialDataPromise = loadInitialData();
+  attemptAutoLogin(loadInitialDataPromise);
 })();
 </script>
 </body>
