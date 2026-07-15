@@ -71,6 +71,7 @@
     --dc-c-tab-active-text: #16224e;
     --dc-c-panel-bg: #7f95cf;
     --dc-c-panel-text: #eef2fb;
+    --dc-c-footer-bg: linear-gradient(180deg, #7fa2d6, #4c72b3);
   }
   html[data-theme="royale-obsidian"] {
     --dc-c-frame-bg: linear-gradient(180deg, #1c2029 0%, #0a0c10 100%);
@@ -93,6 +94,7 @@
     --dc-c-tab-active-text: #0a0c10;
     --dc-c-panel-bg: #12151b;
     --dc-c-panel-text: #dbe2ee;
+    --dc-c-footer-bg: linear-gradient(180deg, #2c3644 0%, #12161c 60%, #05060a 100%);
   }
   /* Diamante Blindado: obsidiana negra facetada (placa de diamante SVG en
      detalle fino + dos capas de conic-gradient rotadas/desalineadas para
@@ -127,6 +129,7 @@
     --dc-c-tab-active-text: #0c0d0f;
     --dc-c-panel-bg: #101113;
     --dc-c-panel-text: #dfe2e6;
+    --dc-c-footer-bg: linear-gradient(180deg, #4a4d53 0%, #202124 45%, #000000 100%);
   }
   #dc-root, #dc-root * { box-sizing: border-box; }
   #dc-root input:focus, #dc-root textarea:focus, #dc-root button:focus, #dc-root select:focus { outline: none; }
@@ -548,6 +551,12 @@
   .dc-btncol .dc-row2 { display: flex; gap: 6px; }
   .dc-btncol .dc-row2 .dc-btn { flex: 1; padding: 7px 8px; font-size: 14px; }
   .dc-btncol .dc-send { padding: 7px 8px; }
+
+  .dc-helpbar {
+    position: absolute; top: 652px; left: 0; width: 1024px; height: 92px;
+    background: var(--dc-c-footer-bg);
+    border-top: 1px solid var(--dc-c-frame-border-strong);
+  }
 
   /* ===== dialogos (settings / admin / pm / login / kick), estilo modal del mockup ===== */
   .dc-overlay {
@@ -1132,6 +1141,8 @@
         </div>
 
         <div class="dc-banner" id="dc-banner" style="background-image:url('${THEME_ICONS.banner}')" oncontextmenu="return false"></div>
+
+        <div class="dc-helpbar"></div>
 
         <!-- LOGIN AUTH OVERLAY -->
         <div class="dc-overlay" id="dc-loginauth-overlay">
