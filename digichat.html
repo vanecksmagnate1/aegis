@@ -3798,6 +3798,7 @@
               <div class="dc-avatargrid" id="dc-admin-avatars"></div>
             </div>
             <input type="file" id="dc-admin-avatar-upload" accept="image/*">
+            <small class="dc-info-note">Si subís un GIF, se guarda animado tal cual (máx. 1MB) — se mueve en la lista de usuarios y en tus mensajes del chat.</small>
             ${me.visibilityMode==='full' ? '<small class="dc-info-note">Con "Invisible total" tu ícono se sigue viendo en los mensajes del chat, pero no en la lista de usuarios (ahí no aparecés).</small>' : ''}
           </div>
 
@@ -3932,6 +3933,33 @@
       const file = e.target.files && e.target.files[0];
       if (!file) return;
       if (!file.type.startsWith('image/')) { alert('Selecciona un archivo de imagen.'); return; }
+      // GIF: se guarda TAL CUAL (sin pasar por canvas) para no perder la
+      // animacion -- canvas.drawImage() solo capta el primer frame. El
+      // resize a 48x48 que sufren el resto de formatos es tambien lo que
+      // los mantenia livianos; sin ese resize un GIF puede pesar bastante
+      // mas, y el avatar viaja en cada sync de presencia a todos los
+      // conectados (ver setupPresence), asi que se limita el tamaño del
+      // archivo en vez de dejarlo sin tope.
+      if (file.type === 'image/gif') {
+        const MAX_GIF_BYTES = 1024 * 1024;
+        if (file.size > MAX_GIF_BYTES) {
+          alert('Ese GIF pesa más de 1MB. Elegí uno más liviano para que no ralentice el chat de todos.');
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const dataUrl = ev.target.result;
+          me.avatar = dataUrl;
+          if (!me.customAvatars.includes(dataUrl)) me.customAvatars = [dataUrl, ...me.customAvatars];
+          refreshAdminAvatarPreview();
+          rebuildAdminAvatarGrid();
+          retrackPresence();
+          renderUsers();
+          updateProfilePreview();
+        };
+        reader.readAsDataURL(file);
+        return;
+      }
       const reader = new FileReader();
       reader.onload = (ev) => {
         const img = new Image();
