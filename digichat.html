@@ -67,7 +67,7 @@
 </style>
 </head>
 <body>
-<div id="dc-root"><div class="dc-stage"><div class="dc-scaler" id="dc-scaler"><div id="dc-app"></div></div></div></div>
+<div id="dc-root"><div id="dc-mobile-escape"></div><div class="dc-stage"><div class="dc-scaler" id="dc-scaler"><div id="dc-app"></div></div></div></div>
 <style>
   /* ===== Themes (piel visual): variables de color de CHROME de ventanas
      (marcos, barras de titulo, tabs de dialogo, botones, popup de menu,
@@ -289,6 +289,95 @@
   .dc-frame-ov.m-confetti i:nth-child(4) { left: 84%; background: var(--f3, var(--f2)); animation: dc-frame-confetti 2.4s linear infinite 1.6s; }
   @keyframes dc-frame-confetti { 0% { transform: translateY(-4px) rotate(0deg); opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { transform: translateY(74px) rotate(300deg); opacity: 0; } }
   @media (prefers-reduced-motion: reduce) { .dc-frame-ov.m-spin, .dc-frame-ov.m-glow, .dc-frame-ov.m-scan::after, .dc-frame-ov.m-sparkle i, .dc-frame-ov.m-glitter::before, .dc-frame-ov.m-glitter::after, .dc-frame-ov.m-starburst i, .dc-frame-ov.m-orbit i, .dc-frame-ov.m-firefly i, .dc-frame-ov.m-comet, .dc-frame-ov.m-shimmer::after, .dc-frame-ov.m-confetti i { animation: none !important; } }
+
+  /* ===== Modo mobile (agregado 2026-07-16): layout real para pantallas
+     angostas, en vez del hack de escala 1024x744 (rescaleDigichat) que
+     hasta ahora era el UNICO comportamiento -- en un celular real eso
+     encoge todo a una fraccion del tamaño (ilegible/intocable), no solo
+     "no queda lindo". #dc-root.dc-mobile lo activa applyLayoutMode() via
+     JS cuando el viewport es angosto Y el usuario no forzo "version de
+     escritorio" (dc_force_desktop en localStorage, mismo patron que
+     LOCAL_THEME_OVERRIDE). Reusa los MISMOS elementos/ids del desktop
+     (nada de HTML duplicado ni logica de render nueva): solo se pisa
+     position/tamaño para que fluyan en vez de estar en coordenadas fijas
+     del canvas. Idea "4" del set de propuestas: la columna de usuarios
+     (.dc-colright) queda angosta y redimensionable con una manija
+     (--dc-usercol-w, wireUsercolResize()), no oculta. */
+  .dc-layoutbar {
+    display: none; align-items: center; justify-content: center; gap: 6px;
+    font-size: 11px; color: var(--dc-c-titlebar-text); background: var(--dc-c-menubar-bg);
+    padding: 5px 8px; text-align: center; flex-shrink: 0;
+  }
+  .dc-layoutbar a { color: #bcd2ff; text-decoration: underline; cursor: pointer; }
+  /* Salvavidas para "escritorio forzado en pantalla angosta": .dc-layoutbar
+     vive DENTRO de .dc-scaler, asi que si el usuario fuerza el modo
+     escritorio en un celular, el hack de escala 1024x744 la encoge junto
+     con todo lo demas y queda casi invisible. Este elemento vive AFUERA
+     del canvas escalado (hermano de .dc-stage, ver HTML), fixed, siempre
+     legible y tocable sin importar la escala. */
+  #dc-mobile-escape {
+    display: none; position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+    background: #12151c; color: #eef2fb; font-size: 12px; text-align: center;
+    padding: 6px 8px; box-shadow: 0 1px 6px rgba(0,0,0,0.4);
+  }
+  #dc-mobile-escape a { color: #7fd8ff; text-decoration: underline; cursor: pointer; }
+  .dc-usercol-handle { display: none; }
+  #dc-root.dc-mobile .dc-stage { padding: 0; display: block; }
+  #dc-root.dc-mobile .dc-scaler { position: static; width: 100%; height: auto; transform: none !important; }
+  #dc-root.dc-mobile .dc-window {
+    /* height FIJA (no min-height): sin esto el alto es "auto" (crece con el
+       contenido) y ningun flex:1/min-height:0 de mas abajo puede clipear ni
+       scrollear nada -- toda la cadena crece sin limite y el input de texto
+       termina miles de px mas abajo, fuera de pantalla. */
+    position: relative; width: 100%; height: 100dvh;
+    border-radius: 0; box-shadow: none; display: flex; flex-direction: column;
+  }
+  #dc-root.dc-mobile .dc-titlebar, #dc-root.dc-mobile .dc-menubar {
+    position: static; width: 100%; height: auto; flex-shrink: 0; box-sizing: border-box;
+  }
+  /* orden visual (titlebar/menubar/banner/franja/main) distinto del orden en
+     el DOM -- el DOM no cambia, solo se reordena con flex `order`. */
+  #dc-root.dc-mobile .dc-titlebar { min-height: 38px; order: 1; }
+  #dc-root.dc-mobile .dc-menubar { min-height: 30px; padding: 4px 10px; order: 2; }
+  #dc-root.dc-mobile .dc-banner { position: static; width: auto; height: 52px; margin: 6px; flex-shrink: 0; order: 3; }
+  #dc-root.dc-mobile .dc-layoutbar { order: 4; }
+  #dc-root.dc-mobile .dc-main { flex: 1; display: flex; min-height: 0; position: relative; padding-bottom: 128px; box-sizing: border-box; order: 5; }
+  #dc-root.dc-mobile .dc-login { position: static; width: 100%; height: auto; flex: 1; min-height: 0; box-sizing: border-box; }
+  #dc-root.dc-mobile .dc-chatscreen { position: relative; width: 100%; height: auto; flex: 1; min-height: 0; }
+  #dc-root.dc-mobile .dc-chatscreen.active { display: flex; flex-direction: column; }
+  #dc-root.dc-mobile .dc-cols { position: relative; flex: 1; display: flex; flex-direction: row; min-height: 0; }
+  #dc-root.dc-mobile .dc-colleft { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; position: relative; }
+  #dc-root.dc-mobile .dc-log { position: static; width: 100%; height: auto; flex: 1; min-height: 0; }
+  #dc-root.dc-mobile .dc-msginputwrap { position: relative; top: auto; left: auto; width: 100%; height: 72px; flex-shrink: 0; }
+  #dc-root.dc-mobile .dc-colright {
+    position: relative; top: auto; left: auto; height: auto;
+    flex: 0 0 var(--dc-usercol-w, 88px); width: var(--dc-usercol-w, 88px);
+    border: none; border-left: 2px solid var(--dc-c-frame-border-strong);
+    padding: 4px 2px; box-sizing: border-box; overflow-x: hidden; overflow-y: auto;
+  }
+  #dc-root.dc-mobile .dc-tabs { position: static; width: 100%; height: auto; flex-wrap: wrap; }
+  #dc-root.dc-mobile .dc-tab { flex: 1; padding: 4px 2px; font-size: 10px; justify-content: center; height: auto; }
+  #dc-root.dc-mobile .dc-icontoolbar { flex-wrap: wrap; gap: 3px; margin-bottom: 4px; justify-content: center; }
+  #dc-root.dc-mobile .dc-icontoolbar .ico { width: 24px; height: 24px; }
+  #dc-root.dc-mobile .dc-icontoolbar .ico img { width: 16px; height: 16px; }
+  #dc-root.dc-mobile .dc-checkrow { display: none; }
+  #dc-root.dc-mobile .dc-listhead span:first-child { font-size: 10px; }
+  #dc-root.dc-mobile .dc-btncol {
+    position: fixed; left: 0; right: 0; bottom: 0; width: 100%; box-sizing: border-box;
+    background: var(--dc-c-frame-bg); border-top: 2px solid var(--dc-c-frame-border-strong);
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); z-index: 15;
+  }
+  #dc-root.dc-mobile .dc-helpbar { display: none; }
+  #dc-root.dc-mobile .dc-usercol-handle {
+    display: block; position: absolute; top: 0; left: -5px; width: 10px; height: 100%;
+    cursor: ew-resize; touch-action: none; z-index: 5;
+  }
+  #dc-root.dc-mobile .dc-usercol-handle::before {
+    content: ""; position: absolute; top: 50%; left: 50%; width: 3px; height: 34px;
+    transform: translate(-50%,-50%); background: rgba(255,255,255,0.45); border-radius: 2px;
+  }
+  #dc-root.dc-mobile .dc-usercol-handle.dragging::before { background: #fff; }
+
   .dc-doorico {
     display: inline-block; width: 13px; height: 16px; flex-shrink: 0;
     background: #F0D060; border: 1px solid #806000;
@@ -1006,6 +1095,13 @@
   function rescaleDigichat(){
     const scaler = document.getElementById('dc-scaler');
     if (!scaler) return;
+    const root = document.getElementById('dc-root');
+    if (root && root.classList.contains('dc-mobile')) {
+      // modo mobile: layout real (flujo normal), no el hack de escala.
+      scaler.style.transform = 'none';
+      scaler.parentElement.style.height = 'auto';
+      return;
+    }
     const stage = scaler.parentElement;
     const availW = stage.clientWidth - 4;
     const availH = window.innerHeight - 32;
@@ -1013,7 +1109,99 @@
     scaler.style.transform = `scale(${scale})`;
     stage.style.height = (744 * scale) + 'px';
   }
-  window.addEventListener('resize', rescaleDigichat);
+
+  // ---------- Modo mobile: deteccion + toggle "version de escritorio" ----------
+  const MOBILE_BREAKPOINT = 820;
+  const FORCE_DESKTOP_KEY = 'dc_force_desktop';
+  const USERCOL_W_KEY = 'dc_mobile_usercol_w';
+  function isNarrowViewport(){ return window.innerWidth <= MOBILE_BREAKPOINT; }
+  function isForcedDesktop(){ return localStorage.getItem(FORCE_DESKTOP_KEY) === '1'; }
+  function setForcedDesktop(v){
+    if (v) localStorage.setItem(FORCE_DESKTOP_KEY, '1'); else localStorage.removeItem(FORCE_DESKTOP_KEY);
+    applyLayoutMode();
+  }
+  function shouldUseMobileLayout(){ return isNarrowViewport() && !isForcedDesktop(); }
+
+  function getUsercolWidth(){
+    const saved = parseInt(localStorage.getItem(USERCOL_W_KEY), 10);
+    return (Number.isFinite(saved) && saved >= 64 && saved <= 260) ? saved : 88;
+  }
+  function setUsercolWidth(px){
+    const clamped = Math.max(64, Math.min(260, Math.round(px)));
+    document.documentElement.style.setProperty('--dc-usercol-w', clamped + 'px');
+    localStorage.setItem(USERCOL_W_KEY, String(clamped));
+  }
+
+  // Franja "Ver version de escritorio" / "Volver a la version mobile" --
+  // mismo espiritu que el override local de themes (LOCAL_THEME_OVERRIDE):
+  // 100% client-side, nadie mas lo ve. Solo aparece con viewport angosto;
+  // en desktop real no tiene sentido mostrarla.
+  function renderLayoutBar(){
+    const bar = document.getElementById('dc-layoutbar');
+    const escape = document.getElementById('dc-mobile-escape');
+    if (!isNarrowViewport()) {
+      if (bar) bar.style.display = 'none';
+      if (escape) escape.style.display = 'none';
+      return;
+    }
+    if (isForcedDesktop()) {
+      // escritorio forzado en pantalla angosta: el link vive afuera del
+      // canvas escalado (ver comentario CSS de #dc-mobile-escape), no en
+      // .dc-layoutbar -- esa queda dentro de .dc-scaler y se encogeria.
+      if (bar) bar.style.display = 'none';
+      if (escape) {
+        escape.style.display = 'block';
+        escape.innerHTML = 'Estás viendo la versión de escritorio. <a id="dc-mobile-escape-link">Volver a la versión mobile</a>';
+        document.getElementById('dc-mobile-escape-link').onclick = () => setForcedDesktop(false);
+      }
+      return;
+    }
+    if (escape) escape.style.display = 'none';
+    if (bar) {
+      bar.style.display = 'flex';
+      bar.innerHTML = '<a id="dc-layoutbar-link">Usar la versión de escritorio</a>';
+      document.getElementById('dc-layoutbar-link').onclick = () => setForcedDesktop(true);
+    }
+  }
+
+  function applyLayoutMode(){
+    const root = document.getElementById('dc-root');
+    if (!root) return;
+    root.classList.toggle('dc-mobile', shouldUseMobileLayout());
+    renderLayoutBar();
+    rescaleDigichat();
+  }
+
+  // Manija de .dc-colright (idea "4"): arrastra el ancho de la columna de
+  // usuarios en mobile entre 64 y 260px, persistido para la proxima visita.
+  // Pointer Events cubre mouse/touch/pen con la misma API.
+  function wireUsercolResize(){
+    const handle = document.getElementById('dc-usercol-handle');
+    const col = document.querySelector('.dc-colright');
+    if (!handle || !col) return;
+    let dragging = false, startX = 0, startW = 0;
+    handle.addEventListener('pointerdown', (e) => {
+      dragging = true; startX = e.clientX; startW = col.getBoundingClientRect().width;
+      handle.classList.add('dragging');
+      handle.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    });
+    handle.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      // el handle esta pegado al borde IZQUIERDO de la columna (arrastrar
+      // hacia la izquierda = agrandarla), por eso resta el delta.
+      setUsercolWidth(startW - (e.clientX - startX));
+    });
+    function endDrag(e){
+      if (!dragging) return;
+      dragging = false;
+      handle.classList.remove('dragging');
+      try { handle.releasePointerCapture(e.pointerId); } catch (err) { /* noop */ }
+    }
+    handle.addEventListener('pointerup', endDrag);
+    handle.addEventListener('pointercancel', endDrag);
+  }
+  window.addEventListener('resize', applyLayoutMode);
 
   let me = { nick: "", color: GENERAL_COLOR, textColor: null, textFont: null, avatar: "default", room: LOCKED_ROOM, role: "general", visibilityMode: "normal", rank: "none", frame: "none", customAvatars: [] };
   let adminToken = null;
@@ -1148,6 +1336,7 @@
             </div>
           </span>
         </div>
+        <div class="dc-layoutbar" id="dc-layoutbar"></div>
 
         <div class="dc-main">
           <div class="dc-login active" id="dc-login">
@@ -1187,6 +1376,7 @@
                 </div>
               </div>
               <div class="dc-colright">
+                <div class="dc-usercol-handle" id="dc-usercol-handle" title="Arrastrar para cambiar el ancho"></div>
                 <div class="dc-tabs">
                   <div class="dc-tab active" data-tab="users">Users</div>
                   <div class="dc-tab" data-tab="rooms">Rooms</div>
@@ -5154,7 +5344,9 @@
   });
 
   render();
-  rescaleDigichat();
+  setUsercolWidth(getUsercolWidth());
+  wireUsercolResize();
+  applyLayoutMode();
   wireMsgCenter();
   setupGlobalSubscriptions();
   setupPresence();
