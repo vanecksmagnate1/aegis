@@ -157,6 +157,37 @@
     --dc-c-panel-text: #dfe2e6;
     --dc-c-footer-bg: linear-gradient(180deg, #4a4d53 0%, #202124 45%, #000000 100%);
   }
+  /* Circuito Blanco: version clara de la familia Circuito (mismo lenguaje
+     que el theme de la landing en portal-web -- blanco + cian #37e0ff/
+     #0ea5e9, textura hexagonal sutil reusando el mismo patron SVG que
+     circuito.js). Unico theme claro ademas de "default"; panel-text pasa
+     a oscuro (a diferencia de los demas, con panel oscuro y texto claro)
+     porque el panel de usuarios tambien es claro aca. */
+  html[data-theme="circuito-blanco"] {
+    --dc-c-frame-bg:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='35' height='60' viewBox='0 0 35 60'%3E%3Cg fill='none' stroke='%230ea5e9' stroke-opacity='0.14' stroke-width='1'%3E%3Cpath d='M17.5 -5L17.5 15L0 25L-17.5 15L-17.5 -5L0 -15Z'/%3E%3Cpath d='M17.5 45L17.5 65L0 75L-17.5 65L-17.5 45L0 35Z'/%3E%3C/g%3E%3C/svg%3E") 0 0/35px 60px repeat,
+      #ffffff;
+    --dc-c-frame-border: #bfeeff;
+    --dc-c-frame-border-strong: #0ea5e9;
+    --dc-c-titlebar-bg: linear-gradient(180deg, #ffffff 0%, #eaf9ff 100%);
+    --dc-c-titlebar-text: #0b1220;
+    --dc-c-dialog-titlebar-bg: linear-gradient(135deg, #ffffff 0%, #cdf3ff 100%);
+    --dc-c-menubar-bg: linear-gradient(180deg, #f5fcff, #e0f6ff);
+    --dc-c-wbtn-border: #0ea5e9;
+    --dc-c-wbtn-blue-bg: linear-gradient(180deg, #ffffff 0%, #bdeeff 45%, #37e0ff 100%);
+    --dc-c-popup-bg: #f5fcff;
+    --dc-c-popup-text: #0b1220;
+    --dc-c-popup-hover-bg: #0ea5e9;
+    --dc-c-btn-bg: linear-gradient(180deg, #ffffff, #d7f2fc);
+    --dc-c-btn-text: #0b1220;
+    --dc-c-tab-bg: #cdeffc;
+    --dc-c-tab-text: #0b1220;
+    --dc-c-tab-active-bg: #ffffff;
+    --dc-c-tab-active-text: #0ea5e9;
+    --dc-c-panel-bg: #eaf5ff;
+    --dc-c-panel-text: #0b1220;
+    --dc-c-footer-bg: linear-gradient(180deg, #ffffff 0%, #cdf3ff 100%);
+  }
   /* Login: bezel siempre oscuro (Royale Obsidian), sin importar el theme
      global activo -- pisa las variables de chrome solo mientras la
      pantalla de login este activa; al entrar al chat el theme real
@@ -355,6 +386,12 @@
   html[data-theme="diamante-blindado"] #dc-root.dc-mobile #dc-banner::after {
     font-size: 22px; letter-spacing: 6px;
   }
+  /* mismo achique que Diamante Blindado, mismo motivo (ver comentario de
+     arriba) -- Circuito Blanco tambien graba "AEGIS" con ::after a
+     tamaño de escritorio (56px/14px). */
+  html[data-theme="circuito-blanco"] #dc-root.dc-mobile #dc-banner::after {
+    font-size: 20px; letter-spacing: 5px;
+  }
   #dc-root.dc-mobile .dc-layoutbar { order: 4; }
   #dc-root.dc-mobile .dc-main { flex: 1; display: flex; min-height: 0; position: relative; padding-bottom: 128px; box-sizing: border-box; order: 5; }
   #dc-root.dc-mobile .dc-login { position: static; width: 100%; height: auto; flex: 1; min-height: 0; box-sizing: border-box; }
@@ -494,6 +531,15 @@
   }
   .dc-menubar .dc-menuitem { cursor: pointer; padding: 4px 8px; position: relative; display: inline-block; }
   .dc-menubar .dc-menuitem:hover, .dc-menubar .dc-menuitem.open { background: var(--dc-c-frame-border); color: #fff; }
+  /* Circuito Blanco: unico theme con chrome CLARO -- el resto de las
+     reglas de arriba/abajo dan por sentado texto blanco fijo sobre fondo
+     oscuro (cierto en los otros 3 themes), asi que aca se pisa
+     puntualmente donde ese contraste se rompe. */
+  html[data-theme="circuito-blanco"] .dc-menubar { color: #0b1220; }
+  html[data-theme="circuito-blanco"] .dc-menubar .dc-menuitem:hover,
+  html[data-theme="circuito-blanco"] .dc-menubar .dc-menuitem.open {
+    background: rgba(14,165,233,0.18); color: #0b1220;
+  }
   .dc-menudrop {
     display: none; position: absolute; top: 100%; left: 0; z-index: 30;
     background: var(--dc-c-popup-bg); border: 1px solid var(--dc-c-frame-border); box-shadow: 2px 2px 6px rgba(0,0,0,0.4);
@@ -548,6 +594,32 @@
     -webkit-background-clip: text; background-clip: text;
     color: transparent; -webkit-text-fill-color: transparent;
     text-shadow: 0 1px 0 rgba(255,255,255,0.35), 0 -1px 0 rgba(0,0,0,0.5), 0 4px 8px rgba(0,0,0,0.8);
+  }
+
+  /* Banner "AEGIS" grabado en cian, SOLO para "circuito-blanco" -- mismo
+     patron que Diamante Blindado (pisa el banner configurable con CSS
+     puro), reusando el hex-grid de --dc-c-frame-bg de este theme. */
+  html[data-theme="circuito-blanco"] #dc-banner {
+    background-image: none !important;
+    background-color: transparent;
+    border-color: #0ea5e9;
+    box-shadow: inset 0 -2px 8px rgba(14,165,233,0.18);
+    pointer-events: none !important; cursor: default !important;
+  }
+  html[data-theme="circuito-blanco"] #dc-banner.dc-banner-clickable { pointer-events: none !important; }
+  html[data-theme="circuito-blanco"] #dc-banner::before {
+    content: ""; position: absolute; inset: 0;
+    background:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='35' height='60' viewBox='0 0 35 60'%3E%3Cg fill='none' stroke='%230ea5e9' stroke-opacity='0.18' stroke-width='1'%3E%3Cpath d='M17.5 -5L17.5 15L0 25L-17.5 15L-17.5 -5L0 -15Z'/%3E%3Cpath d='M17.5 45L17.5 65L0 75L-17.5 65L-17.5 45L0 35Z'/%3E%3C/g%3E%3C/svg%3E") 0 0/35px 60px repeat,
+      linear-gradient(180deg, #ffffff 0%, #f2fcff 100%);
+  }
+  html[data-theme="circuito-blanco"] #dc-banner::after {
+    content: "AEGIS"; position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-family: Tahoma, "MS Sans Serif", Geneva, sans-serif;
+    font-weight: bold; font-size: 56px; letter-spacing: 14px;
+    color: #0ea5e9;
+    text-shadow: 0 0 8px rgba(55,224,255,.65), 0 0 20px rgba(14,165,233,.35);
   }
 
   /* botones bisel XP azul */
@@ -801,6 +873,7 @@
     background: var(--dc-c-dialog-titlebar-bg);
     padding: 10px 16px; color: #fff; font-size: 22px;
   }
+  html[data-theme="circuito-blanco"] .dc-dialog .dc-titlebar { color: #0b1220; }
   .dc-dialog .dc-titlebar .dc-tbicon { width: 24px; height: 24px; }
   .dc-dialog-tabs { display: flex; flex-wrap: wrap; flex-shrink: 0; background: var(--dc-c-frame-bg); padding: 8px 8px 0; gap: 4px 3px; }
   .dc-dialog-tab {
@@ -1260,6 +1333,7 @@
     { id: 'default', label: 'Default', desc: 'El look clasico XP azul de siempre. Es el respaldo: siempre se puede volver a este.', preview: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 112' width='180' height='112'%3E%3Cdefs%3E%3ClinearGradient id='tbdefault' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%23d9e8fb'/%3E%3Cstop offset='35%25' stop-color='%23a9c6ea'/%3E%3Cstop offset='70%25' stop-color='%236f93cf'/%3E%3Cstop offset='100%25' stop-color='%233f60a3'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='180' height='112' fill='%2345519f'/%3E%3Crect x='0' y='0' width='180' height='16' fill='url(%23tbdefault)'/%3E%3Crect x='0' y='16' width='180' height='9' fill='%233f60a3'/%3E%3Crect x='6' y='31' width='118' height='75' fill='%23ffffff'/%3E%3Crect x='10' y='37' width='92' height='4' fill='%23c7d2e0'/%3E%3Crect x='10' y='45' width='70' height='4' fill='%23c7d2e0'/%3E%3Crect x='10' y='53' width='102' height='4' fill='%23c7d2e0'/%3E%3Crect x='10' y='65' width='80' height='4' fill='%23dbe3ee'/%3E%3Crect x='128' y='31' width='46' height='75' fill='%237f95cf'/%3E%3Crect x='132' y='37' width='38' height='7' fill='rgba(255,255,255,0.55)'/%3E%3Crect x='132' y='48' width='38' height='7' fill='rgba(255,255,255,0.3)'/%3E%3Crect x='132' y='59' width='38' height='7' fill='rgba(255,255,255,0.3)'/%3E%3C/svg%3E" },
     { id: 'royale-obsidian', label: 'Royale Obsidian', desc: 'Negro gloss con bisel metalico y acento azul electrico, estilo Windows XP Royale Noir.', preview: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 112' width='180' height='112'%3E%3Cdefs%3E%3ClinearGradient id='tbroyale' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%23333f4f'/%3E%3Cstop offset='55%25' stop-color='%2312161c'/%3E%3Cstop offset='100%25' stop-color='%2305060a'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='180' height='112' fill='%230a0c10'/%3E%3Crect x='0' y='0' width='180' height='16' fill='url(%23tbroyale)'/%3E%3Crect x='0' y='16' width='180' height='9' fill='%230d1015'/%3E%3Crect x='6' y='31' width='118' height='75' fill='%23ffffff'/%3E%3Crect x='10' y='37' width='92' height='4' fill='%23c7d2e0'/%3E%3Crect x='10' y='45' width='70' height='4' fill='%23c7d2e0'/%3E%3Crect x='10' y='53' width='102' height='4' fill='%23c7d2e0'/%3E%3Crect x='10' y='65' width='80' height='4' fill='%23dbe3ee'/%3E%3Crect x='128' y='31' width='46' height='75' fill='%2312151b'/%3E%3Crect x='132' y='37' width='38' height='7' fill='rgba(58,160,255,0.55)'/%3E%3Crect x='132' y='48' width='38' height='7' fill='rgba(255,255,255,0.12)'/%3E%3Crect x='132' y='59' width='38' height='7' fill='rgba(255,255,255,0.12)'/%3E%3C/svg%3E" },
     { id: 'diamante-blindado', label: 'Diamante Blindado', desc: 'Negro facetado tipo diamante con marco y controles en cromado gris, banner AEGIS metalico propio.', preview: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 112' width='180' height='112'%3E%3Cdefs%3E%3ClinearGradient id='tbd' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%234a4d53'/%3E%3Cstop offset='45%25' stop-color='%23202124'/%3E%3Cstop offset='100%25' stop-color='%23000000'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='180' height='112' fill='%230a0a0b'/%3E%3Cg stroke='%23ffffff' stroke-opacity='0.12' stroke-width='2'%3E%3Cline x1='0' y1='96' x2='16' y2='80'/%3E%3Cline x1='14' y1='112' x2='34' y2='92'/%3E%3Cline x1='150' y1='18' x2='168' y2='0'/%3E%3Cline x1='164' y1='30' x2='180' y2='14'/%3E%3C/g%3E%3Crect x='0' y='0' width='180' height='16' fill='url(%23tbd)'/%3E%3Crect x='0' y='16' width='180' height='9' fill='%2308090a'/%3E%3Crect x='6' y='31' width='118' height='75' fill='%23ffffff'/%3E%3Crect x='10' y='37' width='92' height='4' fill='%23c7d2e0'/%3E%3Crect x='10' y='45' width='70' height='4' fill='%23c7d2e0'/%3E%3Crect x='10' y='53' width='102' height='4' fill='%23c7d2e0'/%3E%3Crect x='10' y='65' width='80' height='4' fill='%23dbe3ee'/%3E%3Crect x='128' y='31' width='46' height='75' fill='%23101113'/%3E%3Crect x='132' y='37' width='38' height='7' fill='rgba(212,215,219,0.55)'/%3E%3Crect x='132' y='48' width='38' height='7' fill='rgba(255,255,255,0.12)'/%3E%3Crect x='132' y='59' width='38' height='7' fill='rgba(255,255,255,0.12)'/%3E%3C/svg%3E" },
+    { id: 'circuito-blanco', label: 'Circuito Blanco', desc: 'Blanco con acento cian y textura hexagonal sutil, banner AEGIS grabado en cian brillante -- version clara de la familia Circuito (mismo look que la landing).', preview: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 112' width='180' height='112'%3E%3Cdefs%3E%3ClinearGradient id='tbcirc' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0%25' stop-color='%23ffffff'/%3E%3Cstop offset='100%25' stop-color='%23eaf9ff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='180' height='112' fill='%23ffffff'/%3E%3Crect x='0' y='0' width='180' height='16' fill='url(%23tbcirc)'/%3E%3Crect x='0' y='16' width='180' height='9' fill='%23eaf9ff'/%3E%3Crect x='6' y='31' width='118' height='75' fill='%23ffffff' stroke='%23bfeeff'/%3E%3Crect x='10' y='37' width='92' height='4' fill='%23c7d2e0'/%3E%3Crect x='10' y='45' width='70' height='4' fill='%23c7d2e0'/%3E%3Crect x='10' y='53' width='102' height='4' fill='%23c7d2e0'/%3E%3Crect x='10' y='65' width='80' height='4' fill='%23dbe3ee'/%3E%3Crect x='128' y='31' width='46' height='75' fill='%23eaf5ff'/%3E%3Crect x='132' y='37' width='38' height='7' fill='rgba(14,165,233,0.35)'/%3E%3Crect x='132' y='48' width='38' height='7' fill='rgba(14,165,233,0.15)'/%3E%3Crect x='132' y='59' width='38' height='7' fill='rgba(14,165,233,0.15)'/%3E%3C/svg%3E" },
   ];
   // Piel visual PERSONAL: override solo-local (localStorage), nunca se manda
   // al servidor ni se ve reflejado para otros usuarios. '' = sin override,
