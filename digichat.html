@@ -434,13 +434,18 @@
     border: 1px solid var(--dc-c-wbtn-border);
     text-decoration: none; cursor: pointer;
   }
-  .dc-titlebar .dc-wbtn-min, .dc-titlebar .dc-wbtn-max {
-    background: var(--dc-c-wbtn-blue-bg);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
+  /* Min/Max/Cerrar estilo "Alienware": negro con acento cian, fijo en
+     cualquier theme (antes seguian --dc-c-wbtn-blue-bg / rojo hardcodeado
+     por tema) -- pedido explicito del usuario, mismo cian que el theme
+     "Circuito" de portal-web (#37E0FF) para consistencia de marca. */
+  .dc-titlebar .dc-wbtn-min, .dc-titlebar .dc-wbtn-max, .dc-titlebar .dc-wbtn-close {
+    background: #060809; border-color: #37e0ff; color: #37e0ff;
+    text-shadow: 0 0 4px rgba(55,224,255,0.85);
+    box-shadow: inset 0 0 4px rgba(55,224,255,0.3), 0 0 4px rgba(55,224,255,0.35);
   }
-  .dc-titlebar .dc-wbtn-close {
-    background: linear-gradient(180deg, #ff8a7a 0%, #e8543d 45%, #c00000 100%);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
+  .dc-titlebar .dc-wbtn-min:hover, .dc-titlebar .dc-wbtn-max:hover, .dc-titlebar .dc-wbtn-close:hover {
+    background: #0c1113;
+    box-shadow: inset 0 0 6px rgba(55,224,255,0.45), 0 0 10px rgba(55,224,255,0.65);
   }
   .dc-titlebar .dc-wbtn-float {
     background: linear-gradient(180deg, #C9A6F0 0%, #8B5FC9 45%, #5B2D91 100%);
