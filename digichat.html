@@ -191,8 +191,14 @@
   /* Login: bezel siempre oscuro (Royale Obsidian), sin importar el theme
      global activo -- pisa las variables de chrome solo mientras la
      pantalla de login este activa; al entrar al chat el theme real
-     vuelve a aplicarse normalmente. */
-  .dc-window:has(.dc-login.active) {
+     vuelve a aplicarse normalmente. EXCEPCION: "circuito-blanco" queda
+     afuera de este :not() -- pedido explicito, ese theme tambien
+     necesita login claro, asi que ahi se deja que sus propias variables
+     (ya definidas mas abajo) se apliquen sin pisarlas con este oscuro
+     fijo. El texto hardcodeado en blanco del formulario (h2/label/
+     #dc-nick/error) SI necesita su propio override puntual mas abajo,
+     ver "Circuito Blanco: login tambien claro". */
+  html:not([data-theme="circuito-blanco"]) .dc-window:has(.dc-login.active) {
     --dc-c-frame-bg: linear-gradient(180deg, #1c2029 0%, #0a0c10 100%);
     --dc-c-frame-border: #3a4557;
     --dc-c-frame-border-strong: #4a5568;
@@ -673,6 +679,20 @@
 
   /* dentro de dialogos, el error va claro (fondo azul medio) */
   .dc-dialog-body .dc-error { color: #ffd2d2; }
+
+  /* Circuito Blanco: login tambien claro (ver excepcion al :not() de mas
+     arriba). El bezel oscuro forzado dejaba el formulario en blanco
+     sobre negro a proposito -- con el bezel ahora blanco para este
+     theme, ese mismo texto/input hardcodeado en blanco quedaria
+     invisible, asi que se pisa puntualmente aca. */
+  html[data-theme="circuito-blanco"] .dc-login h2 { color: #0b1220; }
+  html[data-theme="circuito-blanco"] .dc-login p.sub { color: #3d5568; }
+  html[data-theme="circuito-blanco"] .dc-field label { color: #0b1220; }
+  html[data-theme="circuito-blanco"] .dc-error { color: #c0193f; }
+  html[data-theme="circuito-blanco"] #dc-nick {
+    background: #f5fcff; border: 1px solid #bfeeff; color: #0b1220;
+  }
+  html[data-theme="circuito-blanco"] #dc-nick::placeholder { color: #7c8896; }
 
   /* ===== pantalla de chat, coordenadas fijas como el mockup ===== */
   .dc-chatscreen { display: none; width: 100%; height: 100%; }
