@@ -339,7 +339,22 @@
      el DOM -- el DOM no cambia, solo se reordena con flex `order`. */
   #dc-root.dc-mobile .dc-titlebar { min-height: 38px; order: 1; }
   #dc-root.dc-mobile .dc-menubar { min-height: 30px; padding: 4px 10px; order: 2; }
-  #dc-root.dc-mobile .dc-banner { position: static; width: auto; height: 52px; margin: 6px; flex-shrink: 0; order: 3; }
+  /* position:relative (no static): el banner de Diamante Blindado dibuja
+     su textura + "AEGIS" grabado con ::before/::after position:absolute
+     que necesitan a #dc-banner como contenedor -- con static escapan al
+     ancestro posicionado mas cercano (.dc-window, la ventana ENTERA) y el
+     texto queda gigante centrado en medio de toda la pantalla en vez de
+     adentro de la franja del banner. */
+  #dc-root.dc-mobile .dc-banner { position: relative; top: auto; left: auto; width: auto; height: 52px; margin: 6px; flex-shrink: 0; order: 3; overflow: hidden; }
+  /* Diamante Blindado: el "AEGIS" grabado del banner (::after, ver arriba)
+     usa font-size:62px/letter-spacing:16px pensado para el banner de
+     escritorio (1012x92) -- en el banner mobile (alto fijo 52px) se
+     desborda gigante sobre el contenido de abajo, sin overflow:hidden
+     que lo frene. Se achica el texto para ese banner angosto en vez de
+     solo recortarlo (letras cortadas a la mitad se verian peor). */
+  html[data-theme="diamante-blindado"] #dc-root.dc-mobile #dc-banner::after {
+    font-size: 22px; letter-spacing: 6px;
+  }
   #dc-root.dc-mobile .dc-layoutbar { order: 4; }
   #dc-root.dc-mobile .dc-main { flex: 1; display: flex; min-height: 0; position: relative; padding-bottom: 128px; box-sizing: border-box; order: 5; }
   #dc-root.dc-mobile .dc-login { position: static; width: 100%; height: auto; flex: 1; min-height: 0; box-sizing: border-box; }
