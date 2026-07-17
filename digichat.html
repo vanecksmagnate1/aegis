@@ -1345,9 +1345,26 @@
   // a ganar la preferencia personal.
   let LOCAL_THEME_OVERRIDE = localStorage.getItem('dc_local_theme') || '';
   let THEME_FORCED_AT_MS = 0;
+  // Puente con el theme de la landing de portal-web (Circuito Blanco /
+  // Clasico): cuando digichat.html corre embebido en el iframe de
+  // /digichat.html ahi (mismo origen), comparte localStorage con la
+  // pagina que lo contiene -- mismo patron ya usado por
+  // app/api/chat-admin-token/route.js para la sesion de Supabase. Si el
+  // usuario NUNCA eligio un theme propio dentro del chat, seguimos la
+  // preferencia del portal en vez de caer al default del sitio; se
+  // relee en cada carga (no se escribe a dc_local_theme), asi que si el
+  // portal cambia despues, el chat lo refleja solo, sin quedar "pegado".
+  // En el dominio propio de aegis (sin ese origen compartido) esta
+  // key simplemente no existe y esto no hace nada.
+  const PORTAL_THEME_KEY = 'aegis_theme_pref';
+  function portalDerivedTheme(){
+    return localStorage.getItem(PORTAL_THEME_KEY) === 'circuito' ? 'circuito-blanco' : '';
+  }
   // Aplicarlo ya (sin esperar la carga desde Supabase) evita el flash del
-  // theme global por defecto en usuarios que ya eligieron un override local.
+  // theme global por defecto en usuarios que ya eligieron un override local
+  // (propio o derivado del portal).
   if (LOCAL_THEME_OVERRIDE) applyThemeToDom(LOCAL_THEME_OVERRIDE);
+  else { const pd = portalDerivedTheme(); if (pd) applyThemeToDom(pd); }
   function effectiveTheme(){
     if (LOCAL_THEME_OVERRIDE) {
       const since = Number(localStorage.getItem('dc_local_theme_since') || 0);
@@ -1358,6 +1375,8 @@
       localStorage.removeItem('dc_local_theme');
       localStorage.removeItem('dc_local_theme_since');
     }
+    const portalTheme = portalDerivedTheme();
+    if (portalTheme) return portalTheme;
     return ACTIVE_THEME;
   }
   function setLocalThemeOverride(themeId){
